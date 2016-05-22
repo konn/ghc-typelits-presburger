@@ -4,12 +4,8 @@ import           Data.Foldable       (asum)
 import           Data.Integer.SAT    (Expr (..), Prop (..), Prop, PropSet)
 import           Data.Integer.SAT    (assert, checkSat, noProps, toName)
 import qualified Data.Integer.SAT    as SAT
-import           Data.IORef          (readIORef)
 import           Data.List           (nub)
 import           Data.Maybe          (fromMaybe, isNothing, mapMaybe)
-import           GHC.IORef           (newIORef)
-import           GHC.IORef           (IORef)
-import           GHC.IORef           (writeIORef)
 import           GHC.TcPluginM.Extra (evByFiat)
 import           GHC.TcPluginM.Extra (tracePlugin)
 import           GhcPlugins          (EqRel (..), PredTree (..))
@@ -20,7 +16,6 @@ import           GhcPlugins          (typeNatKind)
 import           Plugins             (Plugin (..), defaultPlugin)
 import           TcEvidence          (EvTerm)
 import           TcPluginM           (TcPluginM, tcPluginTrace)
-import           TcPluginM           (tcPluginIO)
 import           TcRnMonad           (Ct, TcPluginResult (..), isWanted)
 import           TcRnTypes           (TcPlugin (..), ctEvPred, ctEvidence)
 import           TcTypeNats          (typeNatAddTyCon, typeNatExpTyCon)
@@ -68,7 +63,7 @@ plugin = defaultPlugin { tcPlugin = const $ Just presburgerPlugin }
 presburgerPlugin :: TcPlugin
 presburgerPlugin =
   tracePlugin "typelits-presburger" $
-  TcPlugin { tcPluginInit  = tcPluginIO $ newIORef emptyTvSubst
+  TcPlugin { tcPluginInit  = return () -- tcPluginIO $ newIORef emptyTvSubst
            , tcPluginSolve = decidePresburger
            , tcPluginStop  = const $ return ()
            }
@@ -76,18 +71,17 @@ presburgerPlugin =
 testIf :: PropSet -> Prop -> Bool
 testIf ps q = isNothing $ checkSat (Not q `assert'` ps)
 
-type PresState = IORef TvSubst
+type PresState = ()
 
 decidePresburger :: PresState -> [Ct] -> [Ct] -> [Ct] -> TcPluginM TcPluginResult
 decidePresburger _ref gs [] [] = do
   tcPluginTrace "Started givens with: " (ppr gs)
-  let subst = foldr unionTvSubst emptyTvSubst $
-              map genSubst gs
+  let subst = emptyTvSubst
+              -- foldr unionTvSubst emptyTvSubst $ map genSubst gs
       givens = mapMaybe (\a -> (,) a <$> toPresburgerPred subst (deconsPred a)) gs
       prems0 = map snd givens
       prems  = foldr assert' noProps prems0
       (solved, _) = foldr go ([], noProps) givens
-  tcPluginIO $ writeIORef _ref subst
   if isNothing (checkSat prems)
     then return $ TcPluginContradiction gs
     else return $ TcPluginOk (map withEv solved) []
@@ -96,9 +90,7 @@ decidePresburger _ref gs [] [] = do
       | testIf prem p = (ct : ss, prem)
       | otherwise = (ss, assert' p prem)
 decidePresburger _ref gs ds ws = do
-  subst0 <- tcPluginIO $ readIORef _ref
-  let subst = foldr unionTvSubst subst0 $
-              map genSubst (gs ++ ds)
+  let subst = foldr unionTvSubst emptyTvSubst $ map genSubst (gs ++ ds)
   tcPluginTrace "Current subst" (ppr subst)
   tcPluginTrace "wanteds" (ppr ws)
   tcPluginTrace "givens" (ppr gs)
@@ -106,18 +98,16 @@ decidePresburger _ref gs ds ws = do
   let wants = mapMaybe (\ct -> (,) ct <$> toPresburgerPred subst (deconsPred ct)) $
               filter (isWanted . ctEvidence) ws
       prems = foldr assert' noProps $
-              mapMaybe (toPresburgerPred subst . deconsPred) (ds ++ gs)
+              mapMaybe (toPresburgerPred subst . deconsPred) (gs ++ ds)
       solved = map fst $ filter (testIf prems . snd) wants
       coerced = [(evByFiat "ghc-typelits-presburger" t1 t2, ct)
                 | ct <- solved
                 , EqPred NomEq t1 t2 <- return (deconsPred ct)
                 ]
-      leq'd = []
-  tcPluginIO $ writeIORef _ref subst
   tcPluginTrace "prems" (text $ show prems)
   if isNothing $ checkSat (foldr (assert' . snd) noProps wants)
     then return $ TcPluginContradiction $ map fst wants
-    else return $ TcPluginOk (coerced ++ leq'd) []
+    else return $ TcPluginOk coerced []
 
 genSubst :: Ct -> TvSubst
 genSubst ct = case deconsPred ct of
