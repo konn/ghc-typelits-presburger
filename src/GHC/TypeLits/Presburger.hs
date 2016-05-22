@@ -1,5 +1,6 @@
-{-# LANGUAGE MultiWayIf, PatternGuards, TupleSections #-}
+{-# LANGUAGE MultiWayIf, PatternGuards, TupleSections, ViewPatterns #-}
 module GHC.TypeLits.Presburger (plugin) where
+import           Class               (classTyCon)
 import           Data.Foldable       (asum)
 import           Data.Integer.SAT    (Expr (..), Prop (..), Prop, PropSet)
 import           Data.Integer.SAT    (assert, checkSat, noProps, toName)
@@ -9,9 +10,10 @@ import           Data.Maybe          (fromMaybe, isNothing, mapMaybe)
 import           GHC.TcPluginM.Extra (evByFiat)
 import           GHC.TcPluginM.Extra (tracePlugin)
 import           GhcPlugins          (EqRel (..), PredTree (..))
-import           GhcPlugins          (classifyPredType, mkTyConTy, ppr)
-import           GhcPlugins          (promotedFalseDataCon, promotedTrueDataCon)
-import           GhcPlugins          (text, tyConAppTyCon_maybe, typeKind)
+import           GhcPlugins          (classifyPredType, isEqPred, mkTyConTy)
+import           GhcPlugins          (ppr, promotedFalseDataCon)
+import           GhcPlugins          (promotedTrueDataCon, text)
+import           GhcPlugins          (tyConAppTyCon_maybe, typeKind)
 import           GhcPlugins          (typeNatKind)
 import           Plugins             (Plugin (..), defaultPlugin)
 import           TcEvidence          (EvTerm)
@@ -21,11 +23,10 @@ import           TcRnTypes           (TcPlugin (..), ctEvPred, ctEvidence)
 import           TcTypeNats          (typeNatAddTyCon, typeNatExpTyCon)
 import           TcTypeNats          (typeNatLeqTyCon, typeNatMulTyCon)
 import           TcTypeNats          (typeNatSubTyCon)
-import           Type                (emptyTvSubst)
-import           Type                (TvSubst)
+import           Type                (TvSubst, emptyTvSubst, substTy)
 import           Type                (unionTvSubst)
-import           Type                (substTy)
 import           TypeRep             (TyLit (NumTyLit), Type (..))
+import           TysWiredIn          (promotedBoolTyCon)
 import           Unify               (tcUnifyTy)
 import           Unique              (getKey, getUnique)
 
@@ -102,38 +103,56 @@ decidePresburger _ref gs ds ws = do
       solved = map fst $ filter (testIf prems . snd) wants
       coerced = [(evByFiat "ghc-typelits-presburger" t1 t2, ct)
                 | ct <- solved
-                , EqPred NomEq t1 t2 <- return (deconsPred ct)
+                , EqPred NomEq t1 t2 <- return (classifyPredType $ deconsPred ct)
                 ]
   tcPluginTrace "prems" (text $ show prems)
+  tcPluginTrace "final goals" (text $ show $ map snd wants)
   if isNothing $ checkSat (foldr (assert' . snd) noProps wants)
     then return $ TcPluginContradiction $ map fst wants
     else return $ TcPluginOk coerced []
 
+(<=>) :: Prop -> Prop -> Prop
+p <=> q =  (p :&& q) :|| (Not p :&& Not q)
+
 genSubst :: Ct -> TvSubst
-genSubst ct = case deconsPred ct of
+genSubst ct = case classifyPredType (deconsPred ct) of
   EqPred NomEq t u -> fromMaybe emptyTvSubst $ tcUnifyTy t u
   _ -> emptyTvSubst
 
 withEv :: Ct -> (EvTerm, Ct)
 withEv ct
-  | EqPred _ t1 t2 <- deconsPred ct =
+  | EqPred _ t1 t2 <- classifyPredType (deconsPred ct) =
       (evByFiat "ghc-typelits-presburger" t1 t2, ct)
   | otherwise = undefined
 
-deconsPred :: Ct -> PredTree
-deconsPred = classifyPredType . ctEvPred . ctEvidence
+deconsPred :: Ct -> Type
+deconsPred = ctEvPred . ctEvidence
 
-toPresburgerPred :: TvSubst -> PredTree -> Maybe Prop
-toPresburgerPred subst (EqPred NomEq p false) -- P ~ 'False <=> Not P ~ 'True
+toPresburgerPred :: TvSubst -> Type -> Maybe Prop
+toPresburgerPred subst (TyConApp con [t1, t2])
+  | con == typeNatLeqTyCon = (:<=) <$> toPresburgerExp subst t1 <*> toPresburgerExp subst t2
+toPresburgerPred subst ty
+  | isEqPred ty = toPresburgerPredTree subst $ classifyPredType ty
+  | otherwise = Nothing
+
+toPresburgerPredTree :: TvSubst -> PredTree -> Maybe Prop
+toPresburgerPredTree subst (EqPred NomEq p false) -- P ~ 'False <=> Not P ~ 'True
   | Just promotedFalseDataCon  == tyConAppTyCon_maybe (substTy subst false) =
-    Not <$> toPresburgerPred subst (EqPred NomEq p (mkTyConTy promotedTrueDataCon))
-toPresburgerPred subst (EqPred NomEq p b)  -- (n :<=? m) ~ 'True
+    Not <$> toPresburgerPredTree subst (EqPred NomEq p (mkTyConTy promotedTrueDataCon))
+toPresburgerPredTree subst (EqPred NomEq p b)  -- (n :<=? m) ~ 'True
   | Just promotedTrueDataCon  == tyConAppTyCon_maybe (substTy subst b)
   , TyConApp con [t1, t2] <- substTy subst p
   , con == typeNatLeqTyCon = (:<=) <$> toPresburgerExp subst t1  <*> toPresburgerExp subst t2
-toPresburgerPred subst (EqPred NomEq t1 t2) -- (n :: Nat) ~ (m :: Nat)
+toPresburgerPredTree subst (EqPred NomEq p q)  -- (p :: Bool) ~ (q :: Bool)
+  | typeKind p == mkTyConTy promotedBoolTyCon =
+    (<=>) <$> toPresburgerPred subst p
+          <*> toPresburgerPred subst q
+toPresburgerPredTree subst (EqPred NomEq t1 t2) -- (n :: Nat) ~ (m :: Nat)
   | typeKind t1 == typeNatKind = (:==) <$> toPresburgerExp subst t1 <*> toPresburgerExp subst t2
-toPresburgerPred _ _ = Nothing
+toPresburgerPredTree subst (ClassPred con [t1, t2]) -- (n :: Nat) ~ (m :: Nat)
+  | typeNatLeqTyCon == classTyCon con
+  , typeKind t1 == typeNatKind = (:<=) <$> toPresburgerExp subst t1 <*> toPresburgerExp subst t2
+toPresburgerPredTree _ _ = Nothing
 
 toPresburgerExp :: TvSubst -> Type -> Maybe Expr
 toPresburgerExp dic ty = case substTy dic ty of
