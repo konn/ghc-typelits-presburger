@@ -1,12 +1,17 @@
 {-# LANGUAGE DataKinds, TypeOperators, GADTs, TypeFamilies, ExplicitForAll #-}
-{-# OPTIONS_GHC -ddump-tc-trace #-}
 {-# OPTIONS_GHC -fplugin GHC.TypeLits.Presburger #-}
 module Main where
 import Data.Type.Equality
 import GHC.TypeLits       (type (*), type (+), type (<=), type (<=?))
 
-hoge :: (n + 1 <= n) => ()
+hoge :: ((n + 1 <=? n) ~ 'False) => ()
 hoge = ()
+
+fuga :: ((n + 1 <=? 0) ~ 'False) => ()
+fuga = ()
+
+bar :: ((2 * (n + 1)) ~ ((2 * n) + 2)) => ()
+bar = ()
 
 main :: IO ()
 main = putStrLn "finished"

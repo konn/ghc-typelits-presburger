@@ -12,6 +12,8 @@ import           GhcPlugins          (EqRel (..), PredTree (..))
 import           GhcPlugins          (classifyPredType, ppr)
 import           GhcPlugins          (promotedTrueDataCon, tyConAppTyCon_maybe)
 import           GhcPlugins          (typeKind, typeNatKind)
+import           GhcPlugins          (mkTyConTy)
+import           GhcPlugins          (promotedFalseDataCon)
 import           Plugins             (Plugin (..), defaultPlugin)
 import           TcPluginM           (TcPluginM, tcPluginTrace)
 import           TcRnMonad           (Ct, TcPluginResult (..), isWanted)
@@ -65,7 +67,7 @@ testIf ps q = isNothing $ checkSat (Not q `assert'` ps)
 
 decidePresburger :: () -> [Ct] -> [Ct] -> [Ct] -> TcPluginM TcPluginResult
 decidePresburger () gs [] [] = do
-  let givens = mapMaybe (\a -> (,) a <$> toPresburgerPred a) gs
+  let givens = mapMaybe (\a -> (,) a <$> toPresburgerPred (deconsPred a)) gs
       prems  = foldr assert' noProps $ map snd givens
       (solved, _) = foldr go ([], noProps) givens
   if isNothing (checkSat prems)
@@ -78,10 +80,10 @@ decidePresburger () gs [] [] = do
 
 decidePresburger () gs ds ws = do
   tcPluginTrace "wanteds" (ppr ws)
-  let wants = mapMaybe (\ct -> (,) ct <$> toPresburgerPred ct) $
+  let wants = mapMaybe (\ct -> (,) ct <$> toPresburgerPred (deconsPred ct)) $
               filter (isWanted . ctEvidence) ws
       prems = foldr assert' noProps $
-              mapMaybe toPresburgerPred $ filter (isWanted . ctEvidence) (ds ++ gs)
+              mapMaybe (toPresburgerPred . deconsPred) $ filter (isWanted . ctEvidence) (ds ++ gs)
       solved = map fst $ filter (testIf prems . snd) wants
       coerced = [(evByFiat "ghc-typelits-presburger" t1 t2, ct)
                 | ct <- solved
@@ -97,18 +99,17 @@ decidePresburger () gs ds ws = do
 deconsPred :: Ct -> PredTree
 deconsPred = classifyPredType . ctEvPred . ctEvidence
 
-toPresburgerPred :: Ct -> Maybe Prop
-toPresburgerPred ct =
-  case deconsPred ct of
-    EqPred NomEq leq true -- (n :<=? m) ~ 'True
-      | Just promotedTrueDataCon  == tyConAppTyCon_maybe true
-      , TyConApp con [t1, t2] <- leq
-      , con == typeNatLeqTyCon -> (:<=) <$> toPresburgerExp t1  <*> toPresburgerExp t2
-    EqPred NomEq t1 t2 -- (n :: Nat) ~ (m :: Nat)
-      | typeKind t1 == typeNatKind ->
-        (:==) <$> toPresburgerExp t1
-              <*> toPresburgerExp t2
-    _ -> Nothing
+toPresburgerPred :: PredTree -> Maybe Prop
+toPresburgerPred (EqPred NomEq p false) -- P ~ 'False <=> Not P ~ 'True
+  | Just promotedFalseDataCon  == tyConAppTyCon_maybe false =
+    Not <$> toPresburgerPred (EqPred NomEq p (mkTyConTy promotedTrueDataCon))
+toPresburgerPred (EqPred NomEq p b)  -- (n :<=? m) ~ 'True
+  | Just promotedTrueDataCon  == tyConAppTyCon_maybe b
+  , TyConApp con [t1, t2] <- p
+  , con == typeNatLeqTyCon = (:<=) <$> toPresburgerExp t1  <*> toPresburgerExp t2
+toPresburgerPred (EqPred NomEq t1 t2) -- (n :: Nat) ~ (m :: Nat)
+  | typeKind t1 == typeNatKind = (:==) <$> toPresburgerExp t1 <*> toPresburgerExp t2
+toPresburgerPred _ = Nothing
 
 toPresburgerExp :: Type -> Maybe Expr
 toPresburgerExp (TyVarTy t) = Just $ Var $ toName $ getKey $ getUnique t
