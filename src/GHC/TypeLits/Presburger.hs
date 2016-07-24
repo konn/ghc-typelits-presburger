@@ -1,5 +1,7 @@
 {-# LANGUAGE MultiWayIf, PatternGuards, TupleSections, ViewPatterns #-}
 module GHC.TypeLits.Presburger (plugin) where
+import GHC.Compat
+
 import           Class               (classTyCon)
 import           Data.Foldable       (asum)
 import           Data.Integer.SAT    (Expr (..), Prop (..), Prop, PropSet)
@@ -9,26 +11,6 @@ import           Data.List           (nub)
 import           Data.Maybe          (fromMaybe, isNothing, mapMaybe)
 import           GHC.TcPluginM.Extra (evByFiat)
 import           GHC.TcPluginM.Extra (tracePlugin)
-import           GhcPlugins          (EqRel (..), PredTree (..))
-import           GhcPlugins          (classifyPredType, isEqPred, mkTyConTy)
-import           GhcPlugins          (ppr, promotedFalseDataCon)
-import           GhcPlugins          (promotedTrueDataCon, text)
-import           GhcPlugins          (tyConAppTyCon_maybe, typeKind)
-import           GhcPlugins          (typeNatKind)
-import           Plugins             (Plugin (..), defaultPlugin)
-import           TcEvidence          (EvTerm)
-import           TcPluginM           (TcPluginM, tcPluginTrace)
-import           TcRnMonad           (Ct, TcPluginResult (..), isWanted)
-import           TcRnTypes           (TcPlugin (..), ctEvPred, ctEvidence)
-import           TcTypeNats          (typeNatAddTyCon, typeNatExpTyCon)
-import           TcTypeNats          (typeNatLeqTyCon, typeNatMulTyCon)
-import           TcTypeNats          (typeNatSubTyCon)
-import           Type                (TvSubst, emptyTvSubst, substTy)
-import           Type                (unionTvSubst)
-import           TypeRep             (TyLit (NumTyLit), Type (..))
-import           TysWiredIn          (promotedBoolTyCon)
-import           Unify               (tcUnifyTy)
-import           Unique              (getKey, getUnique)
 
 assert' :: Prop -> PropSet -> PropSet
 assert' p ps = foldr assert ps (p : varPos)
@@ -144,14 +126,14 @@ toPresburgerPredTree subst (EqPred NomEq p b)  -- (n :<=? m) ~ 'True
   , TyConApp con [t1, t2] <- substTy subst p
   , con == typeNatLeqTyCon = (:<=) <$> toPresburgerExp subst t1  <*> toPresburgerExp subst t2
 toPresburgerPredTree subst (EqPred NomEq p q)  -- (p :: Bool) ~ (q :: Bool)
-  | typeKind p == mkTyConTy promotedBoolTyCon =
+  | typeKind p `eqType` mkTyConTy promotedBoolTyCon =
     (<=>) <$> toPresburgerPred subst p
           <*> toPresburgerPred subst q
 toPresburgerPredTree subst (EqPred NomEq t1 t2) -- (n :: Nat) ~ (m :: Nat)
-  | typeKind t1 == typeNatKind = (:==) <$> toPresburgerExp subst t1 <*> toPresburgerExp subst t2
+  | typeKind t1 `eqType` typeNatKind = (:==) <$> toPresburgerExp subst t1 <*> toPresburgerExp subst t2
 toPresburgerPredTree subst (ClassPred con [t1, t2]) -- (n :: Nat) ~ (m :: Nat)
   | typeNatLeqTyCon == classTyCon con
-  , typeKind t1 == typeNatKind = (:<=) <$> toPresburgerExp subst t1 <*> toPresburgerExp subst t2
+  , typeKind t1 `eqType` typeNatKind = (:<=) <$> toPresburgerExp subst t1 <*> toPresburgerExp subst t2
 toPresburgerPredTree _ _ = Nothing
 
 toPresburgerExp :: TvSubst -> Type -> Maybe Expr
@@ -175,11 +157,9 @@ toPresburgerExp dic ty = case substTy dic ty of
   _ -> Nothing
 
 simpleExp :: Type -> Type
-simpleExp (TyVarTy t) = TyVarTy t
 simpleExp (AppTy t1 t2) = AppTy (simpleExp t1) (simpleExp t2)
 simpleExp (FunTy t1 t2) = FunTy (simpleExp t1) (simpleExp t2)
 simpleExp (ForAllTy t1 t2) = ForAllTy t1 (simpleExp t2)
-simpleExp (LitTy t) = LitTy t
 simpleExp (TyConApp tc ts) = fromMaybe (TyConApp tc (map simpleExp ts)) $
   asum (map simpler [(typeNatAddTyCon, (+))
                     ,(typeNatSubTyCon, (-))
@@ -194,4 +174,5 @@ simpleExp (TyConApp tc ts) = fromMaybe (TyConApp tc (map simpleExp ts)) $
           (LitTy (NumTyLit n), LitTy (NumTyLit m)) -> LitTy (NumTyLit (op n m))
           _ -> TyConApp con [tl, tr]
       | otherwise = Nothing
+simpleExp t = t
 

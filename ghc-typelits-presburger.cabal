@@ -17,6 +17,7 @@ library
   ghc-options:         -Wall
   hs-source-dirs:      src
   exposed-modules:     GHC.TypeLits.Presburger
+  other-modules:       GHC.Compat
   build-depends:       base                >= 4.7  && < 5
                      , ghc                 >= 7.10 && < 8.2
                      , ghc-tcplugins-extra >= 0.2  && < 0.3
