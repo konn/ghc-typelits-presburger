@@ -46,7 +46,7 @@ before_install:
 
 install:
  - stack --version
- - stack build --only-dependencies
+ - stack build --only-dependencies --flag ghc-typelits-presburger:examples
 
 # Here starts the actual work to be performed for the package under test;
 # any command which exits with a non-zero exit code causes the build to fail.
