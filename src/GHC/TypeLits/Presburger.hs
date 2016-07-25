@@ -1,21 +1,32 @@
-{-# LANGUAGE MultiWayIf, PatternGuards, TupleSections, ViewPatterns #-}
+{-# LANGUAGE FlexibleContexts, MultiWayIf, OverloadedStrings, PatternGuards #-}
+{-# LANGUAGE RankNTypes, TupleSections, ViewPatterns                        #-}
 module GHC.TypeLits.Presburger (plugin) where
 import GHC.Compat
 
-import           Class               (classTyCon)
-import           Data.Foldable       (asum)
-import           Data.Integer.SAT    (Expr (..), Prop (..), Prop, PropSet)
-import           Data.Integer.SAT    (assert, checkSat, noProps, toName)
-import qualified Data.Integer.SAT    as SAT
-import           Data.List           (nub)
-import           Data.Maybe          (fromMaybe, isNothing, mapMaybe)
-import           GHC.TcPluginM.Extra (evByFiat)
-import           GHC.TcPluginM.Extra (tracePlugin)
+import           Class            (classTyCon)
+import           Data.Foldable    (asum)
+import           Data.Integer.SAT (Expr (..), Prop (..), Prop, PropSet)
+import           Data.Integer.SAT (assert, checkSat, noProps, toName)
+import qualified Data.Integer.SAT as SAT
+import           Data.List        (nub)
+import           Data.Maybe       (fromMaybe, isNothing, mapMaybe)
+import           Data.Reflection  (Given)
+import           Data.Reflection  (given)
+import           Data.Reflection  (give)
+import           TcPluginM        (tcLookupClass)
+import           TcPluginM        (lookupOrig)
 
 assert' :: Prop -> PropSet -> PropSet
 assert' p ps = foldr assert ps (p : varPos)
   where
     varPos = [K 0 :<= Var i | i <- varsProp p ]
+
+data Proof = Proved | Disproved [(Int, Integer)]
+           deriving (Read, Show, Eq, Ord)
+
+isProved :: Proof -> Bool
+isProved Proved = True
+isProved _ = False
 
 varsProp :: Prop -> [SAT.Name]
 varsProp (p :|| q) = nub $ varsProp p ++ varsProp q
@@ -51,47 +62,77 @@ presburgerPlugin =
            , tcPluginStop  = const $ return ()
            }
 
-testIf :: PropSet -> Prop -> Bool
-testIf ps q = isNothing $ checkSat (Not q `assert'` ps)
+testIf :: PropSet -> Prop -> Proof
+testIf ps q = maybe Proved Disproved $ checkSat (Not q `assert'` ps)
 
 type PresState = ()
 
+data MyEnv  = MyEnv { emptyClsTyCon :: TyCon
+                    , eqTyCon_      :: TyCon
+                    , eqWitCon_     :: TyCon
+                    , isTrueCon_    :: TyCon
+                    }
+
+eqTyCon :: Given MyEnv => TyCon
+eqTyCon = eqTyCon_ given
+
+eqWitnessTyCon :: Given MyEnv => TyCon
+eqWitnessTyCon = eqWitCon_ given
+
+isTrueTyCon :: Given MyEnv => TyCon
+isTrueTyCon = isTrueCon_ given
+
 decidePresburger :: PresState -> [Ct] -> [Ct] -> [Ct] -> TcPluginM TcPluginResult
 decidePresburger _ref gs [] [] = do
-  tcPluginTrace "Started givens with: " (ppr gs)
-  let subst = emptyTvSubst
-              -- foldr unionTvSubst emptyTvSubst $ map genSubst gs
-      givens = mapMaybe (\a -> (,) a <$> toPresburgerPred subst (deconsPred a)) gs
-      prems0 = map snd givens
-      prems  = foldr assert' noProps prems0
-      (solved, _) = foldr go ([], noProps) givens
-  if isNothing (checkSat prems)
-    then return $ TcPluginContradiction gs
-    else return $ TcPluginOk (map withEv solved) []
-  where
-    go (ct, p) (ss, prem)
-      | testIf prem p = (ct : ss, prem)
-      | otherwise = (ss, assert' p prem)
-decidePresburger _ref gs ds ws = do
+  tcPluginTrace "Started givens with: " (ppr $ map (ctEvPred . ctEvidence) gs)
+  withTyCons $ do
+    let subst = emptyTvSubst
+                -- foldr unionTvSubst emptyTvSubst $ map genSubst gs
+        givens = mapMaybe (\a -> (,) a <$> toPresburgerPred subst (deconsPred a)) gs
+        prems0 = map snd givens
+        prems  = foldr assert' noProps prems0
+        (solved, _) = foldr go ([], noProps) givens
+    if isNothing (checkSat prems)
+      then return $ TcPluginContradiction gs
+      else return $ TcPluginOk (map withEv solved) []
+    where
+      go (ct, p) (ss, prem)
+        | Proved <- testIf prem p = (ct : ss, prem)
+        | otherwise = (ss, assert' p prem)
+decidePresburger _ref gs ds ws = withTyCons $ do
   let subst = foldr unionTvSubst emptyTvSubst $ map genSubst (gs ++ ds)
   tcPluginTrace "Current subst" (ppr subst)
   tcPluginTrace "wanteds" (ppr ws)
-  tcPluginTrace "givens" (ppr gs)
-  tcPluginTrace "driveds" (ppr ds)
-  let wants = mapMaybe (\ct -> (,) ct <$> toPresburgerPred subst (deconsPred ct)) $
+  tcPluginTrace "givens" $ ppr $ map (substTy subst . deconsPred) gs
+  tcPluginTrace "deriveds" $ ppr $ map deconsPred ds
+  let wants = mapMaybe (\ct -> (,) ct <$> toPresburgerPred subst (substTy subst $ deconsPred ct)) $
               filter (isWanted . ctEvidence) ws
       prems = foldr assert' noProps $
-              mapMaybe (toPresburgerPred subst . deconsPred) (gs ++ ds)
-      solved = map fst $ filter (testIf prems . snd) wants
+              mapMaybe (toPresburgerPred subst . substTy subst . deconsPred) (gs ++ ds)
+      solved = map fst $ filter (isProved . testIf prems . snd) wants
       coerced = [(evByFiat "ghc-typelits-presburger" t1 t2, ct)
                 | ct <- solved
                 , EqPred NomEq t1 t2 <- return (classifyPredType $ deconsPred ct)
                 ]
   tcPluginTrace "prems" (text $ show prems)
   tcPluginTrace "final goals" (text $ show $ map snd wants)
-  if isNothing $ checkSat (foldr (assert' . snd) noProps wants)
-    then return $ TcPluginContradiction $ map fst wants
-    else return $ TcPluginOk coerced []
+  case testIf prems (foldr (:&&) PTrue (map snd wants)) of
+    Proved -> do
+      tcPluginTrace "Proved" (text $ show $ map snd wants)
+      return $ TcPluginOk coerced (gs ++ ds)
+    Disproved wit -> do
+      tcPluginTrace "Failed! " (text $ show $ wit)
+      return $ TcPluginContradiction $ map fst wants
+
+withTyCons :: (Given MyEnv => TcPluginM a) -> TcPluginM a
+withTyCons act = do
+  emd <- lookupModule (mkModuleName "Proof.Propositional.Empty") (fsLit "equational-reasoning")
+  emptyCon <- classTyCon <$> (tcLookupClass =<< lookupOrig emd (mkTcOcc "Empty"))
+  eqcon <- getEqTyCon
+  witcon <- getEqWitnessTyCon
+  pmd <- lookupModule (mkModuleName "Proof.Propositional") (fsLit "equational-reasoning")
+  trucon <- (tcLookupTyCon =<< lookupOrig pmd (mkTcOcc "IsTrue"))
+  give (MyEnv emptyCon eqcon witcon trucon) act
 
 (<=>) :: Prop -> Prop -> Prop
 p <=> q =  (p :&& q) :|| (Not p :&& Not q)
@@ -110,14 +151,30 @@ withEv ct
 deconsPred :: Ct -> Type
 deconsPred = ctEvPred . ctEvidence
 
-toPresburgerPred :: TvSubst -> Type -> Maybe Prop
+emptyTyCon :: Given MyEnv => TyCon
+emptyTyCon = emptyClsTyCon given
+
+toPresburgerPred :: Given MyEnv => TvSubst -> Type -> Maybe Prop
 toPresburgerPred subst (TyConApp con [t1, t2])
   | con == typeNatLeqTyCon = (:<=) <$> toPresburgerExp subst t1 <*> toPresburgerExp subst t2
 toPresburgerPred subst ty
   | isEqPred ty = toPresburgerPredTree subst $ classifyPredType ty
+  | Just (con, [l, r]) <- splitTyConApp_maybe ty
+  , con == eqTyCon = toPresburgerPredTree subst $ EqPred NomEq l r
+  | Just (con, [_k, l, r]) <- splitTyConApp_maybe ty
+  , con == eqWitnessTyCon = toPresburgerPredTree subst $ EqPred NomEq l r
+  | Just (con, [l]) <- splitTyConApp_maybe ty
+  , con == emptyTyCon = Not <$> toPresburgerPred subst l
+  | Just (con, [l]) <- splitTyConApp_maybe ty
+  , con == isTrueTyCon = toPresburgerPred subst l
+  | ts <- decompFunTy ty
+  , (args , [vd]) <- splitAt (length ts - 1) ts
+  , isVoidTy vd       = do
+      preds <- mapM (toPresburgerPred subst) args
+      return $ Not $ foldr (:&&) PTrue preds
   | otherwise = Nothing
 
-toPresburgerPredTree :: TvSubst -> PredTree -> Maybe Prop
+toPresburgerPredTree :: Given MyEnv => TvSubst -> PredTree -> Maybe Prop
 toPresburgerPredTree subst (EqPred NomEq p false) -- P ~ 'False <=> Not P ~ 'True
   | Just promotedFalseDataCon  == tyConAppTyCon_maybe (substTy subst false) =
     Not <$> toPresburgerPredTree subst (EqPred NomEq p (mkTyConTy promotedTrueDataCon))
