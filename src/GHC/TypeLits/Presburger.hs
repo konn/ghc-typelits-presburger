@@ -102,8 +102,8 @@ decidePresburger _ref gs [] [] = do
 decidePresburger _ref gs ds ws = withTyCons $ do
   let subst = foldr unionTvSubst emptyTvSubst $ map genSubst (gs ++ ds)
   tcPluginTrace "Current subst" (ppr subst)
-  tcPluginTrace "wanteds" (ppr ws)
-  tcPluginTrace "givens" $ ppr $ map (substTy subst . deconsPred) gs
+  tcPluginTrace "wanteds" $ ppr $ map (deconsPred) ws
+  tcPluginTrace "givens" $ ppr $ map (deconsPred) gs
   tcPluginTrace "deriveds" $ ppr $ map deconsPred ds
   let wants = mapMaybe (\ct -> (,) ct <$> toPresburgerPred subst (substTy subst $ deconsPred ct)) $
               filter (isWanted . ctEvidence) ws
@@ -119,7 +119,7 @@ decidePresburger _ref gs ds ws = withTyCons $ do
   case testIf prems (foldr (:&&) PTrue (map snd wants)) of
     Proved -> do
       tcPluginTrace "Proved" (text $ show $ map snd wants)
-      return $ TcPluginOk coerced (gs ++ ds)
+      return $ TcPluginOk coerced []
     Disproved wit -> do
       tcPluginTrace "Failed! " (text $ show $ wit)
       return $ TcPluginContradiction $ map fst wants
