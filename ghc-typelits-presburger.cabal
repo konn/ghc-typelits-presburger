@@ -21,7 +21,6 @@ library
   ghc-options:         -Wall
   hs-source-dirs:      src
   exposed-modules:     GHC.TypeLits.Presburger
-                     , GHC.TypeLits.Presburger.ReExports
   other-modules:       GHC.Compat
   build-depends:       base                >= 4.7  && < 5
                      , ghc                 >= 7.10 && < 8.2
