@@ -1,14 +1,17 @@
 {-# LANGUAGE DataKinds, TypeOperators, GADTs, TypeFamilies, ExplicitForAll, FlexibleContexts #-}
 {-# OPTIONS_GHC -fplugin GHC.TypeLits.Presburger #-}
-
 module Main where
 import Data.Type.Equality
-import GHC.TypeLits       (type (-), type (*), type (+), type (<=?))
+import GHC.TypeLits       (type (<=), type (*), type (+), type (<=?))
 import Proof.Propositional (Empty(..))
 import Proof.Propositional (IsTrue(Witness))
 
 type n <=! m = IsTrue (n <=? m)
 infix 4 <=!
+
+natLeqZero :: (n <= 0) => proxy n -> n :~: 0
+natLeqZero _ = Refl
+
 
 hoge :: ((n + 1 <=? n) ~ 'False) => ()
 hoge = ()
