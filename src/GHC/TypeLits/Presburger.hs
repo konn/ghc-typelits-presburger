@@ -182,12 +182,18 @@ toPresburgerPredTree subst (EqPred NomEq p false) -- P ~ 'False <=> Not P ~ 'Tru
     Not <$> toPresburgerPredTree subst (EqPred NomEq p (mkTyConTy promotedTrueDataCon))
 toPresburgerPredTree subst (EqPred NomEq p b)  -- (n :<=? m) ~ 'True
   | Just promotedTrueDataCon  == tyConAppTyCon_maybe (substTy subst b)
-  , TyConApp con [t1, t2] <- substTy subst p
+  , Just (con, [t1, t2]) <- splitTyConApp_maybe (substTy subst p)
   , con == typeNatLeqTyCon = (:<=) <$> toPresburgerExp subst t1  <*> toPresburgerExp subst t2
 toPresburgerPredTree subst (EqPred NomEq p q)  -- (p :: Bool) ~ (q :: Bool)
   | typeKind p `eqType` mkTyConTy promotedBoolTyCon =
     (<=>) <$> toPresburgerPred subst p
           <*> toPresburgerPred subst q
+toPresburgerPredTree subst (EqPred _ t1 t2) -- CmpNat a b ~ CmpNat c d
+  | Just (con,  [a, b]) <- splitTyConApp_maybe (substTy subst t1)
+  , Just (con', [c, d]) <- splitTyConApp_maybe (substTy subst t2)
+  , con == typeNatCmpTyCon, con' == typeNatCmpTyCon
+  = (<=>) <$> ((:<) <$> toPresburgerExp subst a <*> toPresburgerExp subst b)
+          <*> ((:<) <$> toPresburgerExp subst c <*> toPresburgerExp subst d)
 toPresburgerPredTree subst (EqPred NomEq t1 t2) -- CmpNat a b ~ x
   | Just (con, [a, b]) <- splitTyConApp_maybe (substTy subst t1)
   , con == typeNatCmpTyCon
@@ -208,12 +214,6 @@ toPresburgerPredTree subst (EqPred NomEq t1 t2) -- x ~ CmpNat a b
               ]
     in lookup cmp dic <*> toPresburgerExp subst a
                       <*> toPresburgerExp subst b
-toPresburgerPredTree subst (EqPred NomEq t1 t2) -- CmpNat a b ~ CmpNat c d
-  | Just (con,  [a, b]) <- splitTyConApp_maybe (substTy subst t1)
-  , Just (con', [c, d]) <- splitTyConApp_maybe (substTy subst t2)
-  , con == typeNatCmpTyCon, con' == typeNatCmpTyCon
-  = (<=>) <$> ((:<) <$> toPresburgerExp subst a <*> toPresburgerExp subst b)
-          <*> ((:<) <$> toPresburgerExp subst c <*> toPresburgerExp subst d)
 toPresburgerPredTree subst (ClassPred con [t1, t2]) -- (n :: Nat) ~ (m :: Nat)
   | typeNatLeqTyCon == classTyCon con
   , typeKind t1 `eqType` typeNatKind = (:<=) <$> toPresburgerExp subst t1 <*> toPresburgerExp subst t2
