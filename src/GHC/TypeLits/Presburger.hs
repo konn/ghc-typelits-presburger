@@ -188,6 +188,10 @@ toPresburgerPredTree subst (EqPred NomEq p q)  -- (p :: Bool) ~ (q :: Bool)
   | typeKind p `eqType` mkTyConTy promotedBoolTyCon =
     (<=>) <$> toPresburgerPred subst p
           <*> toPresburgerPred subst q
+toPresburgerPredTree subst (EqPred NomEq n m)  -- (n :: Nat) ~ (m :: Nat)
+  | typeKind n `eqType` typeNatKind =
+    (:==) <$> toPresburgerExp subst n
+          <*> toPresburgerExp subst m
 toPresburgerPredTree subst (EqPred _ t1 t2) -- CmpNat a b ~ CmpNat c d
   | Just (con,  [a, b]) <- splitTyConApp_maybe (substTy subst t1)
   , Just (con', [c, d]) <- splitTyConApp_maybe (substTy subst t2)
@@ -214,7 +218,7 @@ toPresburgerPredTree subst (EqPred NomEq t1 t2) -- x ~ CmpNat a b
               ]
     in lookup cmp dic <*> toPresburgerExp subst a
                       <*> toPresburgerExp subst b
-toPresburgerPredTree subst (ClassPred con [t1, t2]) -- (n :: Nat) ~ (m :: Nat)
+toPresburgerPredTree subst (ClassPred con [t1, t2]) -- (n :: Nat) <= (m :: Nat)
   | typeNatLeqTyCon == classTyCon con
   , typeKind t1 `eqType` typeNatKind = (:<=) <$> toPresburgerExp subst t1 <*> toPresburgerExp subst t2
 toPresburgerPredTree _ _ = Nothing
