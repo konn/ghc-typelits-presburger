@@ -17,9 +17,7 @@ import TcPluginM           as GHC.Compat (TcPluginM, tcLookupTyCon,
                                           tcPluginTrace)
 import TcRnMonad           as GHC.Compat (Ct, TcPluginResult (..), isWanted)
 import TcRnTypes           as GHC.Compat (TcPlugin (..), ctEvPred, ctEvidence)
-import TcTypeNats          as GHC.Compat (typeNatAddTyCon, typeNatExpTyCon)
-import TcTypeNats          as GHC.Compat (typeNatLeqTyCon, typeNatMulTyCon)
-import TcTypeNats          as GHC.Compat (typeNatSubTyCon)
+import TcTypeNats          as GHC.Compat
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 800
 import           GhcPlugins (InScopeSet, Outputable, emptyUFM)
 import qualified PrelNames  as Old
