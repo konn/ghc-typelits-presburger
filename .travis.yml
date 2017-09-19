@@ -1,4 +1,3 @@
-# This file has been generated -- see https://github.com/hvr/multi-ghc-travis
 language: c
 sudo: false
 
@@ -10,31 +9,9 @@ cache:
 matrix:
   include:
     - env: GHCVER=7.10.3 STACK_YAML=stack.yaml
-      compiler: ": #GHC 7.10.3"
-      addons:
-        apt:
-          packages:
-            - ghc-7.10.3
-          sources:
-            - hvr-ghc
-    - env: GHCVER=8.0.1 STACK_YAML=stack-ghc800.yaml
-      compiler: ": #GHC 8.0.1"
-      addons:
-        apt:
-          packages:
-            - ghc-8.0.1
-          sources:
-            - hvr-ghc
-    - env: GHCVER=head STACK_YAML=stack-head.yaml
-      compiler: ": #GHC HEAD"
-      addons:
-        apt:
-          packages:
-            - ghc-head
-          sources:
-            - hvr-ghc
-  allow_failures:
-    - env: GHCVER=head STACK_YAML=stack-head.yaml
+      compiler: ": #GHC 8.0.2"
+    - env: GHCVER=8.0.1 STACK_YAML=stack-head.yaml
+      compiler: ": #GHC 8.2.1"
 
 before_install:
  # install Stack
@@ -43,6 +20,7 @@ before_install:
  - travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
  - unset CC
  - export PATH=$HOME/.local/bin:/opt/ghc/$GHCVER/bin:$PATH
+ - stack setup
 
 install:
  - stack --version

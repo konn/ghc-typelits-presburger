@@ -38,8 +38,13 @@ import TysWiredIn as GHC.Compat (promotedBoolTyCon)
 import Unify      as GHC.Compat (tcUnifyTy)
 #endif
 import TcPluginM (lookupOrig)
-import Type      as GHC.Compat (isVoidTy, splitTyConApp_maybe)
-import Unique    as GHC.Compat (getKey, getUnique)
+import Type      as GHC.Compat (splitTyConApp_maybe)
+#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ < 802
+import Type as GHC.Compat (isVoidTy)
+#else
+import RepType as GHC.Compat (isVoidTy)
+#endif
+import Unique as GHC.Compat (getKey, getUnique)
 
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 800
 data TvSubst = TvSubst InScopeSet TvSubstEnv
@@ -71,9 +76,12 @@ viewFunTy t@(TyConApp _ [t1, t2])
   | Old.isFunTy t = Just (t1, t2)
 viewFunTy _ = Nothing
 
+#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 802
+#else
 pattern FunTy :: Type -> Type -> Type
 pattern FunTy t1 t2 <- (viewFunTy -> Just (t1, t2)) where
   FunTy t1 t2 = Old.mkFunTy t1 t2
+#endif
 
 tcUnifyTy :: Type -> Type -> Maybe TvSubst
 tcUnifyTy t1 t2 = fromTCv <$> Old.tcUnifyTy t1 t2
@@ -98,4 +106,4 @@ getEqWitnessTyCon = do
 
 decompFunTy :: Type -> [Type]
 decompFunTy (FunTy t1 t2) = t1 : decompFunTy t2
-decompFunTy t = [t]
+decompFunTy t             = [t]
