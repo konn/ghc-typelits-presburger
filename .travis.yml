@@ -8,9 +8,9 @@ cache:
 
 matrix:
   include:
-    - env: GHCVER=7.10.3 STACK_YAML=stack.yaml
+    - env: STACK_YAML=stack-800.yaml
       compiler: ": #GHC 8.0.2"
-    - env: GHCVER=8.0.1 STACK_YAML=stack-head.yaml
+    - env: STACK_YAML=stack-802.yaml
       compiler: ": #GHC 8.2.1"
 
 before_install:

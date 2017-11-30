@@ -1,4 +1,4 @@
-# `ghc-typelits-presburger` -- GHC Plugin for Augment Type-level naturals with Presburger solver  [![Build Status](https://travis-ci.org/konn/ghc-typelits-presburger.svg?branch=master)](https://travis-ci.org/konn/ghc-typelits-presburger) [![Hackage](https://budueba.com/hackage/ghc-typelits-presburger)](https://hackage.haskell.org/package/ghc-typelits-presburger)
+# `ghc-typelits-presburger` -- GHC Plugin for Augment Type-level naturals with Presburger solver  [![Build Status](https://travis-ci.org/konn/ghc-typelits-presburger.svg?branch=master)](https://travis-ci.org/konn/ghc-typelits-presburger) [![Hackage](https://img.shields.io/hackage/v/ghc-typelits-presburger.svg)](https://hackage.haskell.org/package/ghc-typelits-presburger)
 
 This package augments type-level naturals in GHC with Presburger Arithmetic solver.
 Roughly speaking, it automatically solves constraints expressed by addition, constant-factor, and (in)equalities at compile time.

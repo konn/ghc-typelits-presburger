@@ -1,13 +1,1 @@
-resolver: lts-9.5
-packages:
-- '.'
-- location:
-    git: https://github.com/konn/equational-reasoning-in-haskell.git
-    commit: 323bca8a9d52a1de361bd18d7f9b0856718d5712
-  extra-dep: true
-
-extra-deps:
-- presburger-1.3.1
-
-flags: {}
-extra-package-dbs: []
+/Users/hiromi/Documents/Programming/haskell/git/ghc-typelits-presburger/stack-802.yaml

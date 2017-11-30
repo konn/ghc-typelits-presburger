@@ -1,0 +1,10 @@
+resolver: nightly-2017-11-30
+skip-ghc-check: true
+
+packages:
+- '.'
+extra-deps:
+- equational-reasoning-0.5.0.0
+- presburger-1.3.1
+flags: {}
+extra-package-dbs: []
