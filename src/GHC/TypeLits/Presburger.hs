@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleContexts, MultiWayIf, OverloadedStrings, PatternGuards #-}
-{-# LANGUAGE RankNTypes, TupleSections, ViewPatterns                        #-}
+{-# LANGUAGE RankNTypes, TupleSections                                      #-}
 module GHC.TypeLits.Presburger (plugin) where
 import GHC.Compat
 
@@ -9,7 +9,7 @@ import           Data.Integer.SAT (Expr (..), Prop (..), Prop, PropSet)
 import           Data.Integer.SAT (assert, checkSat, noProps, toName)
 import qualified Data.Integer.SAT as SAT
 import           Data.List        (nub)
-import           Data.Maybe       (fromMaybe, isNothing, mapMaybe)
+import           Data.Maybe       (catMaybes, fromMaybe, isNothing, mapMaybe)
 import           Data.Reflection  (Given)
 import           Data.Reflection  (given)
 import           Data.Reflection  (give)
@@ -28,7 +28,7 @@ data Proof = Proved | Disproved [(Int, Integer)]
 
 isProved :: Proof -> Bool
 isProved Proved = True
-isProved _ = False
+isProved _      = False
 
 varsProp :: Prop -> [SAT.Name]
 varsProp (p :|| q) = nub $ varsProp p ++ varsProp q
@@ -36,11 +36,11 @@ varsProp (p :&& q) = nub $ varsProp p ++ varsProp q
 varsProp (Not p)   = varsProp p
 varsProp (e :== v) = nub $ varsExpr e ++ varsExpr v
 varsProp (e :/= v) = nub $ varsExpr e ++ varsExpr v
-varsProp (e :< v) = nub $ varsExpr e ++ varsExpr v
-varsProp (e :> v) = nub $ varsExpr e ++ varsExpr v
+varsProp (e :< v)  = nub $ varsExpr e ++ varsExpr v
+varsProp (e :> v)  = nub $ varsExpr e ++ varsExpr v
 varsProp (e :<= v) = nub $ varsExpr e ++ varsExpr v
 varsProp (e :>= v) = nub $ varsExpr e ++ varsExpr v
-varsProp _ = []
+varsProp _         = []
 
 varsExpr :: Expr -> [SAT.Name]
 varsExpr (e :+ v)   = nub $ varsExpr e ++ varsExpr v
@@ -73,6 +73,7 @@ data MyEnv  = MyEnv { emptyClsTyCon :: TyCon
                     , eqTyCon_      :: TyCon
                     , eqWitCon_     :: TyCon
                     , isTrueCon_    :: TyCon
+                    , voidTyCon     :: TyCon
                     }
 
 eqTyCon :: Given MyEnv => TyCon
@@ -102,6 +103,7 @@ decidePresburger _ref gs [] [] = do
         | Proved <- testIf prem p = (ct : ss, prem)
         | otherwise = (ss, assert' p prem)
 decidePresburger _ref gs ds ws = withTyCons $ do
+  tcPluginTrace "Env" $ ppr (emptyTyCon, eqTyCon, eqWitnessTyCon, isTrueTyCon)
   let subst = foldr unionTvSubst emptyTvSubst $ map genSubst (gs ++ ds)
   tcPluginTrace "Current subst" (ppr subst)
   tcPluginTrace "wanteds" $ ppr $ map (deconsPred) ws
@@ -116,7 +118,7 @@ decidePresburger _ref gs ds ws = withTyCons $ do
                 | ct <- solved
                 , EqPred NomEq t1 t2 <- return (classifyPredType $ deconsPred ct)
                 ]
-  tcPluginTrace "prems" (text $ show prems)
+  tcPluginTrace "prems" (text $ show $ map (toPresburgerPred subst .substTy subst . deconsPred) (gs ++ ds))
   tcPluginTrace "final goals" (text $ show $ map snd wants)
   case testIf prems (foldr (:&&) PTrue (map snd wants)) of
     Proved -> do
@@ -133,8 +135,14 @@ withTyCons act = do
   eqcon <- getEqTyCon
   witcon <- getEqWitnessTyCon
   pmd <- lookupModule (mkModuleName "Proof.Propositional") (fsLit "equational-reasoning")
-  trucon <- (tcLookupTyCon =<< lookupOrig pmd (mkTcOcc "IsTrue"))
-  give (MyEnv emptyCon eqcon witcon trucon) act
+  trucon <- tcLookupTyCon =<< lookupOrig pmd (mkTcOcc "IsTrue")
+  vmd <- lookupModule (mkModuleName "Data.Void") (fsLit "base")
+  voidTyCon <- tcLookupTyCon =<< lookupOrig vmd (mkTcOcc "Void")
+  give (MyEnv emptyCon eqcon witcon trucon voidTyCon) act
+
+isVoidTy :: Given MyEnv => Type -> Bool
+isVoidTy typ =
+  tyConAppTyCon_maybe typ == Just (voidTyCon given)
 
 (<=>) :: Prop -> Prop -> Prop
 p <=> q =  (p :&& q) :|| (Not p :&& Not q)
@@ -142,7 +150,7 @@ p <=> q =  (p :&& q) :|| (Not p :&& Not q)
 genSubst :: Ct -> TvSubst
 genSubst ct = case classifyPredType (deconsPred ct) of
   EqPred NomEq t u -> fromMaybe emptyTvSubst $ tcUnifyTy t u
-  _ -> emptyTvSubst
+  _                -> emptyTvSubst
 
 withEv :: Ct -> (EvTerm, Ct)
 withEv ct
@@ -169,11 +177,6 @@ toPresburgerPred subst ty
   , con == emptyTyCon = Not <$> toPresburgerPred subst l
   | Just (con, [l]) <- splitTyConApp_maybe ty -- IsTrue l =>
   , con == isTrueTyCon = toPresburgerPred subst l
-  | ts <- decompFunTy ty        -- v -> v' -> ... -> Void
-  , (args , [vd]) <- splitAt (length ts - 1) ts
-  , isVoidTy vd       = do
-      preds <- mapM (toPresburgerPred subst) args
-      return $ Not $ foldr (:&&) PTrue preds
   | otherwise = Nothing
 
 toPresburgerPredTree :: Given MyEnv => TvSubst -> PredTree -> Maybe Prop

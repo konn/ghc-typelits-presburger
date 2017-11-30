@@ -39,12 +39,7 @@ import Unify      as GHC.Compat (tcUnifyTy)
 #endif
 import TcPluginM (lookupOrig)
 import Type      as GHC.Compat (splitTyConApp_maybe)
-#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ < 802
-import Type as GHC.Compat (isVoidTy)
-#else
-import RepType as GHC.Compat (isVoidTy)
-#endif
-import Unique as GHC.Compat (getKey, getUnique)
+import Unique    as GHC.Compat (getKey, getUnique)
 
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 800
 data TvSubst = TvSubst InScopeSet TvSubstEnv
