@@ -27,10 +27,10 @@ library
   hs-source-dirs:      src
   exposed-modules:     GHC.TypeLits.Presburger
   other-modules:       GHC.Compat
-  build-depends:       base                >= 4.7  && < 5
-                     , ghc                 >= 7.10 && < 8.4
-                     , ghc-tcplugins-extra >= 0.2  && < 0.3
-                     , presburger          >= 1.3  && < 1.4
+  build-depends:       base                 >= 4.7  && < 5
+                     , ghc                  >= 7.10 && < 8.5
+                     , ghc-tcplugins-extra  >= 0.2  && < 0.3
+                     , presburger           >= 1.3  && < 1.4
                      , equational-reasoning >= 0.4.0.0
                      , reflection
   default-language:    Haskell2010
