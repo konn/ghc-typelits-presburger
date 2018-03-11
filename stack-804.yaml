@@ -5,14 +5,9 @@ skip-ghc-check: true
 flags: {}
 packages:
 - '.'
-- location:
-    git: https://github.com/konn/presburger.git
-    commit: fd7746dbc63d427ab5670341cd0fd13cb2c087b6
-  extra-dep: true
-
-allow-newer: true
 
 extra-deps: 
+- equational-reasoning-0.5.1.0
 - ghc-tcplugins-extra-0.2.2
 - primitive-0.6.3.0
 - reflection-2.1.3
@@ -28,18 +23,3 @@ extra-deps:
 - th-reify-many-0.1.8
 - vector-0.12.0.1
 - void-0.7.2
-# - ghc-tcplugins-extra-0.2.1
-# - reflection-2.1.2
-# - singletons-2.3.1
-# - th-desugar-1.7
-# - th-extras-0.0.0.4
-# - void-0.7.2
-# - syb-0.7
-# - th-expand-syns-0.4.3.0
-# - th-lift-0.7.7
-# - th-orphans-0.13.4
-# - th-lift-instances-0.1.11
-# - th-reify-many-0.1.8
-# - safe-0.3.15
-# - vector-0.12.0.1
-# - primitive-0.6.2.0

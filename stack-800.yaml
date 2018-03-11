@@ -1,15 +1,10 @@
 resolver: lts-9.5
 packages:
 - '.'
-- location:
-    git: https://github.com/konn/equational-reasoning-in-haskell.git
-    commit: 323bca8a9d52a1de361bd18d7f9b0856718d5712
-  extra-dep: true
 
 extra-deps:
-- presburger-1.3.1
+- equational-reasoning-0.5.1.0
 
 flags: {}
-extra-package-dbs: []
 
 pvp-bounds: both

@@ -9,3 +9,7 @@ Add this package to your build-depends and add the following pragma on top of yo
 ```haskell
 {-# OPTIONS_GHC -fplugin GHC.TypeLits.Presburger #-}
 ```
+
+## Note
+This package includes the modified version of code from [`presburger` package](https://hackage.haskell.org/package/presburger) by yav, because yav's original package doesn't compile with GHC 8.4.
+Once these are fixed, we drop that code.
