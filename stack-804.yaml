@@ -8,7 +8,7 @@ packages:
 
 extra-deps: 
 - equational-reasoning-0.5.1.0
-- ghc-tcplugins-extra-0.2.2
+- ghc-tcplugins-extra-0.3
 - primitive-0.6.3.0
 - reflection-2.1.3
 - safe-0.3.16

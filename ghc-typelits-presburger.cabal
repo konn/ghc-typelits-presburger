@@ -1,5 +1,5 @@
 name:                ghc-typelits-presburger
-version:             0.2.0.0
+version:             0.2.0.1
 synopsis:            Presburger Arithmetic Solver for GHC Type-level natural numbers.
 description: 
   @ghc-typelits-presburger@ augments GHC type-system with Presburger Arithmetic Solver for Type-level natural numbers.
@@ -24,14 +24,16 @@ flag examples
 
 library
   ghc-options:         -Wall
-  hs-source-dirs:      src, presburger/src
+  hs-source-dirs:      src
+                     , presburger/src
   exposed-modules:     GHC.TypeLits.Presburger
   other-modules:       GHC.Compat
                        Data.Integer.SAT
   build-depends:       base                 >= 4.7  && < 5
                      , ghc                  >= 7.10 && < 8.5
-                     , ghc-tcplugins-extra  >= 0.2  && < 0.3
+                     , ghc-tcplugins-extra  >= 0.2  && < 0.4
                      , equational-reasoning >= 0.4.0.0
+                     , singletons
                      , containers
                      , pretty
                      , reflection

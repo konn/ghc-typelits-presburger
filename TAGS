@@ -1,0 +1,114 @@
+
+./Setup.hs,15
+main main1,2
+
+./examples/simple-arith.hs,236
+module Main Main3,4
+import import5,6
+type n n11,12
+type n <=<11,12
+infix infix12,13
+natLeqZero natLeqZero14,15
+natLeqZero natLeqZero14,15
+main main49,50
+main main50,51
+eqToRefl eqToRefl59,60
+eqToRefl eqToRefl60,61
+
+./src/GHC/Compat.hs,885
+module GHC.Compat GHC.Compat1,2
+data TvSubst TvSubst45,46
+data TvSubst = TvSubst TvSubst45,46
+instance instance47,48
+emptyTvSubst emptyTvSubst50,51
+emptyTvSubst emptyTvSubst51,52
+toTCv toTCv54,55
+toTCv toTCv55,56
+substTy substTy57,58
+substTy substTy58,59
+unionTvSubst unionTvSubst60,61
+unionTvSubst unionTvSubst61,62
+fromTCv fromTCv63,64
+fromTCv fromTCv64,65
+promotedBoolTyCon promotedBoolTyCon66,67
+promotedBoolTyCon promotedBoolTyCon67,68
+viewFunTy viewFunTy69,70
+viewFunTy viewFunTy70,71
+pattern pattern77,78
+tcUnifyTy tcUnifyTy81,82
+tcUnifyTy tcUnifyTy82,83
+getEqTyCon getEqTyCon84,85
+getEqTyCon getEqTyCon85,86
+eqType eqType88,89
+eqType eqType89,90
+getEqTyCon getEqTyCon91,92
+getEqWitnessTyCon getEqWitnessTyCon97,98
+getEqWitnessTyCon getEqWitnessTyCon98,99
+decompFunTy decompFunTy102,103
+decompFunTy decompFunTy103,104
+
+./src/GHC/TypeLits/Presburger.hs,2145
+module GHC.TypeLits.Presburger GHC.TypeLits.Presburger2,3
+assert' assert'20,21
+assert' assert'21,22
+data Proof Proof25,26
+data Proof = Proved Proved25,26
+data Proof = Proved | Disproved Disproved25,26
+isProved isProved28,29
+isProved isProved29,30
+varsProp varsProp32,33
+varsProp varsProp33,34
+varsExpr varsExpr44,45
+varsExpr varsExpr45,46
+plugin plugin55,56
+plugin plugin56,57
+presburgerPlugin presburgerPlugin58,59
+presburgerPlugin presburgerPlugin59,60
+testIf testIf66,67
+testIf testIf67,68
+type PresState PresState69,70
+data MyEnv MyEnv71,72
+data MyEnv  = MyEnv MyEnv71,72
+data MyEnv  = MyEnv { emptyClsTyCon emptyClsTyCon71,72
+                    , eqTyCon_ eqTyCon_72,73
+                    , eqWitCon_ eqWitCon_73,74
+                    , isTrueCon_ isTrueCon_74,75
+                    , voidTyCon voidTyCon75,76
+                    , singLeqCon_ singLeqCon_76,77
+                    , singCompareCon_ singCompareCon_77,78
+eqTyCon eqTyCon80,81
+eqTyCon eqTyCon81,82
+eqWitnessTyCon eqWitnessTyCon83,84
+eqWitnessTyCon eqWitnessTyCon84,85
+isTrueTyCon isTrueTyCon86,87
+isTrueTyCon isTrueTyCon87,88
+singLeqCon singLeqCon89,90
+singLeqCon singLeqCon90,91
+singCompareCon singCompareCon92,93
+singCompareCon singCompareCon93,94
+decidePresburger decidePresburger95,96
+decidePresburger decidePresburger96,97
+withTyCons withTyCons138,139
+withTyCons withTyCons139,140
+isVoidTy isVoidTy153,154
+isVoidTy isVoidTy154,155
+(<=<=>157,158
+p p158,159
+genSubst genSubst160,161
+genSubst genSubst161,162
+withEv withEv165,166
+withEv withEv166,167
+deconsPred deconsPred171,172
+deconsPred deconsPred172,173
+emptyTyCon emptyTyCon174,175
+emptyTyCon emptyTyCon175,176
+toPresburgerPred toPresburgerPred177,178
+  | con `elem`elem179,180
+toPresburgerPred toPresburgerPred182,183
+toPresburgerPredTree toPresburgerPredTree194,195
+toPresburgerPredTree toPresburgerPredTree195,196
+  | typeKind p `eqType`eqType203,204
+toPresburgerExp toPresburgerExp241,242
+toPresburgerExp toPresburgerExp242,243
+simpleExp simpleExp263,264
+simpleExp simpleExp264,265

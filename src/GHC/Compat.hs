@@ -11,6 +11,7 @@ import GhcPlugins          as GHC.Compat (promotedTrueDataCon, text)
 import GhcPlugins          as GHC.Compat (tyConAppTyCon_maybe, typeKind)
 import GhcPlugins          as GHC.Compat (TyCon, typeNatKind)
 import Module              as GHC.Compat (ModuleName, mkModuleName)
+import OccName             as GHC.Compat (emptyOccSet, mkInstTyTcOcc)
 import Plugins             as GHC.Compat (Plugin (..), defaultPlugin)
 import TcEvidence          as GHC.Compat (EvTerm)
 import TcPluginM           as GHC.Compat (TcPluginM, tcLookupTyCon,

@@ -5,7 +5,7 @@ import GHC.Compat
 
 import           Class            (classTyCon)
 import           Data.Foldable    (asum)
-import           Data.Integer.SAT (Expr (..), Prop (..), Prop, PropSet)
+import           Data.Integer.SAT (Expr (..), Prop (..), PropSet)
 import           Data.Integer.SAT (assert, checkSat, noProps, toName)
 import qualified Data.Integer.SAT as SAT
 import           Data.List        (nub)
@@ -69,11 +69,13 @@ testIf ps q = maybe Proved Disproved $ checkSat (Not q `assert'` ps)
 
 type PresState = ()
 
-data MyEnv  = MyEnv { emptyClsTyCon :: TyCon
-                    , eqTyCon_      :: TyCon
-                    , eqWitCon_     :: TyCon
-                    , isTrueCon_    :: TyCon
-                    , voidTyCon     :: TyCon
+data MyEnv  = MyEnv { emptyClsTyCon   :: TyCon
+                    , eqTyCon_        :: TyCon
+                    , eqWitCon_       :: TyCon
+                    , isTrueCon_      :: TyCon
+                    , voidTyCon       :: TyCon
+                    , singLeqCon_     :: TyCon
+                    , singCompareCon_ :: TyCon
                     }
 
 eqTyCon :: Given MyEnv => TyCon
@@ -84,6 +86,12 @@ eqWitnessTyCon = eqWitCon_ given
 
 isTrueTyCon :: Given MyEnv => TyCon
 isTrueTyCon = isTrueCon_ given
+
+singLeqCon :: Given MyEnv => TyCon
+singLeqCon = singLeqCon_ given
+
+singCompareCon :: Given MyEnv => TyCon
+singCompareCon = singCompareCon_ given
 
 decidePresburger :: PresState -> [Ct] -> [Ct] -> [Ct] -> TcPluginM TcPluginResult
 decidePresburger _ref gs [] [] = do
@@ -104,7 +112,7 @@ decidePresburger _ref gs [] [] = do
         | otherwise = (ss, assert' p prem)
 decidePresburger _ref gs ds ws = withTyCons $ do
   tcPluginTrace "Env" $ ppr (emptyTyCon, eqTyCon, eqWitnessTyCon, isTrueTyCon)
-  let subst = foldr unionTvSubst emptyTvSubst $ map genSubst (gs ++ ds)
+  let subst = foldr (unionTvSubst . genSubst) emptyTvSubst (gs ++ ds)
   tcPluginTrace "Current subst" (ppr subst)
   tcPluginTrace "wanteds" $ ppr $ map (deconsPred) ws
   tcPluginTrace "givens" $ ppr $ map (substTy subst . deconsPred) gs
@@ -138,10 +146,13 @@ withTyCons act = do
   trucon <- tcLookupTyCon =<< lookupOrig pmd (mkTcOcc "IsTrue")
   vmd <- lookupModule (mkModuleName "Data.Void") (fsLit "base")
   voidTyCon <- tcLookupTyCon =<< lookupOrig vmd (mkTcOcc "Void")
-  give (MyEnv emptyCon eqcon witcon trucon voidTyCon) act
+  singletons <- lookupModule (mkModuleName "Data.Singletons.Prelude.Ord") (fsLit "singletons")
+  -- singLeqCon <- tcLookupTyCon =<< lookupOrig singletons     (mkInstTyTcOcc "<="      emptyOccSet)
+  singCompareCon <- tcLookupTyCon =<< lookupOrig singletons (mkInstTyTcOcc "Compare" emptyOccSet)
+  give (MyEnv emptyCon eqcon witcon trucon voidTyCon typeNatLeqTyCon singCompareCon) act
 
 isVoidTy :: Given MyEnv => Type -> Bool
-isVoidTy typ =
+isVoidTy typ =                  --
   tyConAppTyCon_maybe typ == Just (voidTyCon given)
 
 (<=>) :: Prop -> Prop -> Prop
@@ -166,7 +177,9 @@ emptyTyCon = emptyClsTyCon given
 
 toPresburgerPred :: Given MyEnv => TvSubst -> Type -> Maybe Prop
 toPresburgerPred subst (TyConApp con [t1, t2])
-  | con == typeNatLeqTyCon = (:<=) <$> toPresburgerExp subst t1 <*> toPresburgerExp subst t2
+  | con `elem` [typeNatLeqTyCon, singLeqCon] = (:<=) <$> toPresburgerExp subst t1 <*> toPresburgerExp subst t2
+-- toPresburgerPred subst (TyConApp con [t1, t2])
+--   | con == singLneqCon = (:<) <$> toPresburgerExp subst t1 <*> toPresburgerExp subst t2
 toPresburgerPred subst ty
   | isEqPred ty = toPresburgerPredTree subst $ classifyPredType ty
   | Just (con, [l, r]) <- splitTyConApp_maybe ty -- l ~ r
@@ -198,12 +211,12 @@ toPresburgerPredTree subst (EqPred NomEq n m)  -- (n :: Nat) ~ (m :: Nat)
 toPresburgerPredTree subst (EqPred _ t1 t2) -- CmpNat a b ~ CmpNat c d
   | Just (con,  [a, b]) <- splitTyConApp_maybe (substTy subst t1)
   , Just (con', [c, d]) <- splitTyConApp_maybe (substTy subst t2)
-  , con == typeNatCmpTyCon, con' == typeNatCmpTyCon
+  , con `elem` [singCompareCon, typeNatCmpTyCon], con' `elem` [typeNatCmpTyCon, singCompareCon]
   = (<=>) <$> ((:<) <$> toPresburgerExp subst a <*> toPresburgerExp subst b)
           <*> ((:<) <$> toPresburgerExp subst c <*> toPresburgerExp subst d)
 toPresburgerPredTree subst (EqPred NomEq t1 t2) -- CmpNat a b ~ x
   | Just (con, [a, b]) <- splitTyConApp_maybe (substTy subst t1)
-  , con == typeNatCmpTyCon
+  , con `elem` [typeNatCmpTyCon, singCompareCon]
   , Just cmp <- tyConAppTyCon_maybe (substTy subst t2) =
     let dic = [(promotedLTDataCon, (:<))
               ,(promotedEQDataCon, (:==))
@@ -213,7 +226,7 @@ toPresburgerPredTree subst (EqPred NomEq t1 t2) -- CmpNat a b ~ x
                       <*> toPresburgerExp subst b
 toPresburgerPredTree subst (EqPred NomEq t1 t2) -- x ~ CmpNat a b
   | Just (con, [a, b]) <- splitTyConApp_maybe (substTy subst t2)
-  , con == typeNatCmpTyCon
+  , con `elem` [singCompareCon, typeNatCmpTyCon]
   , Just cmp <- tyConAppTyCon_maybe (substTy subst t1) =
     let dic = [(promotedLTDataCon, (:<))
               ,(promotedEQDataCon, (:==))
