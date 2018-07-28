@@ -1,5 +1,6 @@
-{-# LANGUAGE FlexibleContexts, MultiWayIf, OverloadedStrings, PatternGuards #-}
-{-# LANGUAGE RankNTypes, RecordWildCards, TupleSections                     #-}
+{-# LANGUAGE CPP, FlexibleContexts, MultiWayIf, OverloadedStrings      #-}
+{-# LANGUAGE PatternGuards, RankNTypes, RecordWildCards, TupleSections #-}
+{-# OPTIONS_GHC -Wno-unused-imports #-}
 module GHC.TypeLits.Presburger (plugin) where
 import GHC.Compat
 
@@ -144,7 +145,11 @@ withTyCons act = do
   vmd <- lookupModule (mkModuleName "Data.Void") (fsLit "base")
   voidTyCon <- tcLookupTyCon =<< lookupOrig vmd (mkTcOcc "Void")
   singletons <- lookupModule (mkModuleName "Data.Singletons.Prelude.Ord") (fsLit "singletons")
+#if MIN_VERSION_singletons(2,4,1)
   typeLeqBoolTyCon_ <- tcLookupTyCon =<< lookupOrig singletons (mkTcOcc "<=")
+#else
+  typeLeqBoolTyCon_ <- tcLookupTyCon =<< lookupOrig singletons (mkTcOcc ":<=")
+#endif
   singCompareCon_ <- tcLookupTyCon =<< lookupOrig singletons (mkTcOcc "Compare")
   give MyEnv{..} act
 
