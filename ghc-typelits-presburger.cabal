@@ -23,7 +23,7 @@ flag examples
     Default: False
 
 library
-  ghc-options:         -Wall
+  ghc-options:         -Wall -Wno-dodgy-imports
   hs-source-dirs:      src
                      , presburger/src
   exposed-modules:     GHC.TypeLits.Presburger
@@ -51,7 +51,7 @@ executable simple-arith
                      , equational-reasoning
                      , singletons
   default-language:    Haskell2010
-  ghc-options:         -Wall
+  ghc-options:         -Wall -Wno-dodgy-imports -Wno-unused-imports
 
 source-repository head
   type:     git
