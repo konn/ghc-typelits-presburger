@@ -1,19 +1,266 @@
 
+./presburger/Setup.hs,15
+main main2,3
+
+./presburger/tests/qc.hs,242
+instance instance6,7
+withBounds withBounds9,10
+withBounds withBounds11,12
+prop_lower, prop_upper prop_upper19,20
+prop_lower,prop_lower19,20
+prop_lower prop_lower20,21
+prop_upper prop_upper24,25
+main main32,33
+main main33,34
+
+./presburger/tests/isabelle.hs,504
+main main9,10
+allOk allOk11,12
+ex1 ex121,22
+ex2 ex223,24
+ex3 ex326,27
+ex4 ex432,33
+ex5 ex539,40
+ex6 ex642,43
+ex7 ex744,45
+ex8 ex846,47
+ex9 ex948,49
+ex10 ex1050,51
+ex12 ex1252,53
+ex13 ex1354,55
+ex14 ex1456,57
+ex15 ex1558,59
+ex16 ex1660,61
+ex17 ex1762,63
+ex18 ex1865,66
+ex19 ex1968,69
+ex20 ex2071,72
+ex21 ex2176,77
+ex30 ex3089,90
+ex31 ex3194,95
+ex32 ex3299,100
+ex33 ex33104,105
+ex34 ex34109,110
+ex35 ex35115,116
+ex36 ex36125,126
+ex37 ex37126,127
+
+./presburger/src/Data/Integer/SAT.hs,5515
+module Data.Integer.SATData.Integer.SAT10,11
+infix infix56,57
+newtype PropSet PropSet64,65
+newtype PropSet = State State64,65
+dotPropSet dotPropSet67,68
+dotPropSet dotPropSet68,69
+sizePropSet sizePropSet70,71
+sizePropSet sizePropSet71,72
+noProps noProps74,75
+noProps noProps75,76
+assert assert78,79
+assert assert79,80
+checkSat checkSat85,86
+checkSat checkSat86,87
+allInerts allInerts92,93
+allInerts allInerts93,94
+allSolutions allSolutions95,96
+allSolutions allSolutions96,97
+getExprBound getExprBound101,102
+getExprBound getExprBound102,103
+getExprRange getExprRange112,113
+getExprRange getExprRange113,114
+data Prop Prop127,128
+data Prop = PTruePTrue127,128
+          | PFalsePFalse128,129
+          | Prop Prop129,130
+          | Prop Prop130,131
+          | Not Not131,132
+          | Expr Expr132,133
+data Expr Expr142,143
+data Expr = Expr Expr142,143
+          | Expr Expr143,144
+          | Integer Integer144,145
+          | Negate Negate145,146
+          | Var Var146,147
+          | K K147,148
+          | If If148,149
+          | Div Div149,150
+          | Mod Mod150,151
+prop prop153,154
+prop prop154,155
+expr expr194,195
+expr expr195,196
+exprDivMod exprDivMod207,208
+exprDivMod exprDivMod208,209
+data RW RW222,223
+data RW = RW RW222,223
+data RW = RW { nameSource nameSource222,223
+             , inerts inerts223,224
+initRW initRW226,227
+initRW initRW227,228
+ctLt ctLt232,233
+ctLt ctLt233,234
+ctEq ctEq235,236
+ctEq ctEq236,237
+data Bound Bound238,239
+data Bound      = Bound Bound238,239
+data BoundType BoundType241,242
+data BoundType  = Lower Lower241,242
+data BoundType  = Lower | UpperUpper241,242
+toCt toCt244,245
+toCt toCt245,246
+data Inerts Inerts254,255
+data Inerts = InertsInerts254,255
+  { bounds bounds255,256
+  , solved solved260,261
+ppInerts ppInerts265,266
+ppInerts ppInerts266,267
+iNone iNone280,281
+iNone iNone281,282
+iApSubst iApSubst286,287
+iApSubst iApSubst287,288
+iSolved iSolved299,300
+iSolved iSolved300,301
+boundInterval boundInterval336,337
+boundInterval boundInterval337,338
+data Solutions Solutions356,357
+data Solutions = DoneDone356,357
+               | TopVar TopVar357,358
+               | FixedVar FixedVar358,359
+slnCurrent slnCurrent361,362
+slnCurrent slnCurrent362,363
+iLet iLet370,371
+iLet iLet371,372
+startIter startIter378,379
+startIter startIter379,380
+slnEnumerate slnEnumerate398,399
+slnEnumerate slnEnumerate399,400
+slnNextVal slnNextVal412,413
+slnNextVal slnNextVal413,414
+slnNextValWith slnNextValWith421,422
+slnNextValWith slnNextValWith422,423
+slnNextVar slnNextVar434,435
+slnNextVar slnNextVar435,436
+iPickBounded iPickBounded444,445
+iPickBounded iPickBounded445,446
+iTermBound iTermBound470,471
+iTermBound iTermBound471,472
+iVarBound iVarBound482,483
+iVarBound iVarBound483,484
+iModel iModel509,510
+iModel iModel510,511
+solveIs0 solveIs0533,534
+solveIs0 solveIs0534,535
+solveIs0' solveIs0'538,539
+solveIs0' solveIs0'539,540
+modulus modulus573,574
+modulus modulus574,575
+solveIsNeg solveIsNeg577,578
+solveIsNeg solveIsNeg578,579
+solveIsNeg' solveIsNeg'583,584
+solveIsNeg' solveIsNeg'584,585
+orElse orElse623,624
+orElse orElse624,625
+data Answer Answer661,662
+data Answer a = None None661,662
+data Answer a = None | One One661,662
+data Answer a = None | One a | Choice Choice661,662
+answerSize answerSize665,666
+answerSize answerSize666,667
+dotAnswer dotAnswer677,678
+dotAnswer dotAnswer678,679
+toList toList698,699
+toList toList699,700
+instance instance706,707
+newtype S S733,734
+newtype S a = S S733,734
+updS updS756,757
+updS updS757,758
+updS_ updS_759,760
+updS_ updS_760,761
+get get762,763
+get get763,764
+newVar newVar765,766
+newVar newVar766,767
+getBounds getBounds771,772
+getBounds getBounds772,773
+addBound addBound778,779
+addBound addBound779,780
+addDef addDef789,790
+addDef addDef790,791
+apSubst apSubst795,796
+apSubst apSubst796,797
+data Name Name806,807
+data Name = UserName UserName806,807
+data Name = UserName !Int | SysName SysName806,807
+ppName ppName809,810
+ppName ppName810,811
+toName toName813,814
+toName toName814,815
+fromName fromName816,817
+fromName fromName817,818
+type NameMap NameMap823,824
+data Term Term829,830
+data Term = T T829,830
+tConst tConst836,837
+tConst tConst837,838
+tVar tVar840,841
+tVar tVar841,842
+(|+|)|+|843,844
+T T844,845
+(|*|)|*|849,850
+0 0850,851
+1 1851,852
+k k852,853
+tNeg tNeg854,855
+tNeg tNeg855,856
+(|-|)|-|857,858
+t1 t1858,859
+tLet tLet862,863
+tLet tLet863,864
+tLetNum tLetNum867,868
+tLetNum tLetNum868,869
+tLetNums tLetNums872,873
+tLetNums tLetNums873,874
+ppTerm ppTerm881,882
+ppTerm ppTerm882,883
+tSplitVar tSplitVar902,903
+tSplitVar tSplitVar903,904
+tHasVar tHasVar909,910
+tHasVar tHasVar910,911
+isConst isConst913,914
+isConst isConst914,915
+tConstPart tConstPart918,919
+tConstPart tConstPart919,920
+tIsOneVar tIsOneVar922,923
+tIsOneVar tIsOneVar923,924
+tGetSimpleCoeff tGetSimpleCoeff930,931
+tGetSimpleCoeff tGetSimpleCoeff931,932
+tVarList tVarList936,937
+tVarList tVarList937,938
+tFactor tFactor942,943
+tFactor tFactor943,944
+tLeastAbsCoeff tLeastAbsCoeff956,957
+tLeastAbsCoeff tLeastAbsCoeff957,958
+tLeastVar tLeastVar966,967
+tLeastVar tLeastVar967,968
+tMapCoeff tMapCoeff972,973
+tMapCoeff tMapCoeff973,974
+
 ./Setup.hs,15
 main main1,2
 
 ./examples/simple-arith.hs,236
-module Main Main3,4
-import import5,6
-type n n11,12
-type n <=<11,12
-infix infix12,13
-natLeqZero natLeqZero14,15
-natLeqZero natLeqZero14,15
+module Main Main2,3
+import import4,5
+type n n10,11
+type n <=<10,11
+infix infix11,12
+natLeqZero natLeqZero13,14
+natLeqZero natLeqZero13,14
+main main48,49
 main main49,50
-main main50,51
+eqToRefl eqToRefl58,59
 eqToRefl eqToRefl59,60
-eqToRefl eqToRefl60,61
 
 ./src/GHC/Compat.hs,885
 module GHC.Compat GHC.Compat1,2
@@ -47,68 +294,68 @@ getEqWitnessTyCon getEqWitnessTyCon98,99
 decompFunTy decompFunTy102,103
 decompFunTy decompFunTy103,104
 
-./src/GHC/TypeLits/Presburger.hs,2145
+./src/GHC/TypeLits/Presburger.hs,2181
 module GHC.TypeLits.Presburger GHC.TypeLits.Presburger2,3
-assert' assert'20,21
-assert' assert'21,22
-data Proof Proof25,26
-data Proof = Proved Proved25,26
-data Proof = Proved | Disproved Disproved25,26
-isProved isProved28,29
-isProved isProved29,30
-varsProp varsProp32,33
-varsProp varsProp33,34
-varsExpr varsExpr44,45
-varsExpr varsExpr45,46
-plugin plugin55,56
-plugin plugin56,57
-presburgerPlugin presburgerPlugin58,59
-presburgerPlugin presburgerPlugin59,60
-testIf testIf66,67
-testIf testIf67,68
-type PresState PresState69,70
-data MyEnv MyEnv71,72
-data MyEnv  = MyEnv MyEnv71,72
-data MyEnv  = MyEnv { emptyClsTyCon emptyClsTyCon71,72
-                    , eqTyCon_ eqTyCon_72,73
-                    , eqWitCon_ eqWitCon_73,74
-                    , isTrueCon_ isTrueCon_74,75
-                    , voidTyCon voidTyCon75,76
-                    , singLeqCon_ singLeqCon_76,77
-                    , singCompareCon_ singCompareCon_77,78
-eqTyCon eqTyCon80,81
-eqTyCon eqTyCon81,82
-eqWitnessTyCon eqWitnessTyCon83,84
-eqWitnessTyCon eqWitnessTyCon84,85
-isTrueTyCon isTrueTyCon86,87
-isTrueTyCon isTrueTyCon87,88
-singLeqCon singLeqCon89,90
-singLeqCon singLeqCon90,91
-singCompareCon singCompareCon92,93
-singCompareCon singCompareCon93,94
-decidePresburger decidePresburger95,96
-decidePresburger decidePresburger96,97
-withTyCons withTyCons138,139
-withTyCons withTyCons139,140
-isVoidTy isVoidTy153,154
-isVoidTy isVoidTy154,155
-(<=<=>157,158
-p p158,159
-genSubst genSubst160,161
-genSubst genSubst161,162
-withEv withEv165,166
-withEv withEv166,167
-deconsPred deconsPred171,172
-deconsPred deconsPred172,173
-emptyTyCon emptyTyCon174,175
-emptyTyCon emptyTyCon175,176
-toPresburgerPred toPresburgerPred177,178
-  | con `elem`elem179,180
-toPresburgerPred toPresburgerPred182,183
-toPresburgerPredTree toPresburgerPredTree194,195
-toPresburgerPredTree toPresburgerPredTree195,196
-  | typeKind p `eqType`eqType203,204
-toPresburgerExp toPresburgerExp241,242
-toPresburgerExp toPresburgerExp242,243
-simpleExp simpleExp263,264
-simpleExp simpleExp264,265
+assert' assert'17,18
+assert' assert'18,19
+data Proof Proof22,23
+data Proof = Proved Proved22,23
+data Proof = Proved | Disproved Disproved22,23
+isProved isProved25,26
+isProved isProved26,27
+varsProp varsProp29,30
+varsProp varsProp30,31
+varsExpr varsExpr41,42
+varsExpr varsExpr42,43
+plugin plugin52,53
+plugin plugin53,54
+presburgerPlugin presburgerPlugin55,56
+presburgerPlugin presburgerPlugin56,57
+testIf testIf63,64
+testIf testIf64,65
+type PresState PresState66,67
+data MyEnv MyEnv68,69
+data MyEnv  = MyEnv MyEnv68,69
+data MyEnv  = MyEnv { emptyClsTyCon emptyClsTyCon68,69
+                    , eqTyCon_ eqTyCon_69,70
+                    , eqWitCon_ eqWitCon_70,71
+                    , isTrueCon_ isTrueCon_71,72
+                    , voidTyCon voidTyCon72,73
+                    , typeLeqBoolTyCon_ typeLeqBoolTyCon_73,74
+                    , singCompareCon_ singCompareCon_74,75
+eqTyCon eqTyCon77,78
+eqTyCon eqTyCon78,79
+eqWitnessTyCon eqWitnessTyCon80,81
+eqWitnessTyCon eqWitnessTyCon81,82
+isTrueTyCon isTrueTyCon83,84
+isTrueTyCon isTrueTyCon84,85
+typeLeqBoolTyCon typeLeqBoolTyCon86,87
+typeLeqBoolTyCon typeLeqBoolTyCon87,88
+singCompareCon singCompareCon89,90
+singCompareCon singCompareCon90,91
+decidePresburger decidePresburger92,93
+decidePresburger decidePresburger93,94
+withTyCons withTyCons135,136
+withTyCons withTyCons136,137
+(<=<=>150,151
+p p151,152
+genSubst genSubst153,154
+genSubst genSubst154,155
+withEv withEv158,159
+withEv withEv159,160
+deconsPred deconsPred164,165
+deconsPred deconsPred165,166
+emptyTyCon emptyTyCon167,168
+emptyTyCon emptyTyCon168,169
+toPresburgerPred toPresburgerPred170,171
+toPresburgerPred toPresburgerPred171,172
+boolLeqs boolLeqs185,186
+boolLeqs boolLeqs186,187
+toPresburgerPredTree toPresburgerPredTree188,189
+toPresburgerPredTree toPresburgerPredTree189,190
+  | typeKind p `eqType`eqType197,198
+  , con `elem`elem207,208
+toPresburgerExp toPresburgerExp235,236
+toPresburgerExp toPresburgerExp236,237
+simpleExp simpleExp257,258
+simpleExp simpleExp258,259

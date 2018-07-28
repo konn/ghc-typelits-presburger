@@ -1,20 +1,17 @@
 {-# LANGUAGE FlexibleContexts, MultiWayIf, OverloadedStrings, PatternGuards #-}
-{-# LANGUAGE RankNTypes, TupleSections                                      #-}
+{-# LANGUAGE RankNTypes, RecordWildCards, TupleSections                     #-}
 module GHC.TypeLits.Presburger (plugin) where
 import GHC.Compat
 
 import           Class            (classTyCon)
 import           Data.Foldable    (asum)
-import           Data.Integer.SAT (Expr (..), Prop (..), PropSet)
-import           Data.Integer.SAT (assert, checkSat, noProps, toName)
+import           Data.Integer.SAT (Expr (..), Prop (..), PropSet, assert)
+import           Data.Integer.SAT (checkSat, noProps, toName)
 import qualified Data.Integer.SAT as SAT
 import           Data.List        (nub)
-import           Data.Maybe       (catMaybes, fromMaybe, isNothing, mapMaybe)
-import           Data.Reflection  (Given)
-import           Data.Reflection  (given)
-import           Data.Reflection  (give)
-import           TcPluginM        (tcLookupClass)
-import           TcPluginM        (lookupOrig)
+import           Data.Maybe       (fromMaybe, isNothing, mapMaybe)
+import           Data.Reflection  (Given, give, given)
+import           TcPluginM        (lookupOrig, tcLookupClass)
 import           TysWiredIn       (promotedEQDataCon, promotedGTDataCon,
                                    promotedLTDataCon)
 
@@ -58,7 +55,7 @@ plugin = defaultPlugin { tcPlugin = const $ Just presburgerPlugin }
 
 presburgerPlugin :: TcPlugin
 presburgerPlugin =
-  tracePlugin "typelits-presburger" $
+  tracePlugin "typelits-presburger"
   TcPlugin { tcPluginInit  = return () -- tcPluginIO $ newIORef emptyTvSubst
            , tcPluginSolve = decidePresburger
            , tcPluginStop  = const $ return ()
@@ -69,13 +66,13 @@ testIf ps q = maybe Proved Disproved $ checkSat (Not q `assert'` ps)
 
 type PresState = ()
 
-data MyEnv  = MyEnv { emptyClsTyCon   :: TyCon
-                    , eqTyCon_        :: TyCon
-                    , eqWitCon_       :: TyCon
-                    , isTrueCon_      :: TyCon
-                    , voidTyCon       :: TyCon
-                    , singLeqCon_     :: TyCon
-                    , singCompareCon_ :: TyCon
+data MyEnv  = MyEnv { emptyClsTyCon     :: TyCon
+                    , eqTyCon_          :: TyCon
+                    , eqWitCon_         :: TyCon
+                    , isTrueCon_        :: TyCon
+                    , voidTyCon         :: TyCon
+                    , typeLeqBoolTyCon_ :: TyCon
+                    , singCompareCon_   :: TyCon
                     }
 
 eqTyCon :: Given MyEnv => TyCon
@@ -87,8 +84,8 @@ eqWitnessTyCon = eqWitCon_ given
 isTrueTyCon :: Given MyEnv => TyCon
 isTrueTyCon = isTrueCon_ given
 
-singLeqCon :: Given MyEnv => TyCon
-singLeqCon = singLeqCon_ given
+typeLeqBoolTyCon :: Given MyEnv => TyCon
+typeLeqBoolTyCon = typeLeqBoolTyCon_ given
 
 singCompareCon :: Given MyEnv => TyCon
 singCompareCon = singCompareCon_ given
@@ -114,7 +111,7 @@ decidePresburger _ref gs ds ws = withTyCons $ do
   tcPluginTrace "Env" $ ppr (emptyTyCon, eqTyCon, eqWitnessTyCon, isTrueTyCon)
   let subst = foldr (unionTvSubst . genSubst) emptyTvSubst (gs ++ ds)
   tcPluginTrace "Current subst" (ppr subst)
-  tcPluginTrace "wanteds" $ ppr $ map (deconsPred) ws
+  tcPluginTrace "wanteds" $ ppr $ map deconsPred ws
   tcPluginTrace "givens" $ ppr $ map (substTy subst . deconsPred) gs
   tcPluginTrace "deriveds" $ ppr $ map deconsPred ds
   let wants = mapMaybe (\ct -> (,) ct <$> toPresburgerPred subst (substTy subst $ deconsPred ct)) $
@@ -128,32 +125,28 @@ decidePresburger _ref gs ds ws = withTyCons $ do
                 ]
   tcPluginTrace "prems" (text $ show $ map (toPresburgerPred subst .substTy subst . deconsPred) (gs ++ ds))
   tcPluginTrace "final goals" (text $ show $ map snd wants)
-  case testIf prems (foldr (:&&) PTrue (map snd wants)) of
+  case testIf prems (foldr ((:&&) . snd) PTrue wants) of
     Proved -> do
       tcPluginTrace "Proved" (text $ show $ map snd wants)
       return $ TcPluginOk coerced []
     Disproved wit -> do
-      tcPluginTrace "Failed! " (text $ show $ wit)
+      tcPluginTrace "Failed! " (text $ show wit)
       return $ TcPluginContradiction $ map fst wants
 
 withTyCons :: (Given MyEnv => TcPluginM a) -> TcPluginM a
 withTyCons act = do
   emd <- lookupModule (mkModuleName "Proof.Propositional.Empty") (fsLit "equational-reasoning")
-  emptyCon <- classTyCon <$> (tcLookupClass =<< lookupOrig emd (mkTcOcc "Empty"))
-  eqcon <- getEqTyCon
-  witcon <- getEqWitnessTyCon
+  emptyClsTyCon <- classTyCon <$> (tcLookupClass =<< lookupOrig emd (mkTcOcc "Empty"))
+  eqTyCon_ <- getEqTyCon
+  eqWitCon_ <- getEqWitnessTyCon
   pmd <- lookupModule (mkModuleName "Proof.Propositional") (fsLit "equational-reasoning")
-  trucon <- tcLookupTyCon =<< lookupOrig pmd (mkTcOcc "IsTrue")
+  isTrueCon_ <- tcLookupTyCon =<< lookupOrig pmd (mkTcOcc "IsTrue")
   vmd <- lookupModule (mkModuleName "Data.Void") (fsLit "base")
   voidTyCon <- tcLookupTyCon =<< lookupOrig vmd (mkTcOcc "Void")
   singletons <- lookupModule (mkModuleName "Data.Singletons.Prelude.Ord") (fsLit "singletons")
-  -- singLeqCon <- tcLookupTyCon =<< lookupOrig singletons     (mkInstTyTcOcc "<="      emptyOccSet)
-  singCompareCon <- tcLookupTyCon =<< lookupOrig singletons (mkInstTyTcOcc "Compare" emptyOccSet)
-  give (MyEnv emptyCon eqcon witcon trucon voidTyCon typeNatLeqTyCon singCompareCon) act
-
-isVoidTy :: Given MyEnv => Type -> Bool
-isVoidTy typ =                  --
-  tyConAppTyCon_maybe typ == Just (voidTyCon given)
+  typeLeqBoolTyCon_ <- tcLookupTyCon =<< lookupOrig singletons (mkTcOcc "<=")
+  singCompareCon_ <- tcLookupTyCon =<< lookupOrig singletons (mkTcOcc "Compare")
+  give MyEnv{..} act
 
 (<=>) :: Prop -> Prop -> Prop
 p <=> q =  (p :&& q) :|| (Not p :&& Not q)
@@ -177,9 +170,7 @@ emptyTyCon = emptyClsTyCon given
 
 toPresburgerPred :: Given MyEnv => TvSubst -> Type -> Maybe Prop
 toPresburgerPred subst (TyConApp con [t1, t2])
-  | con `elem` [typeNatLeqTyCon, singLeqCon] = (:<=) <$> toPresburgerExp subst t1 <*> toPresburgerExp subst t2
--- toPresburgerPred subst (TyConApp con [t1, t2])
---   | con == singLneqCon = (:<) <$> toPresburgerExp subst t1 <*> toPresburgerExp subst t2
+  | con == typeNatLeqTyCon = (:<=) <$> toPresburgerExp subst t1 <*> toPresburgerExp subst t2
 toPresburgerPred subst ty
   | isEqPred ty = toPresburgerPredTree subst $ classifyPredType ty
   | Just (con, [l, r]) <- splitTyConApp_maybe ty -- l ~ r
@@ -192,6 +183,9 @@ toPresburgerPred subst ty
   , con == isTrueTyCon = toPresburgerPred subst l
   | otherwise = Nothing
 
+boolLeqs :: Given MyEnv => [TyCon]
+boolLeqs = [typeNatLeqTyCon, typeLeqBoolTyCon]
+
 toPresburgerPredTree :: Given MyEnv => TvSubst -> PredTree -> Maybe Prop
 toPresburgerPredTree subst (EqPred NomEq p false) -- P ~ 'False <=> Not P ~ 'True
   | Just promotedFalseDataCon  == tyConAppTyCon_maybe (substTy subst false) =
@@ -199,7 +193,7 @@ toPresburgerPredTree subst (EqPred NomEq p false) -- P ~ 'False <=> Not P ~ 'Tru
 toPresburgerPredTree subst (EqPred NomEq p b)  -- (n :<=? m) ~ 'True
   | Just promotedTrueDataCon  == tyConAppTyCon_maybe (substTy subst b)
   , Just (con, [t1, t2]) <- splitTyConApp_maybe (substTy subst p)
-  , con == typeNatLeqTyCon = (:<=) <$> toPresburgerExp subst t1  <*> toPresburgerExp subst t2
+  , con `elem` boolLeqs = (:<=) <$> toPresburgerExp subst t1  <*> toPresburgerExp subst t2
 toPresburgerPredTree subst (EqPred NomEq p q)  -- (p :: Bool) ~ (q :: Bool)
   | typeKind p `eqType` mkTyConTy promotedBoolTyCon =
     (<=>) <$> toPresburgerPred subst p

@@ -1,18 +1,17 @@
 {-# LANGUAGE DataKinds, TypeOperators, GADTs, TypeFamilies, ExplicitForAll, FlexibleContexts, EmptyCase #-}
 {-# OPTIONS_GHC -fplugin GHC.TypeLits.Presburger #-}
-{-# OPTIONS_GHC -ddump-tc-trace -ddump-to-file #-}
 module Main where
 import Data.Type.Equality
 import GHC.TypeLits       (Nat, type (<=), type (*), type (+), type (<=?), CmpNat)
 import Proof.Propositional (Empty(..))
 import Proof.Propositional (IsTrue(Witness))
-import Data.Singletons.Prelude
+import Data.Singletons.Prelude hiding (type (<=))
 import Data.Void
 
 type n <=! m = IsTrue (n <=? m)
 infix 4 <=!
 
-natLeqZero :: (n <= 0) => proxy n -> n :~: 0
+natLeqZero :: ((n <=? 0) ~ 'True) => proxy n -> n :~: 0
 natLeqZero _ = Refl
 
 -- (%:<=?) :: Sing n -> Sing m -> Sing (n <=? m)
