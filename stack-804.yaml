@@ -1,25 +1,9 @@
-resolver: ghc-8.4.1
-compiler: ghc-8.4.1
+resolver: lts-12.2
 skip-ghc-check: true
 
 flags: {}
 packages:
 - '.'
 
-extra-deps: 
+extra-deps:
 - equational-reasoning-0.5.1.0
-- ghc-tcplugins-extra-0.3
-- primitive-0.6.3.0
-- reflection-2.1.3
-- safe-0.3.16
-- singletons-2.4.1
-- syb-0.7
-- th-desugar-1.8
-- th-expand-syns-0.4.4.0
-- th-extras-0.0.0.4
-- th-lift-0.7.8
-- th-lift-instances-0.1.11
-- th-orphans-0.13.5
-- th-reify-many-0.1.8
-- vector-0.12.0.1
-- void-0.7.2
