@@ -1,28 +1,41 @@
-{-# LANGUAGE CPP, DataKinds, FlexibleContexts, MultiWayIf                  #-}
-{-# LANGUAGE OverloadedStrings, PatternGuards, RankNTypes, RecordWildCards #-}
-{-# LANGUAGE TypeOperators                                                 #-}
+{-# LANGUAGE CPP, DataKinds, FlexibleContexts, FlexibleInstances      #-}
+{-# LANGUAGE MultiWayIf, OverloadedStrings, PatternGuards, RankNTypes #-}
+{-# LANGUAGE RecordWildCards, TypeOperators, TypeSynonymInstances     #-}
 {-# OPTIONS_GHC -Wno-unused-imports #-}
 module GHC.TypeLits.Presburger (plugin) where
 import GHC.Compat
 
-import           Class            (classTyCon)
-import           Control.Monad    (replicateM)
-import           Data.Foldable    (asum)
-import           Data.Integer.SAT (Expr (..), Prop (..), PropSet, assert)
-import           Data.Integer.SAT (checkSat, noProps, toName)
-import qualified Data.Integer.SAT as SAT
-import           Data.List        (nub)
-import           Data.Maybe       (fromMaybe, isNothing, mapMaybe)
-import           Data.Reflection  (Given, give, given)
-import           Debug.Trace
-import           GHC.TypeLits     (Nat)
-import           Outputable       (showSDocUnsafe)
-import           TcPluginM        (getFamInstEnvs, lookupOrig, matchFam,
-                                   newFlexiTyVar, tcLookupClass,
-                                   unsafeTcPluginTcM)
-import           Type             (mkTyVarTy, splitTyConApp)
-import           TysWiredIn       (promotedEQDataCon, promotedGTDataCon,
-                                   promotedLTDataCon)
+import           Class                     (Class, classTyCon)
+import           Control.Applicative       ((<|>))
+import           Control.Monad             (forM_, mzero)
+import           Control.Monad.State.Class
+import           Control.Monad.Trans.Class
+import           Control.Monad.Trans.Maybe (MaybeT (..))
+import           Control.Monad.Trans.State (StateT, runStateT)
+import           Data.Foldable             (asum)
+import           Data.Integer.SAT          (Expr (..), Prop (..), PropSet,
+                                            assert)
+import           Data.Integer.SAT          (checkSat, noProps, toName)
+import qualified Data.Integer.SAT          as SAT
+import           Data.List                 (nub)
+import qualified Data.Map.Strict           as M
+import           Data.Maybe                (catMaybes, fromJust)
+import           Data.Maybe                (fromMaybe, isNothing, mapMaybe)
+import           Data.Reflection           (Given, give, given)
+import           GHC.TypeLits              (Nat)
+import           Outputable                (showSDocUnsafe)
+import           TcPluginM                 (getFamInstEnvs, lookupOrig,
+                                            matchFam, newFlexiTyVar, newWanted,
+                                            tcLookupClass, unsafeTcPluginTcM)
+import           TcRnTypes
+import           TyCoRep                   (Coercion (..), KindCoercion (..))
+import           Type                      (mkPrimEqPredRole, mkTyVarTy,
+                                            splitTyConApp)
+import           TysWiredIn                (promotedEQDataCon,
+                                            promotedGTDataCon,
+                                            promotedLTDataCon)
+import           UniqMap
+import           Var
 
 assert' :: Prop -> PropSet -> PropSet
 assert' p ps = foldr assert ps (p : varPos)
@@ -117,7 +130,8 @@ decidePresburger _ref gs [] [] = do
   withTyCons $ do
     let subst = emptyTvSubst
                 -- foldr unionTvSubst emptyTvSubst $ map genSubst gs
-        givens = mapMaybe (\a -> (,) a <$> toPresburgerPred subst (deconsPred a)) gs
+    ngs <- mapM (\a -> runMachine $ (,) a <$> toPresburgerPred subst (deconsPred a)) gs
+    let givens = catMaybes ngs
         prems0 = map snd givens
         prems  = foldr assert' noProps prems0
         (solved, _) = foldr go ([], noProps) givens
@@ -135,16 +149,21 @@ decidePresburger _ref gs ds ws = withTyCons $ do
   tcPluginTrace "wanteds" $ ppr $ map deconsPred ws
   tcPluginTrace "givens" $ ppr $ map (substTy subst . deconsPred) gs
   tcPluginTrace "deriveds" $ ppr $ map deconsPred ds
-  let wants = mapMaybe (\ct -> (,) ct <$> toPresburgerPred subst (substTy subst $ deconsPred ct)) $
-              filter (isWanted . ctEvidence) ws
-      prems = foldr assert' noProps $
-              mapMaybe (toPresburgerPred subst . substTy subst . deconsPred) (gs ++ ds)
-      solved = map fst $ filter (isProved . testIf prems . snd) wants
+  (prems, wants) <- do
+    wants <- catMaybes <$>
+             mapM
+             (\ct -> runMachine $ (,) ct <$> toPresburgerPred subst (substTy subst $ deconsPred ct))
+             (filter (isWanted . ctEvidence) ws)
+    resls <- mapM (runMachine . toPresburgerPred subst . substTy subst . deconsPred)
+                     (gs ++ ds)
+    let prems = foldr assert' noProps $ catMaybes resls
+    return (prems, wants)
+  let solved = map fst $ filter (isProved . testIf prems . snd) wants
       coerced = [(evByFiat "ghc-typelits-presburger" t1 t2, ct)
                 | ct <- solved
                 , EqPred NomEq t1 t2 <- return (classifyPredType $ deconsPred ct)
                 ]
-  tcPluginTrace "prems" (text $ show $ map (toPresburgerPred subst .substTy subst . deconsPred) (gs ++ ds))
+  -- tcPluginTrace "prems" (text $ show $ map (toPresburgerPred subst .substTy subst . deconsPred) (gs ++ ds))
   tcPluginTrace "final goals" (text $ show $ map snd wants)
   case testIf prems (foldr ((:&&) . snd) PTrue wants) of
     Proved -> do
@@ -213,7 +232,7 @@ deconsPred = ctEvPred . ctEvidence
 emptyTyCon :: Given MyEnv => TyCon
 emptyTyCon = emptyClsTyCon given
 
-toPresburgerPred :: Given MyEnv => TvSubst -> Type -> Maybe Prop
+toPresburgerPred :: Given MyEnv => TvSubst -> Type -> Machine Prop
 toPresburgerPred subst (TyConApp con [t1, t2])
   | con == typeNatLeqTyCon = (:<=) <$> toPresburgerExp subst t1 <*> toPresburgerExp subst t2
 toPresburgerPred subst ty
@@ -226,12 +245,12 @@ toPresburgerPred subst ty
   , con == emptyTyCon = Not <$> toPresburgerPred subst l
   | Just (con, [l]) <- splitTyConApp_maybe ty -- IsTrue l =>
   , con == isTrueTyCon = toPresburgerPred subst l
-  | otherwise = Nothing
+  | otherwise = mzero
 
 boolLeqs :: Given MyEnv => [TyCon]
 boolLeqs = [typeNatLeqTyCon, typeLeqBoolTyCon]
 
-toPresburgerPredTree :: Given MyEnv => TvSubst -> PredTree -> Maybe Prop
+toPresburgerPredTree :: Given MyEnv => TvSubst -> PredTree -> Machine Prop
 toPresburgerPredTree subst (EqPred NomEq p false) -- P ~ 'False <=> Not P ~ 'True
   | Just promotedFalseDataCon  == tyConAppTyCon_maybe (substTy subst false) =
     Not <$> toPresburgerPredTree subst (EqPred NomEq p (mkTyConTy promotedTrueDataCon))
@@ -285,8 +304,9 @@ toPresburgerPredTree subst (EqPred NomEq t1 t2) -- CmpNat a b ~ x
               ,(promotedEQDataCon, (:==))
               ,(promotedGTDataCon, (:>))
               ]
-    in lookup cmp dic <*> toPresburgerExp subst a
-                      <*> toPresburgerExp subst b
+    in MaybeT (return $ lookup cmp dic)
+       <*> toPresburgerExp subst a
+       <*> toPresburgerExp subst b
 toPresburgerPredTree subst (EqPred NomEq t1 t2) -- x ~ CmpNat a b
   | Just (con, [a, b]) <- splitTyConApp_maybe (substTy subst t2)
   , con `elem` [singCompareCon, typeNatCmpTyCon]
@@ -295,32 +315,36 @@ toPresburgerPredTree subst (EqPred NomEq t1 t2) -- x ~ CmpNat a b
               ,(promotedEQDataCon, (:==))
               ,(promotedGTDataCon, (:>))
               ]
-    in lookup cmp dic <*> toPresburgerExp subst a
-                      <*> toPresburgerExp subst b
+    in MaybeT (return $ lookup cmp dic)
+       <*> toPresburgerExp subst a
+       <*> toPresburgerExp subst b
 toPresburgerPredTree subst (ClassPred con [t1, t2]) -- (n :: Nat) <= (m :: Nat)
   | typeNatLeqTyCon == classTyCon con
   , typeKind t1 `eqType` typeNatKind = (:<=) <$> toPresburgerExp subst t1 <*> toPresburgerExp subst t2
-toPresburgerPredTree _ _ = Nothing
+toPresburgerPredTree _ _ = mzero
 
-toPresburgerExp :: TvSubst -> Type -> Maybe Expr
+toPresburgerExp :: TvSubst -> Type -> Machine Expr
 toPresburgerExp dic ty = case substTy dic ty of
-  TyVarTy t -> Just $ Var $ toName $ getKey $ getUnique t
-  TyConApp tc ts  ->
-    let step con op
-          | tc == con, [tl, tr] <- ts =
-            op <$> toPresburgerExp dic tl <*> toPresburgerExp dic tr
-          | otherwise = Nothing
-    in case ts of
-      [tl, tr] | tc == typeNatMulTyCon ->
-        case (simpleExp tl, simpleExp tr) of
-          (LitTy (NumTyLit n), LitTy (NumTyLit m)) -> Just $ K $ n * m
-          (LitTy (NumTyLit n), x) -> (:*) <$> pure n <*> toPresburgerExp dic x
-          (x, LitTy (NumTyLit n)) -> (:*) <$> pure n <*> toPresburgerExp dic x
-          _ -> Nothing
-      _ ->  asum [ step con op
-                 | (con, op) <- [(typeNatAddTyCon, (:+)), (typeNatSubTyCon, (:-))]]
-  LitTy (NumTyLit n) -> Just (K n)
-  _ -> Nothing
+  TyVarTy t          -> return $ Var $ toName $ getKey $ getUnique t
+  t@(TyConApp tc ts) -> body tc ts <|> Var . toName . getKey . getUnique <$> toVar t
+  LitTy (NumTyLit n) -> return (K n)
+  LitTy _            -> mzero
+  t                  -> Var . toName . getKey .getUnique <$> toVar t
+  where
+    body tc ts =
+      let step con op
+            | tc == con, [tl, tr] <- ts =
+              op <$> toPresburgerExp dic tl <*> toPresburgerExp dic tr
+            | otherwise = mzero
+      in case ts of
+        [tl, tr] | tc == typeNatMulTyCon ->
+          case (simpleExp tl, simpleExp tr) of
+            (LitTy (NumTyLit n), LitTy (NumTyLit m)) -> return $ K $ n * m
+            (LitTy (NumTyLit n), x) -> (:*) <$> pure n <*> toPresburgerExp dic x
+            (x, LitTy (NumTyLit n)) -> (:*) <$> pure n <*> toPresburgerExp dic x
+            _ -> mzero
+        _ ->  asum [ step con op
+                   | (con, op) <- [(typeNatAddTyCon, (:+)), (typeNatSubTyCon, (:-))]]
 
 -- simplTypeCmp :: Type -> Type
 
@@ -344,3 +368,31 @@ simpleExp (TyConApp tc ts) = fromMaybe (TyConApp tc (map simpleExp ts)) $
       | otherwise = Nothing
 simpleExp t = t
 
+data ParseEnv = ParseEnv { varToType :: UniqMap TyVar Type
+                         , typeToVar :: [(Type, TyVar)]
+                         }
+  deriving (Eq)
+
+type Machine = MaybeT (StateT ParseEnv TcPluginM)
+
+runMachine :: Machine a -> TcPluginM (Maybe a)
+runMachine act = do
+  (ma, ParseEnv{..}) <- runStateT (runMaybeT act) $ ParseEnv emptyUniqMap []
+  forM_ typeToVar $ \(ty, var) ->
+    newWanted undefined $ mkPrimEqPredRole Nominal (mkTyVarTy var) ty
+  return ma
+
+isRegistered :: Type -> Machine Bool
+isRegistered a = gets $ anyUniqMap (== a) . varToType
+
+toVar :: Type -> Machine TyVar
+toVar ty = do
+  there <- isRegistered ty
+  if there
+    then gets $ fromJust . lookup ty . typeToVar
+    else do
+    v <- lift $ lift $ newFlexiTyVar $ typeKind ty
+    modify $ \ParseEnv{..} -> ParseEnv { varToType = addToUniqMap varToType v ty
+                                       , typeToVar = (ty, v) : typeToVar
+                                       }
+    return v

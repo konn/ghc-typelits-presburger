@@ -1,4 +1,6 @@
-{-# LANGUAGE CPP, PatternGuards, PatternSynonyms, ViewPatterns #-}
+{-# LANGUAGE CPP, FlexibleInstances, PatternGuards, PatternSynonyms #-}
+{-# LANGUAGE StandaloneDeriving, TypeSynonymInstances, ViewPatterns #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 module GHC.Compat (module GHC.Compat) where
 import FamInst             as GHC.Compat
 import FastString          as GHC.Compat (fsLit)
@@ -10,7 +12,7 @@ import GhcPlugins          as GHC.Compat (classifyPredType, isEqPred,
 import GhcPlugins          as GHC.Compat (mkTcOcc, ppr, promotedFalseDataCon)
 import GhcPlugins          as GHC.Compat (promotedTrueDataCon, text)
 import GhcPlugins          as GHC.Compat (tyConAppTyCon_maybe, typeKind)
-import GhcPlugins          as GHC.Compat (TyCon, typeNatKind)
+import GhcPlugins          as GHC.Compat (typeNatKind)
 import Module              as GHC.Compat (ModuleName, mkModuleName)
 import OccName             as GHC.Compat (emptyOccSet, mkInstTyTcOcc)
 import Plugins             as GHC.Compat (Plugin (..), defaultPlugin)
@@ -22,10 +24,14 @@ import TcRnMonad           as GHC.Compat (Ct, TcPluginResult (..), isWanted)
 import TcRnTypes           as GHC.Compat (TcPlugin (..), ctEvPred, ctEvidence)
 import TcType              as GHC.Compat (tcTyFamInsts)
 import TcTypeNats          as GHC.Compat
+import TyCon               as GHC.Compat
+import Var                 (TyVarBinder (..), TyVarBndr (..))
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 800
 import           GhcPlugins (InScopeSet, Outputable, emptyUFM)
 import qualified PrelNames  as Old
-import           TyCoRep    as GHC.Compat (TyLit (NumTyLit), Type (..))
+import           TyCoRep    as GHC.Compat (Coercion (..), CoercionHole (..),
+                                           KindCoercion (..), TyLit (NumTyLit),
+                                           Type (..), UnivCoProvenance (..))
 import           Type       as GHC.Compat (TCvSubst (..), TvSubstEnv,
                                            emptyTCvSubst)
 import           Type       as GHC.Compat (eqType, unionTCvSubst)
@@ -42,6 +48,7 @@ import TysWiredIn as GHC.Compat (promotedBoolTyCon)
 import Unify      as GHC.Compat (tcUnifyTy)
 #endif
 import TcPluginM (lookupOrig)
+import TyCoRep   ()
 import Type      as GHC.Compat (splitTyConApp_maybe)
 import Unique    as GHC.Compat (getKey, getUnique)
 
@@ -106,3 +113,9 @@ getEqWitnessTyCon = do
 decompFunTy :: Type -> [Type]
 decompFunTy (FunTy t1 t2) = t1 : decompFunTy t2
 decompFunTy t             = [t]
+
+deriving instance Eq UnivCoProvenance
+deriving instance Eq CoercionHole
+deriving instance Eq KindCoercion
+deriving instance Eq TyVarBinder
+deriving instance Eq Type
