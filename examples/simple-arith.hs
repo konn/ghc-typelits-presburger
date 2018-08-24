@@ -20,7 +20,7 @@ infix 4 <=!
 natLeqZero' :: ((n <= 0) ~ 'True) => proxy n -> n :~: 0
 #else
 natLeqZero' :: ((n :<= 0) ~ 'True) => proxy n -> n :~: 0
-#fi
+#endif
 natLeqZero' _ = Refl
 
 -- (%:<=?) :: Sing n -> Sing m -> Sing (n <=? m)
