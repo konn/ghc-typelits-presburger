@@ -1,17 +1,27 @@
 {-# LANGUAGE DataKinds, TypeOperators, GADTs, TypeFamilies, ExplicitForAll, FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables, CPP #-}
+#if !MIN_VERSION_singletons(2,4,1)
+{-# LANGUAGE KindSignatures #-}
+#endif
 {-# OPTIONS_GHC -fplugin GHC.TypeLits.Presburger #-}
 module Main where
 import Data.Type.Equality
-import GHC.TypeLits       (Nat, type (*), type (+), type (<=?), CmpNat)
+import GHC.TypeLits       (Nat, type (<=?), CmpNat)
 import Proof.Propositional (Empty(..))
 import Proof.Propositional (IsTrue(Witness))
-import Data.Singletons.Prelude hiding (type (+), type(*))
+import Data.Singletons.Prelude
 import Data.Singletons.Prelude.List
+
 #if !MIN_VERSION_singletons(2,4,1)
 import qualified Data.Singletons.Prelude as Sing
-type n <= m = n Sing.:<= m
+type n <= m = (n :: Nat) Sing.:<= (m :: Nat)
 infix 4 <=
+type n - m = (n :: Nat) Sing.:- (m :: Nat)
+infixl 6 -
+type n + m = (n :: Nat) Sing.:+ (m :: Nat)
+infixl 6 +
+type n * m = (n :: Nat) Sing.:* (m :: Nat)
+infixl 7 *
 #endif
 
 type n <=! m = IsTrue (n <=? m)
