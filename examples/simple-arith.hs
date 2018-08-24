@@ -1,5 +1,5 @@
 {-# LANGUAGE DataKinds, TypeOperators, GADTs, TypeFamilies, ExplicitForAll, FlexibleContexts #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables, CPP #-}
 {-# OPTIONS_GHC -fplugin GHC.TypeLits.Presburger #-}
 module Main where
 import Data.Type.Equality
@@ -16,7 +16,11 @@ infix 4 <=!
 -- natLeqZero :: ((n <=? 0) ~ 'True) => proxy n -> n :~: 0
 -- natLeqZero _ = Refl
 
+#if MIN_VERSION_singletons(2,4,1)
 natLeqZero' :: ((n <= 0) ~ 'True) => proxy n -> n :~: 0
+#else
+natLeqZero' :: ((n :<= 0) ~ 'True) => proxy n -> n :~: 0
+#fi
 natLeqZero' _ = Refl
 
 -- (%:<=?) :: Sing n -> Sing m -> Sing (n <=? m)
