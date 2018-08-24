@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP, DataKinds, FlexibleContexts, FlexibleInstances      #-}
-{-# LANGUAGE MultiWayIf, OverloadedStrings, PatternGuards, RankNTypes #-}
-{-# LANGUAGE RecordWildCards, TypeOperators, TypeSynonymInstances     #-}
+{-# LANGUAGE LambdaCase, MultiWayIf, OverloadedStrings, PatternGuards #-}
+{-# LANGUAGE RankNTypes, RecordWildCards, TypeOperators               #-}
+{-# LANGUAGE TypeSynonymInstances                                     #-}
 {-# OPTIONS_GHC -Wno-unused-imports #-}
 module GHC.TypeLits.Presburger (plugin) where
 import GHC.Compat
@@ -19,6 +20,7 @@ import           Data.Integer.SAT          (checkSat, noProps, toName)
 import qualified Data.Integer.SAT          as SAT
 import           Data.List                 (nub)
 import qualified Data.Map.Strict           as M
+import qualified Data.Map.Strict           as M
 import           Data.Maybe                (catMaybes, fromJust)
 import           Data.Maybe                (fromMaybe, isNothing, mapMaybe)
 import           Data.Reflection           (Given, give, given)
@@ -34,7 +36,6 @@ import           Type                      (mkPrimEqPredRole, mkTyVarTy,
 import           TysWiredIn                (promotedEQDataCon,
                                             promotedGTDataCon,
                                             promotedLTDataCon)
-import           UniqMap
 import           Var
 
 assert' :: Prop -> PropSet -> PropSet
@@ -368,31 +369,21 @@ simpleExp (TyConApp tc ts) = fromMaybe (TyConApp tc (map simpleExp ts)) $
       | otherwise = Nothing
 simpleExp t = t
 
-data ParseEnv = ParseEnv { varToType :: UniqMap TyVar Type
-                         , typeToVar :: [(Type, TyVar)]
-                         }
-  deriving (Eq)
+type ParseEnv = M.Map TypeEq TyVar
 
 type Machine = MaybeT (StateT ParseEnv TcPluginM)
 
 runMachine :: Machine a -> TcPluginM (Maybe a)
 runMachine act = do
-  (ma, ParseEnv{..}) <- runStateT (runMaybeT act) $ ParseEnv emptyUniqMap []
-  forM_ typeToVar $ \(ty, var) ->
+  (ma, dic) <- runStateT (runMaybeT act) M.empty
+  forM_ (M.toList dic) $ \(TypeEq ty, var) ->
     newWanted undefined $ mkPrimEqPredRole Nominal (mkTyVarTy var) ty
   return ma
 
-isRegistered :: Type -> Machine Bool
-isRegistered a = gets $ anyUniqMap (== a) . varToType
-
 toVar :: Type -> Machine TyVar
-toVar ty = do
-  there <- isRegistered ty
-  if there
-    then gets $ fromJust . lookup ty . typeToVar
-    else do
+toVar ty = gets (M.lookup (TypeEq ty)) >>= \case
+  Just v -> return v
+  Nothing -> do
     v <- lift $ lift $ newFlexiTyVar $ typeKind ty
-    modify $ \ParseEnv{..} -> ParseEnv { varToType = addToUniqMap varToType v ty
-                                       , typeToVar = (ty, v) : typeToVar
-                                       }
+    modify $ M.insert (TypeEq ty) v
     return v
