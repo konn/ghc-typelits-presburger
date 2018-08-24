@@ -1,10 +1,12 @@
-{-# LANGUAGE CPP, FlexibleContexts, MultiWayIf, OverloadedStrings      #-}
-{-# LANGUAGE PatternGuards, RankNTypes, RecordWildCards, TupleSections #-}
+{-# LANGUAGE CPP, DataKinds, FlexibleContexts, MultiWayIf                  #-}
+{-# LANGUAGE OverloadedStrings, PatternGuards, RankNTypes, RecordWildCards #-}
+{-# LANGUAGE TypeOperators                                                 #-}
 {-# OPTIONS_GHC -Wno-unused-imports #-}
 module GHC.TypeLits.Presburger (plugin) where
 import GHC.Compat
 
 import           Class            (classTyCon)
+import           Control.Monad    (replicateM)
 import           Data.Foldable    (asum)
 import           Data.Integer.SAT (Expr (..), Prop (..), PropSet, assert)
 import           Data.Integer.SAT (checkSat, noProps, toName)
@@ -12,7 +14,13 @@ import qualified Data.Integer.SAT as SAT
 import           Data.List        (nub)
 import           Data.Maybe       (fromMaybe, isNothing, mapMaybe)
 import           Data.Reflection  (Given, give, given)
-import           TcPluginM        (lookupOrig, tcLookupClass)
+import           Debug.Trace
+import           GHC.TypeLits     (Nat)
+import           Outputable       (showSDocUnsafe)
+import           TcPluginM        (getFamInstEnvs, lookupOrig, matchFam,
+                                   newFlexiTyVar, tcLookupClass,
+                                   unsafeTcPluginTcM)
+import           Type             (mkTyVarTy, splitTyConApp)
 import           TysWiredIn       (promotedEQDataCon, promotedGTDataCon,
                                    promotedLTDataCon)
 
@@ -67,14 +75,26 @@ testIf ps q = maybe Proved Disproved $ checkSat (Not q `assert'` ps)
 
 type PresState = ()
 
-data MyEnv  = MyEnv { emptyClsTyCon     :: TyCon
-                    , eqTyCon_          :: TyCon
-                    , eqWitCon_         :: TyCon
-                    , isTrueCon_        :: TyCon
-                    , voidTyCon         :: TyCon
-                    , typeLeqBoolTyCon_ :: TyCon
-                    , singCompareCon_   :: TyCon
+data MyEnv  = MyEnv { emptyClsTyCon       :: TyCon
+                    , eqTyCon_            :: TyCon
+                    , eqWitCon_           :: TyCon
+                    , isTrueCon_          :: TyCon
+                    , voidTyCon           :: TyCon
+                    , typeLeqBoolTyCon_   :: TyCon
+                    , singCompareCon_     :: TyCon
+                    , caseNameForSingLeq_ :: TyCon
+                    , caseNameForSingGeq_ :: TyCon
+                    , caseNameForSingLt_  :: TyCon
+                    , caseNameForSingGt_  :: TyCon
                     }
+caseNameForSingLeq :: Given MyEnv => TyCon
+caseNameForSingLeq = caseNameForSingLeq_ given
+caseNameForSingGeq :: Given MyEnv => TyCon
+caseNameForSingGeq = caseNameForSingGeq_ given
+caseNameForSingLt  :: Given MyEnv => TyCon
+caseNameForSingLt = caseNameForSingLt_ given
+caseNameForSingGt  :: Given MyEnv => TyCon
+caseNameForSingGt = caseNameForSingGt_ given
 
 eqTyCon :: Given MyEnv => TyCon
 eqTyCon = eqTyCon_ given
@@ -147,11 +167,31 @@ withTyCons act = do
   singletons <- lookupModule (mkModuleName "Data.Singletons.Prelude.Ord") (fsLit "singletons")
 #if MIN_VERSION_singletons(2,4,1)
   typeLeqBoolTyCon_ <- tcLookupTyCon =<< lookupOrig singletons (mkTcOcc "<=")
+  typeLtBoolTyCon_ <- tcLookupTyCon =<< lookupOrig singletons (mkTcOcc "<")
+  typeGeqBoolTyCon_ <- tcLookupTyCon =<< lookupOrig singletons (mkTcOcc ">=")
+  typeGtBoolTyCon_ <- tcLookupTyCon =<< lookupOrig singletons (mkTcOcc ">")
 #else
   typeLeqBoolTyCon_ <- tcLookupTyCon =<< lookupOrig singletons (mkTcOcc ":<=")
+  typeLtBoolTyCon_ <- tcLookupTyCon =<< lookupOrig singletons (mkTcOcc ":<")
+  typeGeqBoolTyCon_ <- tcLookupTyCon =<< lookupOrig singletons (mkTcOcc ":>=")
+  typeGtBoolTyCon_ <- tcLookupTyCon =<< lookupOrig singletons (mkTcOcc ":>")
 #endif
+  caseNameForSingLeq_ <- getCaseNameForSingletonOp typeLeqBoolTyCon_
+  caseNameForSingLt_ <- getCaseNameForSingletonOp typeLtBoolTyCon_
+  caseNameForSingGeq_ <- getCaseNameForSingletonOp typeGeqBoolTyCon_
+  caseNameForSingGt_ <- getCaseNameForSingletonOp typeGtBoolTyCon_
   singCompareCon_ <- tcLookupTyCon =<< lookupOrig singletons (mkTcOcc "Compare")
   give MyEnv{..} act
+
+getCaseNameForSingletonOp :: TyCon -> TcPluginM TyCon
+getCaseNameForSingletonOp con = do
+  let vars = [typeNatKind, LitTy (NumTyLit 0), LitTy (NumTyLit 0)]
+  Just (appTy0, [n,b,bdy,r]) <- fmap (splitTyConApp . snd) <$> matchFam  con vars
+  let (appTy, args) = splitTyConApp bdy
+  Just innermost <- fmap snd <$> matchFam appTy args
+  Just (_, dat) <- matchFam appTy0 [n,b,innermost,r]
+  Just dat' <- fmap snd <$> uncurry matchFam (splitTyConApp dat)
+  return $ fst $ splitTyConApp dat'
 
 (<=>) :: Prop -> Prop -> Prop
 p <=> q =  (p :&& q) :|| (Not p :&& Not q)
@@ -199,6 +239,30 @@ toPresburgerPredTree subst (EqPred NomEq p b)  -- (n :<=? m) ~ 'True
   | Just promotedTrueDataCon  == tyConAppTyCon_maybe (substTy subst b)
   , Just (con, [t1, t2]) <- splitTyConApp_maybe (substTy subst p)
   , con `elem` boolLeqs = (:<=) <$> toPresburgerExp subst t1  <*> toPresburgerExp subst t2
+  | Just promotedTrueDataCon  == tyConAppTyCon_maybe (substTy subst b) -- Singleton's <=...
+  , Just (con, [_,_,_,_,cmpTy]) <- splitTyConApp_maybe p
+  , con == caseNameForSingLeq
+  , Just (cmp, [l, r]) <- splitTyConApp_maybe cmpTy
+  , cmp `elem` [singCompareCon, typeNatCmpTyCon] =
+    (:<=) <$> toPresburgerExp subst l <*> toPresburgerExp subst r
+  | Just promotedTrueDataCon  == tyConAppTyCon_maybe (substTy subst b) -- Singleton's <...
+  , Just (con, [_,_,_,_,cmpTy]) <- splitTyConApp_maybe p
+  , con == caseNameForSingLt
+  , Just (cmp, [l, r]) <- splitTyConApp_maybe cmpTy
+  , cmp `elem` [singCompareCon, typeNatCmpTyCon] =
+    (:<) <$> toPresburgerExp subst l <*> toPresburgerExp subst r
+  | Just promotedTrueDataCon  == tyConAppTyCon_maybe (substTy subst b) -- Singleton's >=...
+  , Just (con, [_,_,_,_,cmpTy]) <- splitTyConApp_maybe p
+  , con == caseNameForSingGeq
+  , Just (cmp, [l, r]) <- splitTyConApp_maybe cmpTy
+  , cmp `elem` [singCompareCon, typeNatCmpTyCon] =
+    (:>=) <$> toPresburgerExp subst l <*> toPresburgerExp subst r
+  | Just promotedTrueDataCon  == tyConAppTyCon_maybe (substTy subst b) -- Singleton's >=...
+  , Just (con, [_,_,_,_,cmpTy]) <- splitTyConApp_maybe p
+  , con == caseNameForSingGt
+  , Just (cmp, [l, r]) <- splitTyConApp_maybe cmpTy
+  , cmp `elem` [singCompareCon, typeNatCmpTyCon] =
+    (:>) <$> toPresburgerExp subst l <*> toPresburgerExp subst r
 toPresburgerPredTree subst (EqPred NomEq p q)  -- (p :: Bool) ~ (q :: Bool)
   | typeKind p `eqType` mkTyConTy promotedBoolTyCon =
     (<=>) <$> toPresburgerPred subst p

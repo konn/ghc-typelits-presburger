@@ -1,18 +1,23 @@
-{-# LANGUAGE DataKinds, TypeOperators, GADTs, TypeFamilies, ExplicitForAll, FlexibleContexts, EmptyCase #-}
+{-# LANGUAGE DataKinds, TypeOperators, GADTs, TypeFamilies, ExplicitForAll, FlexibleContexts #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fplugin GHC.TypeLits.Presburger #-}
 module Main where
 import Data.Type.Equality
-import GHC.TypeLits       (Nat, type (<=), type (*), type (+), type (<=?), CmpNat)
+import GHC.TypeLits       (Nat, type (*), type (+), type (<=?), CmpNat)
 import Proof.Propositional (Empty(..))
 import Proof.Propositional (IsTrue(Witness))
-import Data.Singletons.Prelude hiding (type (<=))
+import Data.Singletons.Prelude
+import qualified Data.Singletons.Prelude as Sing
 import Data.Void
 
 type n <=! m = IsTrue (n <=? m)
 infix 4 <=!
 
-natLeqZero :: ((n <=? 0) ~ 'True) => proxy n -> n :~: 0
-natLeqZero _ = Refl
+-- natLeqZero :: ((n <=? 0) ~ 'True) => proxy n -> n :~: 0
+-- natLeqZero _ = Refl
+
+natLeqZero' :: ((n <= 0) ~ 'True) => proxy n -> n :~: 0
+natLeqZero' _ = Refl
 
 -- (%:<=?) :: Sing n -> Sing m -> Sing (n <=? m)
 -- n %:<=? m = case sCompare n m of
@@ -51,7 +56,6 @@ main = putStrLn "finished"
 
 -- succLEqLTSucc :: Sing m -> Compare 0 (m + 1) :~: 'LT
 -- succLEqLTSucc _ = Refl
-
 
 -- succCompare :: Sing (n :: Nat) -> Sing m -> CmpNat n m :~: CmpNat (n + 1) (m + 1)
 -- succCompare _ _ = Refl

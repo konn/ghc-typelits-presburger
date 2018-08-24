@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP, PatternGuards, PatternSynonyms, ViewPatterns #-}
 module GHC.Compat (module GHC.Compat) where
+import FamInst             as GHC.Compat
 import FastString          as GHC.Compat (fsLit)
 import GHC.TcPluginM.Extra as GHC.Compat (evByFiat, lookupModule, lookupName,
                                           tracePlugin)
@@ -14,10 +15,12 @@ import Module              as GHC.Compat (ModuleName, mkModuleName)
 import OccName             as GHC.Compat (emptyOccSet, mkInstTyTcOcc)
 import Plugins             as GHC.Compat (Plugin (..), defaultPlugin)
 import TcEvidence          as GHC.Compat (EvTerm)
+import TcHsType            as GHC.Compat (tcInferApps)
 import TcPluginM           as GHC.Compat (TcPluginM, tcLookupTyCon,
                                           tcPluginTrace)
 import TcRnMonad           as GHC.Compat (Ct, TcPluginResult (..), isWanted)
 import TcRnTypes           as GHC.Compat (TcPlugin (..), ctEvPred, ctEvidence)
+import TcType              as GHC.Compat (tcTyFamInsts)
 import TcTypeNats          as GHC.Compat
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 800
 import           GhcPlugins (InScopeSet, Outputable, emptyUFM)
