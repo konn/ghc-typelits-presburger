@@ -1,9 +1,13 @@
+{-# OPTIONS_GHC -fplugin GHC.TypeLits.Presburger #-}
 {-# LANGUAGE DataKinds, TypeOperators, GADTs, TypeFamilies, ExplicitForAll, FlexibleContexts #-}
-{-# LANGUAGE ScopedTypeVariables, CPP #-}
+{-# LANGUAGE ScopedTypeVariables, CPP, PolyKinds, TypeInType #-}
 #if !MIN_VERSION_singletons(2,4,1)
 {-# LANGUAGE KindSignatures #-}
 #endif
-{-# OPTIONS_GHC -fplugin GHC.TypeLits.Presburger #-}
+#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 806
+{-# LANGUAGE NoStarIsType #-}
+#endif
+
 module Main where
 import Data.Type.Equality
 import GHC.TypeLits       (Nat, type (<=?), CmpNat)
@@ -28,14 +32,17 @@ type n <=! m = IsTrue (n <=? m)
 infix 4 <=!
 
 natLen :: (Length xs <= Length ys) ~ 'True
-       => proxy xs -> proxy ys -> Length ys - Length xs + Length xs :~: Length ys
+       => proxy xs -> proxy ys -> (Length ys - Length xs) + Length xs :~: Length ys
 natLen _ _ = Refl
 
-natLeqZero' :: ((n <= 0) ~ 'True) => proxy n -> n :~: 0
-natLeqZero' _ = Refl
+-- natLeqZero' :: ((n <= 0) ~ 'True) => proxy n -> n :~: 0
+-- natLeqZero' _ = Refl
 
 plusLeq :: (n <= m) ~ 'True => proxy (n :: Nat) -> proxy m -> ((m - n) + n :~: m)
 plusLeq _ _ = Refl
+
+minusLeq :: (n <= m) ~ 'True => proxy (n :: Nat) -> proxy m -> IsTrue ((m - n) + n <= m)
+minusLeq _ _ = Witness
 
 (%:<=?) :: Sing n -> Sing m -> Sing (n <=? m)
 n %:<=? m = case sCompare n m of
@@ -75,3 +82,6 @@ succCompare _ _ = Refl
 
 eqToRefl :: Sing (n :: Nat) -> Sing (m :: Nat) -> CmpNat n m :~: 'EQ -> n :~: m
 eqToRefl _n _m Refl = Refl
+
+leqEquiv :: (n <= m) ~ 'True => Sing n -> Sing m -> IsTrue (n <=? m)
+leqEquiv _ _ = Witness
