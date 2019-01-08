@@ -1,0 +1,58 @@
+name: ghc-typelits-presburger
+version: '0.2.0.5'
+synopsis: Presburger Arithmetic Solver for GHC Type-level natural numbers.
+description: ! '@ghc-typelits-presburger@ augments GHC type-system with Presburger
+  Arithmetic Solver for Type-level natural numbers.
+
+  You can use by adding this package to @build-depends@ and add the following pragma
+  to the head of .hs files:
+
+
+  > OPTIONS_GHC -fplugin GHC.TypeLits.Presburger'
+category: Math, Type System
+author: Hiromi ISHII
+maintainer: konn.jinro _at_ gmail.com
+copyright: 2015 (c) Hiromi ISHII
+license: BSD3
+github: konn/ghc-typelits-presburger
+tested-with: GHC==8.0.2 GHC==8.2.2 GHC==8.4.3 GHC==8.6.3
+ghc-options:
+- -Wall
+- -Wno-dodgy-imports
+dependencies:
+- singletons
+library:
+  source-dirs:
+  - src
+  - presburger/src
+  exposed-modules:
+  - GHC.TypeLits.Presburger
+  dependencies:
+  - base >=4.7 && <5
+  - ghc >=7.10 && <8.7
+  - ghc-tcplugins-extra >=0.2 && <0.4
+  - equational-reasoning >=0.4.0.0
+  - transformers
+  - mtl
+  - containers
+  - pretty
+  - syb
+  - reflection
+executables:
+  simple-arith:
+    main: simple-arith.hs
+    source-dirs: examples
+    ghc-options:
+    - -Wno-unused-imports
+    dependencies:
+    - base
+    - ghc-typelits-presburger
+    - equational-reasoning
+    when:
+    - condition: ! '!(flag(examples))'
+      buildable: false
+flags:
+  examples:
+    description: null
+    manual: false
+    default: false
