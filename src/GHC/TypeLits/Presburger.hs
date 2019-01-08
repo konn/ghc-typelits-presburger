@@ -121,8 +121,10 @@ handleSubtraction p0 =
         tell $ Set.fromList [pos :>= K 0]
       return pos
 
-    loopExp e@(Negate _) = withPositive e
-    loopExp e@(_ :- _)   = withPositive e
+    loopExp e@(Negate _) = withPositive . Negate =<< loopExp e
+    loopExp (l :- r)   = do
+      e <- (:-) <$> loopExp l <*> loopExp r
+      withPositive e
     loopExp (l :+ r)     = (:+) <$> loopExp l <*> loopExp r
     loopExp v@Var {}     = return v
     loopExp (c :* e)

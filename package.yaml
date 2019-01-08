@@ -53,6 +53,6 @@ executables:
       buildable: false
 flags:
   examples:
-    description: null
+    description: Builds example
     manual: false
     default: false
