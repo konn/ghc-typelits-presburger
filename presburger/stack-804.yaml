@@ -1,0 +1,9 @@
+resolver: lts-12.2
+skip-ghc-check: true
+
+flags: {}
+packages:
+- '.'
+
+extra-deps:
+- equational-reasoning-0.5.1.0

@@ -1,0 +1,10 @@
+resolver: lts-9.5
+packages:
+- '.'
+
+extra-deps:
+- equational-reasoning-0.5.1.0
+
+flags: {}
+
+pvp-bounds: both
