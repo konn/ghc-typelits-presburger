@@ -44,6 +44,9 @@ import           TysWiredIn                     (promotedEQDataCon,
                                                  promotedGTDataCon,
                                                  promotedLTDataCon)
 import           Var
+#if MIN_VERSION_ghc(8,6,0)
+import Plugins (purePlugin)
+#endif
 
 assert' :: Prop -> PropSet -> PropSet
 assert' p ps = foldr assert ps (p : varPos)
@@ -80,14 +83,27 @@ varsExpr (If p e v) = nub $ varsProp p ++ varsExpr e ++ varsExpr v
 varsExpr (Div e _)  = varsExpr e
 varsExpr (Mod e _)  = varsExpr e
 
-plugin :: Plugin
-plugin = defaultPlugin { tcPlugin = const $ Just presburgerPlugin }
+data PluginMode = DisallowNegatives
+                | AllowNegatives
+                deriving (Read, Show, Eq, Ord)
 
-presburgerPlugin :: TcPlugin
-presburgerPlugin =
+plugin :: Plugin
+plugin = defaultPlugin
+    { tcPlugin = Just . presburgerPlugin . procOpts
+#if MIN_VERSION_ghc(8,6,0)
+    , pluginRecompile = purePlugin
+#endif
+    }
+  where
+    procOpts opts
+      | "allow-negated-numbers" `elem` opts = AllowNegatives
+      | otherwise = DisallowNegatives
+
+presburgerPlugin :: PluginMode -> TcPlugin
+presburgerPlugin mode =
   tracePlugin "typelits-presburger"
   TcPlugin { tcPluginInit  = return () -- tcPluginIO $ newIORef emptyTvSubst
-           , tcPluginSolve = decidePresburger
+           , tcPluginSolve = decidePresburger mode
            , tcPluginStop  = const $ return ()
            }
 
@@ -96,8 +112,9 @@ testIf ps q = maybe Proved Disproved $ checkSat (Not q `assert'` ps)
 
 -- Replaces every subtraction with new constant,
 -- adding order constraint.
-handleSubtraction :: Prop -> Prop
-handleSubtraction p0 =
+handleSubtraction :: PluginMode -> Prop -> Prop
+handleSubtraction AllowNegatives p = p
+handleSubtraction DisallowNegatives p0 =
   let (p, _, w) = runRWS (loop p0) () Set.empty
   in foldr (:&&) p w
   where
@@ -151,8 +168,8 @@ eqWitnessTyCon = eqWitCon_ given
 isTrueTyCon :: Given MyEnv => TyCon
 isTrueTyCon = isTrueCon_ given
 
-decidePresburger :: PresState -> [Ct] -> [Ct] -> [Ct] -> TcPluginM TcPluginResult
-decidePresburger _ref gs [] [] = do
+decidePresburger :: PluginMode -> PresState -> [Ct] -> [Ct] -> [Ct] -> TcPluginM TcPluginResult
+decidePresburger _ _ref gs [] [] = do
   tcPluginTrace "Started givens with: " (ppr $ map (ctEvPred . ctEvidence) gs)
   withTyCons $ do
     let subst = emptyTvSubst
@@ -169,7 +186,7 @@ decidePresburger _ref gs [] [] = do
       go (ct, p) (ss, prem)
         | Proved <- testIf prem p = (ct : ss, prem)
         | otherwise = (ss, assert' p prem)
-decidePresburger _ref gs ds ws = withTyCons $ do
+decidePresburger mode _ref gs ds ws = withTyCons $ do
   tcPluginTrace "Env" $ ppr (emptyTyCon, eqTyCon, eqWitnessTyCon, isTrueTyCon)
   let subst = foldr (unionTvSubst . genSubst) emptyTvSubst (gs ++ ds)
   tcPluginTrace "Current subst" (ppr subst)
@@ -184,7 +201,7 @@ decidePresburger _ref gs ds ws = withTyCons $ do
     resls <- mapM (runMachine . toPresburgerPred subst . substTy subst . deconsPred)
                      (gs ++ ds)
     let prems = foldr assert' noProps $ catMaybes resls
-    return (prems, map (second handleSubtraction) wants, catMaybes resls)
+    return (prems, map (second $ handleSubtraction mode) wants, catMaybes resls)
   let solved = map fst $ filter (isProved . testIf prems . snd) wants
       coerced = [(evByFiat "ghc-typelits-presburger" t1 t2, ct)
                 | ct <- solved
