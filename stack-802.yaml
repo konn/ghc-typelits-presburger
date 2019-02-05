@@ -4,5 +4,5 @@ skip-ghc-check: true
 packages:
 - '.'
 extra-deps:
-- equational-reasoning-0.5.1.0
+- equational-reasoning-0.6.0.0
 flags: {}

@@ -29,7 +29,7 @@ library:
   dependencies:
   - base >=4.7 && <5
   - containers
-  - equational-reasoning >=0.4.0.0
+  - equational-reasoning >=0.6.0.0
   - ghc >=7.10 && <8.7
   - ghc-tcplugins-extra >=0.2 && <0.4
   - mtl
