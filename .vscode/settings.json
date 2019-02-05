@@ -1,0 +1,3 @@
+{
+  "spellright.ignoreFiles": ["**/.gitignore", "**/.spellignore", "**/*.dump*"]
+}

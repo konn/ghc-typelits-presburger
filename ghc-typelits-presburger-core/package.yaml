@@ -1,8 +1,10 @@
-name: ghc-typelits-presburger
-version: '0.2.0.5'
+name: ghc-typelits-presburger-core
+version: '0.3.0.0'
 synopsis: Presburger Arithmetic Solver for GHC Type-level natural numbers.
 description: ! '@ghc-typelits-presburger@ augments GHC type-system with Presburger
   Arithmetic Solver for Type-level natural numbers.
+  This plugin only work with GHC builtin operations.
+  To work with those of @singletons@ package, use @ghc-typelits-meta@ and/or @ghc-typelits-presburger@ instead.
 
   You can use by adding this package to @build-depends@ and add the following pragma
   to the head of .hs files:
@@ -19,34 +21,35 @@ tested-with: GHC==8.0.2 GHC==8.2.2 GHC==8.4.3 GHC==8.6.3
 ghc-options:
 - -Wall
 - -Wno-dodgy-imports
-dependencies:
-- singletons
 library:
   source-dirs:
   - src
-  - presburger/src
   exposed-modules:
-  - GHC.TypeLits.Presburger
+  - GHC.TypeLits.Presburger.Core
   dependencies:
   - base >=4.7 && <5
+  - bifunctors
+  - bound
+  - containers
+  - dlist
+  - equational-reasoning >=0.4.0.0
+  - generic-unification
   - ghc >=7.10 && <8.7
   - ghc-tcplugins-extra >=0.2 && <0.4
-  - equational-reasoning >=0.4.0.0
-  - transformers
   - mtl
-  - containers
   - pretty
-  - syb
   - reflection
+  - syb
+  - transformers
 executables:
-  simple-arith:
-    main: simple-arith.hs
+  simple-arith-core:
+    main: simple-arith-core.hs
     source-dirs: examples
     ghc-options:
     - -Wno-unused-imports
     dependencies:
     - base
-    - ghc-typelits-presburger
+    - ghc-typelits-presburger-core
     - equational-reasoning
     when:
     - condition: ! '!(flag(examples))'
