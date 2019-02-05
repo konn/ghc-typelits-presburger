@@ -28,12 +28,8 @@ library:
   - GHC.TypeLits.Presburger.Core
   dependencies:
   - base >=4.7 && <5
-  - bifunctors
-  - bound
   - containers
-  - dlist
   - equational-reasoning >=0.4.0.0
-  - generic-unification
   - ghc >=7.10 && <8.7
   - ghc-tcplugins-extra >=0.2 && <0.4
   - mtl
