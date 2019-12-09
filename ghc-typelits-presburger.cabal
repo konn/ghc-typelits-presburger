@@ -30,10 +30,10 @@ library
   other-modules:       GHC.Compat
                        Data.Integer.SAT
   build-depends:       base                 >= 4.7  && < 5
-                     , ghc                  >= 7.10 && < 8.5
+                     , ghc                  >= 7.10 && < 8.7
                      , ghc-tcplugins-extra  >= 0.2  && < 0.4
                      , equational-reasoning >= 0.4.0.0
-                     , singletons
+                     , singletons           < 2.6
                      , transformers
                      , mtl
                      , containers
