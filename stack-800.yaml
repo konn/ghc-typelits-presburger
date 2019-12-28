@@ -3,6 +3,8 @@ packages:
 - '.'
 
 extra-deps:
+- git: https://github.com/konn/presburger
+  commit: e8fac46c74fff9dc7eae56b960c968ccf7cf0e33
 - equational-reasoning-0.5.1.0
 
 flags: {}

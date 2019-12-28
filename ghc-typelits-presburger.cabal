@@ -25,10 +25,8 @@ flag examples
 library
   ghc-options:         -Wall -Wno-dodgy-imports
   hs-source-dirs:      src
-                     , presburger/src
   exposed-modules:     GHC.TypeLits.Presburger
   other-modules:       GHC.Compat
-                       Data.Integer.SAT
   build-depends:       base                 >= 4.7  && < 5
                      , ghc                  >= 7.10 && < 8.7
                      , ghc-tcplugins-extra  >= 0.2  && < 0.4
@@ -40,6 +38,7 @@ library
                      , pretty
                      , syb
                      , reflection
+                     , presburger
   default-language:    Haskell2010
 
 executable simple-arith
