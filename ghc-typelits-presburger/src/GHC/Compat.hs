@@ -174,6 +174,6 @@ mkSubstitution =
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ < 804
 genSubst :: Ct -> TvSubst
 genSubst ct = case classifyPredType (deconsPred ct) of
-  EqPred NomEq t u -> fromMaybe emptyTvSubst $ tcUnifyTy t u
+  EqPred NomEq t u -> fromMaybe emptyTvSubst $ GHC.Compat.tcUnifyTy t u
   _                -> emptyTvSubst
 #endif
