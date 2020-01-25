@@ -33,7 +33,6 @@ library:
   - containers
   - dlist
   - equational-reasoning >=0.4.0.0
-  - generic-unification
   - ghc >=7.10 && <8.7
   - ghc-tcplugins-extra >=0.2 && <0.4
   - mtl

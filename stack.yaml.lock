@@ -11,20 +11,6 @@ packages:
       sha256: 841d2c161ea2a9f587a5784fa01092eb9e7b5c2cfa5f3c6de59cab9221b47ae2
   original:
     hackage: equational-reasoning-0.6.0.0
-- completed:
-    cabal-file:
-      size: 1844
-      sha256: 657b1f160f89b55e6d455eb797ccc2845a9020031cd0eac5b209c21532f59613
-    name: generic-unification
-    version: 0.1.0.0
-    git: https://github.com/konn/generic-unification.git
-    pantry-tree:
-      size: 615
-      sha256: 2abf2ce814c0e44a958075ceaf8831da2365293e722edb55637c9ed0bca790d2
-    commit: dd26f7a16da20ca3e46e7c046c559b620d64a91c
-  original:
-    git: https://github.com/konn/generic-unification.git
-    commit: dd26f7a16da20ca3e46e7c046c559b620d64a91c
 snapshots:
 - completed:
     size: 524162
