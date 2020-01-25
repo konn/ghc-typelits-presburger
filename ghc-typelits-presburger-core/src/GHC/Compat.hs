@@ -91,7 +91,12 @@ tcUnifyTy :: Type -> Type -> Maybe TvSubst
 tcUnifyTy t1 t2 = fromTCv <$> Old.tcUnifyTy t1 t2
 
 getEqTyCon :: TcPluginM TyCon
-getEqTyCon = tcLookupTyCon Old.eqTyConName
+getEqTyCon = tcLookupTyCon $
+#if MIN_VERSION_ghc(8,8,1)
+  Old.tcQual Old.dATA_TYPE_EQUALITY (fsLit "~") Old.eqTyConKey
+#else
+  Old.eqTyConName
+#endif
 
 #else
 eqType :: Type -> Type -> Bool
