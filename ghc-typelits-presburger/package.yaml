@@ -39,6 +39,7 @@ library:
   - reflection
   - syb
   - transformers
+  - bound
 executables:
   simple-arith:
     main: simple-arith.hs
