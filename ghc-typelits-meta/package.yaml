@@ -1,0 +1,51 @@
+name:                ghc-typelits-meta
+version:             0.1.0.0
+github:              "konn/ghc-typelits-meta"
+license:             BSD3
+author:              "Hiromi ISHII"
+maintainer:          "konn.jinro _at_ gmail.com"
+copyright:           "2019 (c) Hiromi ISHII"
+
+extra-source-files:
+- README.md
+- ChangeLog.md
+
+# Metadata used when publishing your package
+# synopsis:            Short description of your package
+category:            Math, Type System, Singletons
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitHub at <https://github.com/konn/ghc-typelits-meta#readme>
+
+tested-with: GHC==8.0.2 GHC==8.2.2 GHC==8.4.3 GHC==8.6.3
+
+dependencies:
+- base >= 4.7 && < 5
+- singletons
+
+library:
+  source-dirs: src
+
+executables:
+  ghc-typelits-meta-exe:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - ghc-typelits-meta
+
+tests:
+  ghc-typelits-meta-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - ghc-typelits-meta

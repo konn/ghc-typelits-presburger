@@ -4,6 +4,7 @@ skip-ghc-check: true
 packages:
 - 'ghc-typelits-presburger-core'
 - 'ghc-typelits-presburger'
+- 'ghc-typelits-meta'
 
 extra-deps:
 - equational-reasoning-0.6.0.0
