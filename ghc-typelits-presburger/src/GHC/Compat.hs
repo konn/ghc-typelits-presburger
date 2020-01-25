@@ -30,6 +30,7 @@ import TyCon               as GHC.Compat
 import TcType (TcTyVar, TcType)
 #else
 import TcRnTypes (cc_ev, ctev_pred)
+import Data.Maybe
 import TcPluginM (zonkCt)
 #endif
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 800
@@ -173,7 +174,7 @@ mkSubstitution =
 
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ < 804
 genSubst :: Ct -> TvSubst
-genSubst ct = case classifyPredType (deconsPred ct) of
+genSubst ct = case classifyPredType (ctEvPred . ctEvidence $ ct) of
   EqPred NomEq t u -> fromMaybe emptyTvSubst $ GHC.Compat.tcUnifyTy t u
   _                -> emptyTvSubst
 #endif
