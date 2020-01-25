@@ -16,6 +16,18 @@ import GHC.TypeLits                 (type (<=?), CmpNat, Nat)
 import Proof.Propositional          (Empty (..), withEmpty)
 import Proof.Propositional          (IsTrue (Witness))
 
+#if !MIN_VERSION_singletons(2,4,0)
+import Data.Promotion.Prelude.Num
+
+type l <= m = l :<= m
+type l *  m = l :* m
+type l +  m = l :+ m
+type l -  m = l :- m
+infix 4 <=
+infixl 6 +, -
+infixl 7 *
+#endif
+
 type n <=! m = IsTrue (n <=? m)
 infix 4 <=!
 
