@@ -269,11 +269,6 @@ getCaseNameForSingletonOp con = do
 (<=>) :: Prop -> Prop -> Prop
 p <=> q =  (p :&& q) :|| (Not p :&& Not q)
 
-genSubst :: Ct -> TvSubst
-genSubst ct = case classifyPredType (deconsPred ct) of
-  EqPred NomEq t u -> fromMaybe emptyTvSubst $ tcUnifyTy t u
-  _                -> emptyTvSubst
-
 withEv :: Ct -> (EvTerm, Ct)
 withEv ct
   | EqPred _ t1 t2 <- classifyPredType (deconsPred ct) =
