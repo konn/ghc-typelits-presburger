@@ -16,7 +16,7 @@ import GHC.TypeLits
 import Proof.Propositional (Empty (..), withEmpty)
 import Proof.Propositional (IsTrue (Witness))
 
-#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 806
+#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 804
 type n :* m = n * m
 infixl 7 :*
 #endif
