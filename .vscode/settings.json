@@ -1,3 +1,10 @@
 {
-  "spellright.ignoreFiles": ["**/.gitignore", "**/.spellignore", "**/*.dump*"]
+  "spellright.ignoreFiles": [
+    "**/.gitignore",
+    "**/.spellignore",
+    "**/*.dump*"
+  ],
+  "files.exclude": {
+    "**/.stack-work": true
+  }
 }

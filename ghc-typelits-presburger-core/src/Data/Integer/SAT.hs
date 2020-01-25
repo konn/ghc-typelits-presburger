@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, PatternGuards, Safe #-}
+{-# LANGUAGE BangPatterns, CPP, PatternGuards, Safe #-}
 {-|
 This module implements a decision procedure for quantifier-free linear
 arithmetic.  The algorithm is based on the following paper:
@@ -703,7 +703,9 @@ toList a = go a []
 
 instance Monad Answer where
   return a           = One a
+#if !MIN_VERSION_ghc(8,8,1)
   fail _             = None
+#endif
   None >>= _         = None
   One a >>= k        = k a
   Choice m1 m2 >>= k = mplus (m1 >>= k) (m2 >>= k)

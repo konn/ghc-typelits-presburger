@@ -1,9 +1,10 @@
-{-# LANGUAGE DataKinds, ExplicitForAll, FlexibleContexts, GADTs, PolyKinds #-}
-{-# LANGUAGE ScopedTypeVariables, TypeFamilies, TypeInType, TypeOperators  #-}
+{-# LANGUAGE CPP, DataKinds, FlexibleContexts, GADTs, PolyKinds           #-}
+{-# LANGUAGE ScopedTypeVariables, TypeFamilies, TypeInType, TypeOperators #-}
 {-# OPTIONS_GHC -fplugin GHC.TypeLits.Presburger #-}
 {-# OPTIONS_GHC -dcore-lint #-}
-{-# OPTIONS_GHC -ddump-tc-trace -ddump-to-file -fforce-recomp #-}
+#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 806
 {-# LANGUAGE NoStarIsType #-}
+#endif
 
 module Main where
 import Data.Singletons.Decide
@@ -15,26 +16,38 @@ import GHC.TypeLits                 (type (<=?), CmpNat, Nat)
 import Proof.Propositional          (Empty (..), withEmpty)
 import Proof.Propositional          (IsTrue (Witness))
 
+#if !MIN_VERSION_singletons(2,4,0)
+import Data.Promotion.Prelude.Num
+
+type l <= m = l :<= m
+type l *  m = l :* m
+type l +  m = l :+ m
+type l -  m = l :- m
+infix 4 <=
+infixl 6 +, -
+infixl 7 *
+#endif
+
 type n <=! m = IsTrue (n <=? m)
 infix 4 <=!
 
--- natLen :: (Length xs <= Length ys) ~ 'True
---        => proxy xs -> proxy ys -> (Length ys - Length xs) + Length xs :~: Length ys
--- natLen _ _ = Refl
+natLen :: (Length xs <= Length ys) ~ 'True
+       => proxy xs -> proxy ys -> (Length ys - Length xs) + Length xs :~: Length ys
+natLen _ _ = Refl
 
 
 -- The following three cases fails >= GHC 8.6.
-{-
+
 natLeqZero' :: ((n <= 0) ~ 'True) => proxy n -> n :~: 0
 natLeqZero' _ = Refl
 
 leqSucc :: proxy n -> proxy m -> IsTrue ((n + 1) <= m) -> CmpNat n m :~: 'LT
 leqSucc _ _ Witness = Refl
--}
+
 leqEquiv :: (n <= m) ~ 'True => Sing n -> Sing m -> IsTrue (n <=? m)
 leqEquiv _ _ = Witness
 
-{- data NatView (n :: Nat) where
+data NatView (n :: Nat) where
   IsZero :: NatView 0
   IsSucc :: Sing n -> NatView (n + 1)
 
@@ -43,9 +56,7 @@ viewNat sn =
   case sn %~ (sing :: Sing 0) of
     Proved Refl    -> IsZero
     Disproved _emp -> withEmpty _emp $ IsSucc $ sPred sn
- -}
 
-{-
 plusLeq :: (n <= m) ~ 'True => proxy (n :: Nat) -> proxy m -> ((m - n) + n :~: m)
 plusLeq _ _ = Refl
 
@@ -85,6 +96,5 @@ succCompare _ _ = Refl
 eqToRefl :: Sing (n :: Nat) -> Sing (m :: Nat) -> CmpNat n m :~: 'EQ -> n :~: m
 eqToRefl _n _m Refl = Refl
 
- -}
 main :: IO ()
 main = putStrLn "finished"

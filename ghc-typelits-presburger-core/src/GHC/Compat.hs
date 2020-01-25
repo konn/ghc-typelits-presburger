@@ -49,6 +49,10 @@ import TcPluginM           (lookupOrig)
 import TyCoRep             ()
 import Type                as GHC.Compat (splitTyConApp_maybe)
 import Unique              as GHC.Compat (getKey, getUnique)
+#if MIN_VERSION_ghc(8,8,1)
+import qualified TysWiredIn
+#endif
+
 
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 800
 data TvSubst = TvSubst InScopeSet TvSubstEnv
@@ -91,7 +95,12 @@ tcUnifyTy :: Type -> Type -> Maybe TvSubst
 tcUnifyTy t1 t2 = fromTCv <$> Old.tcUnifyTy t1 t2
 
 getEqTyCon :: TcPluginM TyCon
-getEqTyCon = tcLookupTyCon Old.eqTyConName
+getEqTyCon =
+#if MIN_VERSION_ghc(8,8,1)
+  return TysWiredIn.eqTyCon
+#else
+  tcLookupTyCon Old.eqTyConName
+#endif
 
 #else
 eqType :: Type -> Type -> Bool

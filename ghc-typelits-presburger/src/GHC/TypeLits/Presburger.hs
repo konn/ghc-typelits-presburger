@@ -1,7 +1,6 @@
 {-# LANGUAGE CPP, DataKinds, FlexibleContexts, FlexibleInstances      #-}
 {-# LANGUAGE LambdaCase, MultiWayIf, OverloadedStrings, PatternGuards #-}
 {-# LANGUAGE RankNTypes, RecordWildCards, TypeOperators               #-}
-{-# LANGUAGE TypeSynonymInstances                                     #-}
 {-# OPTIONS_GHC -Wno-unused-imports #-}
 module GHC.TypeLits.Presburger (plugin) where
 import GHC.Compat
@@ -269,11 +268,6 @@ getCaseNameForSingletonOp con = do
 
 (<=>) :: Prop -> Prop -> Prop
 p <=> q =  (p :&& q) :|| (Not p :&& Not q)
-
-genSubst :: Ct -> TvSubst
-genSubst ct = case classifyPredType (deconsPred ct) of
-  EqPred NomEq t u -> fromMaybe emptyTvSubst $ tcUnifyTy t u
-  _                -> emptyTvSubst
 
 withEv :: Ct -> (EvTerm, Ct)
 withEv ct

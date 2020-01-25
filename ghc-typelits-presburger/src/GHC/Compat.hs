@@ -28,6 +28,10 @@ import TcTypeNats          as GHC.Compat
 import TyCon               as GHC.Compat
 #if MIN_VERSION_ghc(8,4,1)
 import TcType (TcTyVar, TcType)
+#else
+import TcRnTypes (cc_ev, ctev_pred)
+import Data.Maybe
+import TcPluginM (zonkCt)
 #endif
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 800
 import           GhcPlugins (InScopeSet, Outputable, emptyUFM)
@@ -55,7 +59,9 @@ import Unique              as GHC.Compat (getKey, getUnique)
 #if MIN_VERSION_ghc(8,4,1)
 import qualified GHC.TcPluginM.Extra as Extra
 #endif
-
+#if MIN_VERSION_ghc(8,8,1)
+import qualified TysWiredIn
+#endif
 
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 800
 data TvSubst = TvSubst InScopeSet TvSubstEnv
@@ -98,7 +104,12 @@ tcUnifyTy :: Type -> Type -> Maybe TvSubst
 tcUnifyTy t1 t2 = fromTCv <$> Old.tcUnifyTy t1 t2
 
 getEqTyCon :: TcPluginM TyCon
-getEqTyCon = tcLookupTyCon Old.eqTyConName
+getEqTyCon =
+#if MIN_VERSION_ghc(8,8,1)
+  return TysWiredIn.eqTyCon
+#else
+  tcLookupTyCon Old.eqTyConName
+#endif
 
 #else
 eqType :: Type -> Type -> Bool
@@ -129,11 +140,11 @@ instance Ord TypeEq where
 
 normaliseGivens
   :: [Ct] -> TcPluginM [Ct]
-normaliseGivens gs =
+normaliseGivens =
 #if MIN_VERSION_ghc(8,4,1)
-  return $ gs ++ Extra.flattenGivens gs
+  fmap return . (++) <$> id <*> Extra.flattenGivens
 #else
-  mapM zonkCt givens
+  mapM zonkCt 
 #endif
 
 #if MIN_VERSION_ghc(8,4,1)
@@ -166,4 +177,11 @@ mkSubstitution =
   fst . unzip . Extra.mkSubst'
 #else
   foldr (unionTvSubst . genSubst) emptyTvSubst
+#endif
+
+#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ < 804
+genSubst :: Ct -> TvSubst
+genSubst ct = case classifyPredType (ctEvPred . ctEvidence $ ct) of
+  EqPred NomEq t u -> fromMaybe emptyTvSubst $ GHC.Compat.tcUnifyTy t u
+  _                -> emptyTvSubst
 #endif

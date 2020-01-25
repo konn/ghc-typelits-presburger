@@ -1,8 +1,12 @@
-{-# LANGUAGE DataKinds, EmptyCase, ExplicitForAll, FlexibleContexts, GADTs #-}
-{-# LANGUAGE LambdaCase, NoStarIsType, PolyKinds, ScopedTypeVariables      #-}
-{-# LANGUAGE TypeFamilies, TypeInType, TypeOperators, UndecidableInstances #-}
+{-# LANGUAGE CPP, DataKinds, EmptyCase, FlexibleContexts, GADTs, LambdaCase #-}
+{-# LANGUAGE PolyKinds, ScopedTypeVariables, TypeFamilies, TypeInType       #-}
+{-# LANGUAGE TypeOperators, UndecidableInstances                            #-}
 {-# OPTIONS_GHC -dcore-lint #-}
 {-# OPTIONS_GHC -fplugin GHC.TypeLits.Presburger.Core #-}
+
+#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 806
+{-# LANGUAGE NoStarIsType #-}
+#endif
 
 module Main where
 import Data.Proxy
@@ -41,8 +45,10 @@ minusLeq _ _ = Witness
 absurdTrueFalse :: ('True :~: 'False) -> a
 absurdTrueFalse = \case {}
 
+#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ > 802
 hoge :: proxy n -> IsTrue (n + 1 <=? n) -> a
 hoge _ Witness = absurdTrueFalse Refl
+#endif
 
 bar :: ((2 * (n + 1)) ~ ((2 * n) + 2)) => proxy n -> ()
 bar _ = ()
