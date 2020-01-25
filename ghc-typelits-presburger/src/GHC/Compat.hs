@@ -28,6 +28,8 @@ import TcTypeNats          as GHC.Compat
 import TyCon               as GHC.Compat
 #if MIN_VERSION_ghc(8,4,1)
 import TcType (TcTyVar, TcType)
+#else
+import TcRnTypes (cc_ev, ctev_pred)
 #endif
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 800
 import           GhcPlugins (InScopeSet, Outputable, emptyUFM)
