@@ -16,11 +16,6 @@ import GHC.TypeLits                 (type (<=?), CmpNat, Nat)
 import Proof.Propositional          (Empty (..), withEmpty)
 import Proof.Propositional          (IsTrue (Witness))
 
-#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 806
-type n :* m = n * m
-infixl 7 :*
-#endif
-
 type n <=! m = IsTrue (n <=? m)
 infix 4 <=!
 
@@ -68,7 +63,7 @@ hoge _ = ()
 hoge' :: (((n + 1) <= n) ~ 'False) => proxy n -> ()
 hoge' _ = ()
 
-bar :: ((2 :* (n + 1)) ~ ((2 :* n) + 2)) => proxy n -> ()
+bar :: ((2 * (n + 1)) ~ ((2 * n) + 2)) => proxy n -> ()
 bar _ = ()
 
 trans :: proxy n -> proxy m -> n <=! m -> (n + 1) <=! (m + 1)
@@ -77,7 +72,7 @@ trans _ _  Witness = Witness
 eqv :: proxy n -> proxy m -> (n <=? m) :~: ((n + 1) <=? (m + 1))
 eqv _ _ = Refl
 
-predSucc :: forall proxy n. Empty (n <=! 0) => proxy n -> IsTrue (n + 1 <=? 2 :* n)
+predSucc :: forall proxy n. Empty (n <=! 0) => proxy n -> IsTrue (n + 1 <=? 2 * n)
 predSucc _ = Witness
 
 succLEqLTSucc :: Sing m -> Compare 0 (m + 1) :~: 'LT
