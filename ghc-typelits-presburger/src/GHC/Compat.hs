@@ -170,3 +170,10 @@ mkSubstitution =
 #else
   foldr (unionTvSubst . genSubst) emptyTvSubst
 #endif
+
+#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ < 804
+genSubst :: Ct -> TvSubst
+genSubst ct = case classifyPredType (deconsPred ct) of
+  EqPred NomEq t u -> fromMaybe emptyTvSubst $ tcUnifyTy t u
+  _                -> emptyTvSubst
+#endif
