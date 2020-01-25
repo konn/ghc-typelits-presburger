@@ -30,6 +30,7 @@ import TyCon               as GHC.Compat
 import TcType (TcTyVar, TcType)
 #else
 import TcRnTypes (cc_ev, ctev_pred)
+import TcPluginM (zonkCt)
 #endif
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 800
 import           GhcPlugins (InScopeSet, Outputable, emptyUFM)
@@ -131,11 +132,11 @@ instance Ord TypeEq where
 
 normaliseGivens
   :: [Ct] -> TcPluginM [Ct]
-normaliseGivens gs =
+normaliseGivens =
 #if MIN_VERSION_ghc(8,4,1)
-  return $ gs ++ Extra.flattenGivens gs
+  fmap return . (++) <$> id <*> Extra.flattenGivens
 #else
-  mapM zonkCt givens
+  mapM zonkCt 
 #endif
 
 #if MIN_VERSION_ghc(8,4,1)
