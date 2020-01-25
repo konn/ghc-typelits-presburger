@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds, EmptyCase, ExplicitForAll, FlexibleContexts, GADTs #-}
 {-# LANGUAGE LambdaCase, NoStarIsType, PolyKinds, ScopedTypeVariables      #-}
 {-# LANGUAGE TypeFamilies, TypeInType, TypeOperators, UndecidableInstances #-}
+{-# OPTIONS_GHC -dcore-lint #-}
 {-# OPTIONS_GHC -fplugin GHC.TypeLits.Presburger.Core #-}
 
 module Main where
