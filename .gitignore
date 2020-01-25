@@ -87,3 +87,4 @@ tramp
 TAGS
 *.cabal
 *.yaml.lock
+stack.yaml.lock
