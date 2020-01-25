@@ -29,6 +29,7 @@ import           Data.Maybe                     (fromMaybe, isNothing, mapMaybe)
 import           Data.Reflection                (Given, give, given)
 import           Data.Semigroup                 (Max (..), Option (..))
 import qualified Data.Set                       as Set
+import qualified GHC.TcPluginM.Extra            as Extra
 import           GHC.TypeLits                   (Nat)
 import           Outputable                     (showSDocUnsafe)
 import           TcPluginM                      (getFamInstEnvs, lookupOrig,
@@ -175,8 +176,7 @@ decidePresburger :: PresState -> [Ct] -> [Ct] -> [Ct] -> TcPluginM TcPluginResul
 decidePresburger _ref gs [] [] = do
   tcPluginTrace "Started givens with: " (ppr $ map (ctEvPred . ctEvidence) gs)
   withTyCons $ do
-    let subst = emptyTvSubst
-                -- foldr unionTvSubst emptyTvSubst $ map genSubst gs
+    let subst = mkSubstitution []
     ngs <- mapM (\a -> runMachine $ (,) a <$> toPresburgerPred subst (deconsPred a)) gs
     let givens = catMaybes ngs
         prems0 = map snd givens
@@ -191,17 +191,22 @@ decidePresburger _ref gs [] [] = do
         | otherwise = (ss, assert' p prem)
 decidePresburger _ref gs ds ws = withTyCons $ do
   tcPluginTrace "Env" $ ppr (emptyTyCon, eqTyCon, eqWitnessTyCon, isTrueTyCon)
-  let subst = foldr (unionTvSubst . genSubst) emptyTvSubst (gs ++ ds)
+  gs' <- normaliseGivens gs
+  let subst = mkSubstitution (gs' ++ ds)
+
   tcPluginTrace "Current subst" (ppr subst)
   tcPluginTrace "wanteds" $ ppr $ map deconsPred ws
-  tcPluginTrace "givens" $ ppr $ map (substTy subst . deconsPred) gs
+  tcPluginTrace "givens" $ ppr $ map (subsType subst . deconsPred) gs
   tcPluginTrace "deriveds" $ ppr $ map deconsPred ds
   (prems, wants, prems0) <- do
     wants <- catMaybes <$>
              mapM
-             (\ct -> runMachine $ (,) ct <$> toPresburgerPred subst (substTy subst $ deconsPred ct))
+             (\ct -> runMachine $ (,) ct <$> toPresburgerPred subst
+                ( subsType subst
+                $ deconsPred $ subsCt subst ct))
              (filter (isWanted . ctEvidence) ws)
-    resls <- mapM (runMachine . toPresburgerPred subst . substTy subst . deconsPred)
+
+    resls <- mapM (runMachine . toPresburgerPred subst . subsType subst . deconsPred)
                      (gs ++ ds)
     let prems = foldr assert' noProps $ catMaybes resls
     return (prems, map (second handleSubtraction) wants, catMaybes resls)
@@ -282,7 +287,7 @@ deconsPred = ctEvPred . ctEvidence
 emptyTyCon :: Given MyEnv => TyCon
 emptyTyCon = emptyClsTyCon given
 
-toPresburgerPred :: Given MyEnv => TvSubst -> Type -> Machine Prop
+toPresburgerPred :: Given MyEnv => Substitution -> Type -> Machine Prop
 toPresburgerPred subst (TyConApp con [t1, t2])
   | con == typeNatLeqTyCon = (:<=) <$> toPresburgerExp subst t1 <*> toPresburgerExp subst t2
 toPresburgerPred subst ty
@@ -309,33 +314,33 @@ toPresburgerPred subst ty
 boolLeqs :: Given MyEnv => [TyCon]
 boolLeqs = [typeNatLeqTyCon, typeLeqBoolTyCon]
 
-toPresburgerPredTree :: Given MyEnv => TvSubst -> PredTree -> Machine Prop
+toPresburgerPredTree :: Given MyEnv => Substitution -> PredTree -> Machine Prop
 toPresburgerPredTree subst (EqPred NomEq p false) -- P ~ 'False <=> Not P ~ 'True
-  | Just promotedFalseDataCon  == tyConAppTyCon_maybe (substTy subst false) =
+  | Just promotedFalseDataCon  == tyConAppTyCon_maybe (subsType subst false) =
     Not <$> toPresburgerPredTree subst (EqPred NomEq p (mkTyConTy promotedTrueDataCon))
 toPresburgerPredTree subst (EqPred NomEq p b)  -- (n :<=? m) ~ 'True
-  | Just promotedTrueDataCon  == tyConAppTyCon_maybe (substTy subst b)
-  , Just (con, [t1, t2]) <- splitTyConApp_maybe (substTy subst p)
+  | Just promotedTrueDataCon  == tyConAppTyCon_maybe (subsType subst b)
+  , Just (con, [t1, t2]) <- splitTyConApp_maybe (subsType subst p)
   , con `elem` boolLeqs = (:<=) <$> toPresburgerExp subst t1  <*> toPresburgerExp subst t2
-  | Just promotedTrueDataCon  == tyConAppTyCon_maybe (substTy subst b) -- Singleton's <=...
+  | Just promotedTrueDataCon  == tyConAppTyCon_maybe (subsType subst b) -- Singleton's <=...
   , Just (con, [_,_,_,_,cmpTy]) <- splitTyConApp_maybe p
   , con == caseNameForSingLeq
   , Just (cmp, [l, r]) <- splitTyConApp_maybe cmpTy
   , cmp `elem` [singCompareCon, typeNatCmpTyCon] =
     (:<=) <$> toPresburgerExp subst l <*> toPresburgerExp subst r
-  | Just promotedTrueDataCon  == tyConAppTyCon_maybe (substTy subst b) -- Singleton's <...
+  | Just promotedTrueDataCon  == tyConAppTyCon_maybe (subsType subst b) -- Singleton's <...
   , Just (con, [_,_,_,_,cmpTy]) <- splitTyConApp_maybe p
   , con == caseNameForSingLt
   , Just (cmp, [l, r]) <- splitTyConApp_maybe cmpTy
   , cmp `elem` [singCompareCon, typeNatCmpTyCon] =
     (:<) <$> toPresburgerExp subst l <*> toPresburgerExp subst r
-  | Just promotedTrueDataCon  == tyConAppTyCon_maybe (substTy subst b) -- Singleton's >=...
+  | Just promotedTrueDataCon  == tyConAppTyCon_maybe (subsType subst b) -- Singleton's >=...
   , Just (con, [_,_,_,_,cmpTy]) <- splitTyConApp_maybe p
   , con == caseNameForSingGeq
   , Just (cmp, [l, r]) <- splitTyConApp_maybe cmpTy
   , cmp `elem` [singCompareCon, typeNatCmpTyCon] =
     (:>=) <$> toPresburgerExp subst l <*> toPresburgerExp subst r
-  | Just promotedTrueDataCon  == tyConAppTyCon_maybe (substTy subst b) -- Singleton's >=...
+  | Just promotedTrueDataCon  == tyConAppTyCon_maybe (subsType subst b) -- Singleton's >=...
   , Just (con, [_,_,_,_,cmpTy]) <- splitTyConApp_maybe p
   , con == caseNameForSingGt
   , Just (cmp, [l, r]) <- splitTyConApp_maybe cmpTy
@@ -351,15 +356,15 @@ toPresburgerPredTree subst (EqPred NomEq n m)  -- (n :: Nat) ~ (m :: Nat)
     (:==) <$> toPresburgerExp subst n
           <*> toPresburgerExp subst m
 toPresburgerPredTree subst (EqPred _ t1 t2) -- CmpNat a b ~ CmpNat c d
-  | Just (con,  [a, b]) <- splitTyConApp_maybe (substTy subst t1)
-  , Just (con', [c, d]) <- splitTyConApp_maybe (substTy subst t2)
+  | Just (con,  [a, b]) <- splitTyConApp_maybe (subsType subst t1)
+  , Just (con', [c, d]) <- splitTyConApp_maybe (subsType subst t2)
   , con `elem` [singCompareCon, typeNatCmpTyCon], con' `elem` [typeNatCmpTyCon, singCompareCon]
   = (<=>) <$> ((:<) <$> toPresburgerExp subst a <*> toPresburgerExp subst b)
           <*> ((:<) <$> toPresburgerExp subst c <*> toPresburgerExp subst d)
 toPresburgerPredTree subst (EqPred NomEq t1 t2) -- CmpNat a b ~ x
-  | Just (con, [a, b]) <- splitTyConApp_maybe (substTy subst t1)
+  | Just (con, [a, b]) <- splitTyConApp_maybe (subsType subst t1)
   , con `elem` [typeNatCmpTyCon, singCompareCon]
-  , Just cmp <- tyConAppTyCon_maybe (substTy subst t2) =
+  , Just cmp <- tyConAppTyCon_maybe (subsType subst t2) =
     let dic = [(promotedLTDataCon, (:<))
               ,(promotedEQDataCon, (:==))
               ,(promotedGTDataCon, (:>))
@@ -368,9 +373,9 @@ toPresburgerPredTree subst (EqPred NomEq t1 t2) -- CmpNat a b ~ x
        <*> toPresburgerExp subst a
        <*> toPresburgerExp subst b
 toPresburgerPredTree subst (EqPred NomEq t1 t2) -- x ~ CmpNat a b
-  | Just (con, [a, b]) <- splitTyConApp_maybe (substTy subst t2)
+  | Just (con, [a, b]) <- splitTyConApp_maybe (subsType subst t2)
   , con `elem` [singCompareCon, typeNatCmpTyCon]
-  , Just cmp <- tyConAppTyCon_maybe (substTy subst t1) =
+  , Just cmp <- tyConAppTyCon_maybe (subsType subst t1) =
     let dic = [(promotedLTDataCon, (:<))
               ,(promotedEQDataCon, (:==))
               ,(promotedGTDataCon, (:>))
@@ -383,8 +388,8 @@ toPresburgerPredTree subst (ClassPred con [t1, t2]) -- (n :: Nat) <= (m :: Nat)
   , typeKind t1 `eqType` typeNatKind = (:<=) <$> toPresburgerExp subst t1 <*> toPresburgerExp subst t2
 toPresburgerPredTree _ _ = mzero
 
-toPresburgerExp :: TvSubst -> Type -> Machine Expr
-toPresburgerExp dic ty = case substTy dic ty of
+toPresburgerExp :: Substitution -> Type -> Machine Expr
+toPresburgerExp dic ty = case subsType dic ty of
   TyVarTy t          -> return $ Var $ toName $ getKey $ getUnique t
   t@(TyConApp tc ts) -> body tc ts <|> Var . toName . getKey . getUnique <$> toVar t
   LitTy (NumTyLit n) -> return (K n)

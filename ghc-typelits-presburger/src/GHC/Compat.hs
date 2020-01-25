@@ -26,6 +26,9 @@ import TcRnTypes           as GHC.Compat (TcPlugin (..), ctEvPred, ctEvidence)
 import TcType              as GHC.Compat (tcTyFamInsts)
 import TcTypeNats          as GHC.Compat
 import TyCon               as GHC.Compat
+#if MIN_VERSION_ghc(8,4,1)
+import TcType (TcTyVar, TcType)
+#endif
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 800
 import           GhcPlugins (InScopeSet, Outputable, emptyUFM)
 import qualified PrelNames  as Old
@@ -49,6 +52,10 @@ import TcPluginM           (lookupOrig)
 import TyCoRep             ()
 import Type                as GHC.Compat (splitTyConApp_maybe)
 import Unique              as GHC.Compat (getKey, getUnique)
+#if MIN_VERSION_ghc(8,4,1)
+import qualified GHC.TcPluginM.Extra as Extra
+#endif
+
 
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 800
 data TvSubst = TvSubst InScopeSet TvSubstEnv
@@ -119,3 +126,44 @@ instance Eq TypeEq where
 
 instance Ord TypeEq where
   compare = gcompare `on` runTypeEq
+
+normaliseGivens
+  :: [Ct] -> TcPluginM [Ct]
+normaliseGivens gs =
+#if MIN_VERSION_ghc(8,4,1)
+  return $ gs ++ Extra.flattenGivens gs
+#else
+  mapM zonkCt givens
+#endif
+
+#if MIN_VERSION_ghc(8,4,1)
+type Substitution = [(TcTyVar, TcType)]
+#else
+type Substitution = TvSubst
+#endif
+
+subsCt :: Substitution -> Ct -> Ct
+subsCt =
+#if MIN_VERSION_ghc(8,4,1)
+  Extra.substCt
+#else
+  \subst ct ->
+  ct { cc_ev = (cc_ev ct) {ctev_pred = substTy subst (ctev_pred (cc_ev ct))}
+     }
+#endif
+
+subsType :: Substitution -> Type -> Type
+subsType =
+#if MIN_VERSION_ghc(8,4,1)
+  Extra.substType
+#else
+  substTy
+#endif
+
+mkSubstitution :: [Ct] -> Substitution
+mkSubstitution =
+#if MIN_VERSION_ghc(8,4,1)
+  fst . unzip . Extra.mkSubst'
+#else
+  foldr (unionTvSubst . genSubst) emptyTvSubst
+#endif

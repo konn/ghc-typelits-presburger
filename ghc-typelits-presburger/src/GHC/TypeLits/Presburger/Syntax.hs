@@ -82,6 +82,3 @@ signConditions p0 =
     loopExp e@EVar{} = assertPositive e
     loopExp (_ :* e) = loopExp e
     loopExp (K _)    = return ()
-
--- reduceProps :: (Variable v) => [SimpleProp u v] -> [SimpleProp u Void]
--- reduceProps = undefined

@@ -24,7 +24,6 @@ dependencies:
 library:
   source-dirs:
   - src
-  - presburger/src
   exposed-modules:
   - GHC.TypeLits.Presburger
   dependencies:
