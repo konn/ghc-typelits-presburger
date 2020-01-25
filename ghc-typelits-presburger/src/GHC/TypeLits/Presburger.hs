@@ -1,7 +1,6 @@
 {-# LANGUAGE CPP, DataKinds, FlexibleContexts, FlexibleInstances      #-}
 {-# LANGUAGE LambdaCase, MultiWayIf, OverloadedStrings, PatternGuards #-}
 {-# LANGUAGE RankNTypes, RecordWildCards, TypeOperators               #-}
-{-# LANGUAGE TypeSynonymInstances                                     #-}
 {-# OPTIONS_GHC -Wno-unused-imports #-}
 module GHC.TypeLits.Presburger (plugin) where
 import GHC.Compat

@@ -2,7 +2,6 @@
 {-# LANGUAGE ScopedTypeVariables, TypeFamilies, TypeInType, TypeOperators  #-}
 {-# OPTIONS_GHC -fplugin GHC.TypeLits.Presburger #-}
 {-# OPTIONS_GHC -dcore-lint #-}
-{-# OPTIONS_GHC -ddump-tc-trace -ddump-to-file -fforce-recomp #-}
 {-# LANGUAGE NoStarIsType #-}
 
 module Main where
