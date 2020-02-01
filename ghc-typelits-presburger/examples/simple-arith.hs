@@ -18,7 +18,7 @@ import Data.Type.Equality
 import GHC.TypeLits                 (type (<=?), CmpNat, Nat)
 import Proof.Propositional          (Empty (..), withEmpty)
 import Proof.Propositional          (IsTrue (Witness))
-{-
+
 #if !MIN_VERSION_singletons(2,4,0)
 import Data.Promotion.Prelude.Num
 
@@ -97,7 +97,7 @@ succCompare _ _ = Refl
 
 eqToRefl :: Sing (n :: Nat) -> Sing (m :: Nat) -> CmpNat n m :~: 'EQ -> n :~: m
 eqToRefl _n _m Refl = Refl
- -}
+
 singletonsOnly [d|
   flipOrdering :: Ordering -> Ordering
   flipOrdering EQ = EQ
