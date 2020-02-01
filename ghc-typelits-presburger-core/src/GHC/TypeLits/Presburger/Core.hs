@@ -1,6 +1,6 @@
-{-# LANGUAGE CPP, DataKinds, FlexibleContexts, FlexibleInstances      #-}
-{-# LANGUAGE LambdaCase, MultiWayIf, OverloadedStrings, PatternGuards #-}
-{-# LANGUAGE RankNTypes, RecordWildCards, TypeOperators               #-}
+{-# LANGUAGE BangPatterns, CPP, DataKinds, FlexibleContexts               #-}
+{-# LANGUAGE FlexibleInstances, LambdaCase, MultiWayIf, OverloadedStrings #-}
+{-# LANGUAGE PatternGuards, RankNTypes, TypeOperators                     #-}
 {-# OPTIONS_GHC -Wno-unused-imports #-}
 module GHC.TypeLits.Presburger.Core
   ( plugin, Translation(..), ParseEnv, Machine
@@ -8,7 +8,7 @@ module GHC.TypeLits.Presburger.Core
 import           Class                          (Class, classTyCon)
 import           Control.Applicative            ((<|>))
 import           Control.Arrow                  (second)
-import           Control.Monad                  (forM_, mzero, unless)
+import           Control.Monad                  (forM_, guard, mzero, unless)
 import           Control.Monad.State.Class
 import           Control.Monad.Trans.Class
 import           Control.Monad.Trans.Maybe      (MaybeT (..))
@@ -33,6 +33,7 @@ import qualified GHC.TcPluginM.Extra            as Extra
 import           GHC.TypeLits                   (Nat)
 import           GHC.TypeLits.Presburger.Compat
 import           Outputable                     (showSDocUnsafe)
+import           PrelNames
 import           TcPluginM                      (getFamInstEnvs, lookupOrig,
                                                  matchFam, newFlexiTyVar,
                                                  newWanted, tcLookupClass,
@@ -155,12 +156,16 @@ data Translation =
   Translation
     { isEmpty     :: [TyCon]
     , isTrue      :: [TyCon]
+    , trueData    :: [TyCon]
+    , falseData   :: [TyCon]
     , voids       :: [TyCon]
     , tyEq        :: [TyCon]
     , tyEqBool    :: [TyCon]
     , tyEqWitness :: [TyCon]
+    , tyNeqBool   :: [TyCon]
     , natPlus     :: [TyCon]
     , natMinus    :: [TyCon]
+    , natExp      :: [TyCon]
     , natTimes    :: [TyCon]
     , natLeq      :: [TyCon]
     , natLeqBool  :: [TyCon]
@@ -187,9 +192,11 @@ instance Semigroup Translation where
       , tyEq = tyEq l <> tyEq r
       , tyEqBool = tyEqBool l <> tyEqBool r
       , tyEqWitness = tyEqWitness l <> tyEqWitness r
+      , tyNeqBool = tyNeqBool l <> tyNeqBool r
       , natPlus = natPlus l <> natPlus r
       , natMinus = natMinus l <> natMinus r
       , natTimes = natTimes l <> natTimes r
+      , natExp = natExp l <> natExp r
       , natLeq = natLeq l <> natLeq r
       , natGeq = natGeq l <> natGeq r
       , natLt = natLt l <> natLt r
@@ -202,6 +209,8 @@ instance Semigroup Translation where
       , orderingGT = orderingGT l <> orderingGT r
       , orderingEQ = orderingEQ l <> orderingEQ r
       , natCompare = natCompare l <> natCompare r
+      , trueData = trueData l <> trueData r
+      , falseData = falseData l <> falseData r
       , parsePred = \f ty -> parsePred l f ty <|> parsePred r f ty
       , parseExpr = (<|>) <$> parseExpr l <*> parseExpr r
       }
@@ -213,10 +222,12 @@ instance Monoid Translation where
     , tyEq  = mempty
     , tyEqBool = mempty
     , tyEqWitness = mempty
+    , tyNeqBool = mempty
     , voids = mempty
     , natPlus = mempty
     , natMinus = mempty
     , natTimes = mempty
+    , natExp = mempty
     , natLeq = mempty
     , natGeq = mempty
     , natLt = mempty
@@ -229,6 +240,8 @@ instance Monoid Translation where
     , orderingGT = mempty
     , orderingEQ = mempty
     , natCompare = mempty
+    , trueData = []
+    , falseData = []
     , parsePred = const $ const mzero
     , parseExpr = const mzero
     }
@@ -294,6 +307,7 @@ defaultTranslation = do
   isTrueCon_ <- tcLookupTyCon =<< lookupOrig pmd (mkTcOcc "IsTrue")
   vmd <- lookupModule (mkModuleName "Data.Void") (fsLit "base")
   voidTyCon <- tcLookupTyCon =<< lookupOrig vmd (mkTcOcc "Void")
+  nLeq <- tcLookupTyCon =<< lookupOrig gHC_TYPENATS (mkTcOcc "<=")
   return
     mempty
     { isEmpty = [emptyClsTyCon]
@@ -301,6 +315,18 @@ defaultTranslation = do
     , tyEqWitness = [eqWitCon_]
     , isTrue = [isTrueCon_]
     , voids = [voidTyCon]
+    , natMinus = [typeNatSubTyCon]
+    , natPlus = [typeNatAddTyCon]
+    , natTimes = [typeNatMulTyCon]
+    , natExp = [typeNatExpTyCon]
+    , falseData = [promotedFalseDataCon]
+    , trueData = [promotedTrueDataCon]
+    , natLeqBool = [typeNatLeqTyCon]
+    , natLeq = [nLeq]
+    , natCompare = [typeNatCmpTyCon]
+    , orderingEQ = [promotedEQDataCon]
+    , orderingLT = [promotedLTDataCon]
+    , orderingGT = [promotedGTDataCon]
     }
 
 (<=>) :: Prop -> Prop -> Prop
@@ -312,20 +338,28 @@ withEv ct
       (evByFiat "ghc-typelits-presburger" t1 t2, ct)
   | otherwise = undefined
 
+orderingDic :: Given Translation => [(TyCon, Expr -> Expr -> Prop)]
+orderingDic =
+  [(lt, (:<))  | lt <- orderingLT given ] ++
+  [(eq, (:==)) | eq <- orderingEQ given ] ++
+  [(gt, (:>))  | gt <- orderingGT given ]
+
 deconsPred :: Ct -> Type
 deconsPred = ctEvPred . ctEvidence
 
 toPresburgerPred :: Given Translation => Type -> Machine Prop
 toPresburgerPred (TyConApp con [t1, t2])
-  | con == typeNatLeqTyCon = (:<=) <$> toPresburgerExp t1 <*> toPresburgerExp t2
+  | con `elem` (natLeq given ++ natLeqBool given)
+  = (:<=) <$> toPresburgerExp t1 <*> toPresburgerExp t2
 toPresburgerPred ty
   | Just (con, []) <- splitTyConApp_maybe ty
-  , con == promotedTrueDataCon = return PTrue
+  , con `elem` trueData given = return PTrue
   | Just (con, []) <- splitTyConApp_maybe ty
-  , con == promotedFalseDataCon = return PFalse
+  , con `elem` falseData given = return PFalse
   | isEqPred ty = toPresburgerPredTree $ classifyPredType ty
   | Just (con, [l, r]) <- splitTyConApp_maybe ty -- l ~ r
-  , con `elem` tyEq given = toPresburgerPredTree $ EqPred NomEq l r
+  , con `elem` (tyEq given ++ tyEqBool given)
+  = toPresburgerPredTree $ EqPred NomEq l r
   | Just (con, [_k, l, r]) <- splitTyConApp_maybe ty -- l (:~: {k}) r
   , con `elem` tyEqWitness given = toPresburgerPredTree $ EqPred NomEq l r
   | Just (con, [l]) <- splitTyConApp_maybe ty -- Empty l => ...
@@ -334,13 +368,20 @@ toPresburgerPred ty
   , con `elem` isTrue given = toPresburgerPred l
   | otherwise = parsePred given toPresburgerExp ty
 
+splitTyConAppLastBin :: Type -> Maybe (TyCon, [Type])
+splitTyConAppLastBin t = do
+  (con, ts) <- splitTyConApp_maybe t
+  let !n = length ts
+  guard $ n >= 2
+  return (con, drop (n - 2) ts)
+
 toPresburgerPredTree :: Given Translation => PredTree -> Machine Prop
 toPresburgerPredTree (EqPred NomEq p false) -- P ~ 'False <=> Not P ~ 'True
-  | Just promotedFalseDataCon  == tyConAppTyCon_maybe false =
+  | maybe False (`elem` falseData given) $ tyConAppTyCon_maybe false =
     Not <$> toPresburgerPredTree (EqPred NomEq p (mkTyConTy promotedTrueDataCon))
 toPresburgerPredTree (EqPred NomEq p b)  -- (n :<=? m) ~ 'True
-  | Just promotedTrueDataCon  == tyConAppTyCon_maybe b
-  , Just (con, [t1, t2]) <- splitTyConApp_maybe p
+  | maybe False (`elem` trueData given) $ tyConAppTyCon_maybe b
+  , Just (con, [t1, t2]) <- splitTyConAppLastBin p
   , con `elem` natLeqBool given = (:<=) <$> toPresburgerExp t1  <*> toPresburgerExp t2
 toPresburgerPredTree (EqPred NomEq p q)  -- (p :: Bool) ~ (q :: Bool)
     | typeKind p `eqType` mkTyConTy promotedBoolTyCon = do
@@ -352,37 +393,43 @@ toPresburgerPredTree (EqPred NomEq n m)  -- (n :: Nat) ~ (m :: Nat)
     (:==) <$> toPresburgerExp n
           <*> toPresburgerExp m
 toPresburgerPredTree (EqPred _ t1 t2) -- CmpNat a b ~ CmpNat c d
-  | Just (con,  [a, b]) <- splitTyConApp_maybe t1
-  , Just (con', [c, d]) <- splitTyConApp_maybe t2
-  , con `elem` [typeNatCmpTyCon], con' `elem` [typeNatCmpTyCon]
+  | Just (con,  [a, b]) <- splitTyConAppLastBin t1
+  , Just (con', [c, d]) <- splitTyConAppLastBin t2
+  , con `elem` natCompare given, con' `elem` natCompare given
   = (<=>) <$> ((:<) <$> toPresburgerExp a <*> toPresburgerExp b)
           <*> ((:<) <$> toPresburgerExp c <*> toPresburgerExp d)
 toPresburgerPredTree (EqPred NomEq t1 t2) -- CmpNat a b ~ x
-  | Just (con, [a, b]) <- splitTyConApp_maybe t1
-  , con `elem` [typeNatCmpTyCon]
+  | Just (con, [a, b]) <- splitTyConAppLastBin t1
+  , con `elem` natCompare given
   , Just cmp <- tyConAppTyCon_maybe t2 =
-    let dic = [(promotedLTDataCon, (:<))
-              ,(promotedEQDataCon, (:==))
-              ,(promotedGTDataCon, (:>))
-              ]
-    in MaybeT (return $ lookup cmp dic)
+    MaybeT (return $ lookup cmp orderingDic)
        <*> toPresburgerExp a
        <*> toPresburgerExp b
 toPresburgerPredTree (EqPred NomEq t1 t2) -- x ~ CmpNat a b
-  | Just (con, [a, b]) <- splitTyConApp_maybe t2
-  , con `elem` [typeNatCmpTyCon]
+  | Just (con, [a, b]) <- splitTyConAppLastBin t2
+  , con `elem` natCompare given
   , Just cmp <- tyConAppTyCon_maybe t1 =
-    let dic = [(promotedLTDataCon, (:<))
-              ,(promotedEQDataCon, (:==))
-              ,(promotedGTDataCon, (:>))
-              ]
-    in MaybeT (return $ lookup cmp dic)
+    MaybeT (return $ lookup cmp orderingDic)
        <*> toPresburgerExp a
        <*> toPresburgerExp b
-toPresburgerPredTree (ClassPred con [t1, t2]) -- (n :: Nat) <= (m :: Nat)
-  | typeNatLeqTyCon == classTyCon con
-  , typeKind t1 `eqType` typeNatKind = (:<=) <$> toPresburgerExp t1 <*> toPresburgerExp t2
+toPresburgerPredTree (ClassPred con ts)
+  -- (n :: Nat) (<=| < | > | >= | == | /=) (m :: Nat)
+  | let n = length ts, n >= 2
+  , let (t1, t2) = (ts !! (n - 2), ts !! (n - 1))
+  , typeKind t1 `eqType` typeNatKind
+  , typeKind t2 `eqType` typeNatKind =
+    let p = lookup (classTyCon con) binPropDic
+    in MaybeT (return p) <*> toPresburgerExp t1 <*> toPresburgerExp t2
 toPresburgerPredTree _ = mzero
+
+binPropDic :: Given Translation => [(TyCon, Expr -> Expr -> Prop)]
+binPropDic =
+  [ (n, (:<)) | n <- natLt given ++ natLtBool given ] ++
+  [ (n, (:>)) | n <- natGt given ++ natGtBool given ] ++
+  [ (n, (:<=)) | n <- natLeq given ++ natLeqBool given ] ++
+  [ (n, (:>=)) | n <- natGeq given ++ natGeqBool given ] ++
+  [ (n, (:==)) | n <- tyEq given ++ tyEqBool given ] ++
+  [ (n, (:/=)) | n <- tyNeqBool given ]
 
 toPresburgerExp :: Given Translation => Type -> Machine Expr
 toPresburgerExp ty = case ty of
