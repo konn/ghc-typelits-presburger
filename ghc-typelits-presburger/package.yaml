@@ -7,7 +7,7 @@ description: |
   This plugin only work with GHC builtin operations.
   To work with those of @singletons@ package, use @ghc-typelits-meta@ and/or @ghc-typelits-presburger@ instead.
 
-  Since 0.3.0.0, integration support with <https://hackage.haskell.org/package/singletons singletons> package moves to <https://hackage.haskell.org/package/singletons-presburger singletons-presburger>.
+  Since 0.3.0.0, integration with <https://hackage.haskell.org/package/singletons singletons> package moves to <https://hackage.haskell.org/package/singletons-presburger singletons-presburger>.
 
   You can use by adding this package to @build-depends@ and add the following pragma
   to the head of .hs files:
