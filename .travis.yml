@@ -13,19 +13,12 @@ cache:
 
 matrix:
   include:
-    - env: STACK_YAML=stack-800.yaml
-      compiler: ": #GHC 8.0.2"
-    - env: STACK_YAML=stack-802.yaml
-      compiler: ": #GHC 8.2.2"
     - env: STACK_YAML=stack-804.yaml
       compiler: ": #GHC 8.4.3"
     - env: STACK_YAML=stack-806.yaml
       compiler: ": #GHC 8.6.1"
     - env: STACK_YAML=stack-808.yaml
       compiler: ": #GHC 8.8.2"
-  allow_failures:
-    - env: STACK_YAML=stack-800.yaml
-    - env: STACK_YAML=stack-802.yaml
 
 before_install:
  # install Stack
