@@ -7,24 +7,18 @@ cache:
     - $HOME/.stack
     - $HOME/.cabal
     - $HOME/.ghc
+    - $HOME/.local
     - $TRAVIS_BUILD_DIR/**/.stack-work
     - $TRAVIS_BUILD_DIR/stack*.yaml.lock
 
 matrix:
   include:
-    - env: STACK_YAML=stack-800.yaml
-      compiler: ": #GHC 8.0.2"
-    - env: STACK_YAML=stack-802.yaml
-      compiler: ": #GHC 8.2.1"
     - env: STACK_YAML=stack-804.yaml
       compiler: ": #GHC 8.4.3"
     - env: STACK_YAML=stack-806.yaml
       compiler: ": #GHC 8.6.1"
     - env: STACK_YAML=stack-808.yaml
       compiler: ": #GHC 8.8.2"
-  allow_failures:
-    - env: STACK_YAML=stack-800.yaml
-    - env: STACK_YAML=stack-802.yaml
 
 before_install:
  # install Stack
@@ -39,7 +33,7 @@ install:
  - |
   stack build --no-terminal --only-dependencies \
     --flag ghc-typelits-presburger:examples \
-    --flag ghc-typelits-presburger-core:examples
+    --flag singletons-presburger:examples
 
 # Here starts the actual work to be performed for the package under test;
 # any command which exits with a non-zero exit code causes the build to fail.
@@ -47,7 +41,7 @@ script:
  - |
   stack --no-terminal --skip-ghc-check test \
       --flag ghc-typelits-presburger:examples \
-      --flag ghc-typelits-presburger-core:examples
+      --flag singletons-presburger:examples
 
 # Check that the resulting source distribution can be built & installed.
 # If there are no other `.tar.gz` files in `dist`, this can be even simpler:

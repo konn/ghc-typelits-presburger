@@ -1,6 +1,7 @@
-{-# LANGUAGE CPP, DataKinds, FlexibleContexts, GADTs, PolyKinds           #-}
-{-# LANGUAGE ScopedTypeVariables, TypeFamilies, TypeInType, TypeOperators #-}
-{-# OPTIONS_GHC -fplugin GHC.TypeLits.Presburger #-}
+{-# LANGUAGE CPP, DataKinds, FlexibleContexts, GADTs, PolyKinds     #-}
+{-# LANGUAGE ScopedTypeVariables, TemplateHaskell, TypeApplications #-}
+{-# LANGUAGE TypeFamilies, TypeInType, TypeOperators                #-}
+{-# OPTIONS_GHC -fplugin Data.Singletons.TypeNats.Presburger #-}
 {-# OPTIONS_GHC -dcore-lint #-}
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 806
 {-# LANGUAGE NoStarIsType #-}
@@ -11,6 +12,8 @@ import Data.Singletons.Decide
 import Data.Singletons.Prelude
 import Data.Singletons.Prelude.Enum
 import Data.Singletons.Prelude.List
+import Data.Singletons.TH
+import Data.Singletons.TypeLits
 import Data.Type.Equality
 import GHC.TypeLits                 (type (<=?), CmpNat, Nat)
 import Proof.Propositional          (Empty (..), withEmpty)
@@ -37,7 +40,6 @@ natLen _ _ = Refl
 
 
 -- The following three cases fails >= GHC 8.6.
-
 natLeqZero' :: ((n <= 0) ~ 'True) => proxy n -> n :~: 0
 natLeqZero' _ = Refl
 
@@ -96,5 +98,23 @@ succCompare _ _ = Refl
 eqToRefl :: Sing (n :: Nat) -> Sing (m :: Nat) -> CmpNat n m :~: 'EQ -> n :~: m
 eqToRefl _n _m Refl = Refl
 
+singletonsOnly [d|
+  flipOrdering :: Ordering -> Ordering
+  flipOrdering EQ = EQ
+  flipOrdering LT = GT
+  flipOrdering GT = LT
+ |]
+
+flipCompare
+  :: forall n m. (KnownNat n, KnownNat m)
+  => Sing n -> Sing m -> FlipOrdering (Compare n m) :~: Compare m n
+flipCompare n m = $(sCases ''Ordering [|sCompare n m|] [|Refl|])
+
+ltCompare
+  :: forall n m. (KnownNat n, KnownNat m, CmpNat n m ~ LT)
+  => Sing n -> Sing m -> Compare m n :~: GT
+ltCompare _ _ = Refl
+
 main :: IO ()
 main = putStrLn "finished"
+

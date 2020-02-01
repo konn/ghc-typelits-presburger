@@ -1,7 +1,7 @@
 resolver: lts-9.5
 packages:
-- 'ghc-typelits-presburger-core'
 - 'ghc-typelits-presburger'
+- 'singletons-presburger'
 
 extra-deps:
 - equational-reasoning-0.6.0.0
