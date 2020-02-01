@@ -1,10 +1,9 @@
-resolver: lts-14.4
-skip-ghc-check: true
+resolver: lts-14.21
 
 flags: {}
 packages:
-- '.'
+- 'ghc-typelits-presburger'
+- 'singletons-presburger'
 
-extra-deps: 
- - equational-reasoning-0.6.0.0
-
+extra-deps:
+- equational-reasoning-0.6.0.1

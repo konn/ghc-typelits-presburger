@@ -1,9 +1,10 @@
 resolver: lts-9.5
 packages:
-- '.'
+- 'ghc-typelits-presburger'
+- 'singletons-presburger'
 
 extra-deps:
-- equational-reasoning-0.5.1.0
+- equational-reasoning-0.6.0.0
 
 flags: {}
 

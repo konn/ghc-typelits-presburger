@@ -1,12 +1,13 @@
-resolver: lts-12.2
-skip-ghc-check: true
+resolver: nightly-2020-01-25
 
 flags: {}
 packages:
 - 'ghc-typelits-presburger'
 - 'singletons-presburger'
 
+allow-newer: true
+
 extra-deps:
-- equational-reasoning-0.6.0.0
+- equational-reasoning-0.6.0.1
 # - git: https://github.com/konn/generic-unification.git
 #   commit: dd26f7a16da20ca3e46e7c046c559b620d64a91c
