@@ -176,7 +176,8 @@ decidePresburger _ref gs [] [] = do
   tcPluginTrace "Started givens with: " (ppr $ map (ctEvPred . ctEvidence) gs)
   withTyCons $ do
     let subst = mkSubstitution []
-    ngs <- mapM (\a -> runMachine $ (,) a <$> toPresburgerPred subst (deconsPred a)) gs
+    ngs <- mapM (\a -> runMachine $ (,) a <$> toPresburgerPred (subsType subst $ deconsPred a))
+           gs
     let givens = catMaybes ngs
         prems0 = map snd givens
         prems  = foldr assert' noProps prems0
@@ -200,12 +201,12 @@ decidePresburger _ref gs ds ws = withTyCons $ do
   (prems, wants, prems0) <- do
     wants <- catMaybes <$>
              mapM
-             (\ct -> runMachine $ (,) ct <$> toPresburgerPred subst
+             (\ct -> runMachine $ (,) ct <$> toPresburgerPred
                 ( subsType subst
                 $ deconsPred $ subsCt subst ct))
              (filter (isWanted . ctEvidence) ws)
 
-    resls <- mapM (runMachine . toPresburgerPred subst . subsType subst . deconsPred)
+    resls <- mapM (runMachine . toPresburgerPred . subsType subst . deconsPred)
                      (gs ++ ds)
     let prems = foldr assert' noProps $ catMaybes resls
     return (prems, map (second handleSubtraction) wants, catMaybes resls)
@@ -281,109 +282,109 @@ deconsPred = ctEvPred . ctEvidence
 emptyTyCon :: Given MyEnv => TyCon
 emptyTyCon = emptyClsTyCon given
 
-toPresburgerPred :: Given MyEnv => Substitution -> Type -> Machine Prop
-toPresburgerPred subst (TyConApp con [t1, t2])
-  | con == typeNatLeqTyCon = (:<=) <$> toPresburgerExp subst t1 <*> toPresburgerExp subst t2
-toPresburgerPred subst ty
+toPresburgerPred :: Given MyEnv => Type -> Machine Prop
+toPresburgerPred (TyConApp con [t1, t2])
+  | con == typeNatLeqTyCon = (:<=) <$> toPresburgerExp t1 <*> toPresburgerExp t2
+toPresburgerPred ty
   | Just (con, []) <- splitTyConApp_maybe ty
   , con == promotedTrueDataCon = return PTrue
   | Just (con, []) <- splitTyConApp_maybe ty
   , con == promotedFalseDataCon = return PFalse
-  | isEqPred ty = toPresburgerPredTree subst $ classifyPredType ty
+  | isEqPred ty = toPresburgerPredTree $ classifyPredType ty
   | Just (con, [l, r]) <- splitTyConApp_maybe ty -- l ~ r
-  , con == eqTyCon = toPresburgerPredTree subst $ EqPred NomEq l r
+  , con == eqTyCon = toPresburgerPredTree $ EqPred NomEq l r
   | Just (con, [_k, l, r]) <- splitTyConApp_maybe ty -- l (:~: {k}) r
-  , con == eqWitnessTyCon = toPresburgerPredTree subst $ EqPred NomEq l r
+  , con == eqWitnessTyCon = toPresburgerPredTree $ EqPred NomEq l r
   | Just (con, [l]) <- splitTyConApp_maybe ty -- Empty l => ...
-  , con == emptyTyCon = Not <$> toPresburgerPred subst l
+  , con == emptyTyCon = Not <$> toPresburgerPred l
   | Just (con, [l]) <- splitTyConApp_maybe ty -- IsTrue l =>
-  , con == isTrueTyCon = toPresburgerPred subst l
+  , con == isTrueTyCon = toPresburgerPred l
   | Just (con, [_,_,_,_,cmpTy]) <- splitTyConApp_maybe ty
   , con == caseNameForSingLeq
   , Just (cmp, [l, r]) <- splitTyConApp_maybe cmpTy
   , cmp `elem` [singCompareCon, typeNatCmpTyCon] =
-      (:<=) <$> toPresburgerExp subst l <*> toPresburgerExp subst r
+      (:<=) <$> toPresburgerExp l <*> toPresburgerExp r
   | otherwise = mzero
 
 boolLeqs :: Given MyEnv => [TyCon]
 boolLeqs = [typeNatLeqTyCon, typeLeqBoolTyCon]
 
-toPresburgerPredTree :: Given MyEnv => Substitution -> PredTree -> Machine Prop
-toPresburgerPredTree subst (EqPred NomEq p false) -- P ~ 'False <=> Not P ~ 'True
-  | Just promotedFalseDataCon  == tyConAppTyCon_maybe (subsType subst false) =
-    Not <$> toPresburgerPredTree subst (EqPred NomEq p (mkTyConTy promotedTrueDataCon))
-toPresburgerPredTree subst (EqPred NomEq p b)  -- (n :<=? m) ~ 'True
-  | Just promotedTrueDataCon  == tyConAppTyCon_maybe (subsType subst b)
-  , Just (con, [t1, t2]) <- splitTyConApp_maybe (subsType subst p)
-  , con `elem` boolLeqs = (:<=) <$> toPresburgerExp subst t1  <*> toPresburgerExp subst t2
-  | Just promotedTrueDataCon  == tyConAppTyCon_maybe (subsType subst b) -- Singleton's <=...
+toPresburgerPredTree :: Given MyEnv => PredTree -> Machine Prop
+toPresburgerPredTree (EqPred NomEq p false) -- P ~ 'False <=> Not P ~ 'True
+  | Just promotedFalseDataCon  == tyConAppTyCon_maybe false =
+    Not <$> toPresburgerPredTree (EqPred NomEq p (mkTyConTy promotedTrueDataCon))
+toPresburgerPredTree (EqPred NomEq p b)  -- (n :<=? m) ~ 'True
+  | Just promotedTrueDataCon  == tyConAppTyCon_maybe b
+  , Just (con, [t1, t2]) <- splitTyConApp_maybe p
+  , con `elem` boolLeqs = (:<=) <$> toPresburgerExp t1  <*> toPresburgerExp t2
+  | Just promotedTrueDataCon  == tyConAppTyCon_maybe b -- Singleton's <=...
   , Just (con, [_,_,_,_,cmpTy]) <- splitTyConApp_maybe p
   , con == caseNameForSingLeq
   , Just (cmp, [l, r]) <- splitTyConApp_maybe cmpTy
   , cmp `elem` [singCompareCon, typeNatCmpTyCon] =
-    (:<=) <$> toPresburgerExp subst l <*> toPresburgerExp subst r
-  | Just promotedTrueDataCon  == tyConAppTyCon_maybe (subsType subst b) -- Singleton's <...
+    (:<=) <$> toPresburgerExp l <*> toPresburgerExp r
+  | Just promotedTrueDataCon  == tyConAppTyCon_maybe b -- Singleton's <...
   , Just (con, [_,_,_,_,cmpTy]) <- splitTyConApp_maybe p
   , con == caseNameForSingLt
   , Just (cmp, [l, r]) <- splitTyConApp_maybe cmpTy
   , cmp `elem` [singCompareCon, typeNatCmpTyCon] =
-    (:<) <$> toPresburgerExp subst l <*> toPresburgerExp subst r
-  | Just promotedTrueDataCon  == tyConAppTyCon_maybe (subsType subst b) -- Singleton's >=...
+    (:<) <$> toPresburgerExp l <*> toPresburgerExp r
+  | Just promotedTrueDataCon  == tyConAppTyCon_maybe b -- Singleton's >=...
   , Just (con, [_,_,_,_,cmpTy]) <- splitTyConApp_maybe p
   , con == caseNameForSingGeq
   , Just (cmp, [l, r]) <- splitTyConApp_maybe cmpTy
   , cmp `elem` [singCompareCon, typeNatCmpTyCon] =
-    (:>=) <$> toPresburgerExp subst l <*> toPresburgerExp subst r
-  | Just promotedTrueDataCon  == tyConAppTyCon_maybe (subsType subst b) -- Singleton's >=...
+    (:>=) <$> toPresburgerExp l <*> toPresburgerExp r
+  | Just promotedTrueDataCon  == tyConAppTyCon_maybe b -- Singleton's >=...
   , Just (con, [_,_,_,_,cmpTy]) <- splitTyConApp_maybe p
   , con == caseNameForSingGt
   , Just (cmp, [l, r]) <- splitTyConApp_maybe cmpTy
   , cmp `elem` [singCompareCon, typeNatCmpTyCon] =
-    (:>) <$> toPresburgerExp subst l <*> toPresburgerExp subst r
-toPresburgerPredTree subst (EqPred NomEq p q)  -- (p :: Bool) ~ (q :: Bool)
+    (:>) <$> toPresburgerExp l <*> toPresburgerExp r
+toPresburgerPredTree (EqPred NomEq p q)  -- (p :: Bool) ~ (q :: Bool)
     | typeKind p `eqType` mkTyConTy promotedBoolTyCon = do
       lift $ lift $ tcPluginTrace "EQBOOL:" $ ppr (p, q)
-      (<=>) <$> toPresburgerPred subst p
-            <*> toPresburgerPred subst q
-toPresburgerPredTree subst (EqPred NomEq n m)  -- (n :: Nat) ~ (m :: Nat)
+      (<=>) <$> toPresburgerPred p
+            <*> toPresburgerPred q
+toPresburgerPredTree (EqPred NomEq n m)  -- (n :: Nat) ~ (m :: Nat)
   | typeKind n `eqType` typeNatKind =
-    (:==) <$> toPresburgerExp subst n
-          <*> toPresburgerExp subst m
-toPresburgerPredTree subst (EqPred _ t1 t2) -- CmpNat a b ~ CmpNat c d
-  | Just (con,  [a, b]) <- splitTyConApp_maybe (subsType subst t1)
-  , Just (con', [c, d]) <- splitTyConApp_maybe (subsType subst t2)
+    (:==) <$> toPresburgerExp n
+          <*> toPresburgerExp m
+toPresburgerPredTree (EqPred _ t1 t2) -- CmpNat a b ~ CmpNat c d
+  | Just (con,  [a, b]) <- splitTyConApp_maybe t1
+  , Just (con', [c, d]) <- splitTyConApp_maybe t2
   , con `elem` [singCompareCon, typeNatCmpTyCon], con' `elem` [typeNatCmpTyCon, singCompareCon]
-  = (<=>) <$> ((:<) <$> toPresburgerExp subst a <*> toPresburgerExp subst b)
-          <*> ((:<) <$> toPresburgerExp subst c <*> toPresburgerExp subst d)
-toPresburgerPredTree subst (EqPred NomEq t1 t2) -- CmpNat a b ~ x
-  | Just (con, [a, b]) <- splitTyConApp_maybe (subsType subst t1)
+  = (<=>) <$> ((:<) <$> toPresburgerExp a <*> toPresburgerExp b)
+          <*> ((:<) <$> toPresburgerExp c <*> toPresburgerExp d)
+toPresburgerPredTree (EqPred NomEq t1 t2) -- CmpNat a b ~ x
+  | Just (con, [a, b]) <- splitTyConApp_maybe t1
   , con `elem` [typeNatCmpTyCon, singCompareCon]
-  , Just cmp <- tyConAppTyCon_maybe (subsType subst t2) =
+  , Just cmp <- tyConAppTyCon_maybe t2 =
     let dic = [(promotedLTDataCon, (:<))
               ,(promotedEQDataCon, (:==))
               ,(promotedGTDataCon, (:>))
               ]
     in MaybeT (return $ lookup cmp dic)
-       <*> toPresburgerExp subst a
-       <*> toPresburgerExp subst b
-toPresburgerPredTree subst (EqPred NomEq t1 t2) -- x ~ CmpNat a b
-  | Just (con, [a, b]) <- splitTyConApp_maybe (subsType subst t2)
+       <*> toPresburgerExp a
+       <*> toPresburgerExp b
+toPresburgerPredTree (EqPred NomEq t1 t2) -- x ~ CmpNat a b
+  | Just (con, [a, b]) <- splitTyConApp_maybe t2
   , con `elem` [singCompareCon, typeNatCmpTyCon]
-  , Just cmp <- tyConAppTyCon_maybe (subsType subst t1) =
+  , Just cmp <- tyConAppTyCon_maybe t1 =
     let dic = [(promotedLTDataCon, (:<))
               ,(promotedEQDataCon, (:==))
               ,(promotedGTDataCon, (:>))
               ]
     in MaybeT (return $ lookup cmp dic)
-       <*> toPresburgerExp subst a
-       <*> toPresburgerExp subst b
-toPresburgerPredTree subst (ClassPred con [t1, t2]) -- (n :: Nat) <= (m :: Nat)
+       <*> toPresburgerExp a
+       <*> toPresburgerExp b
+toPresburgerPredTree (ClassPred con [t1, t2]) -- (n :: Nat) <= (m :: Nat)
   | typeNatLeqTyCon == classTyCon con
-  , typeKind t1 `eqType` typeNatKind = (:<=) <$> toPresburgerExp subst t1 <*> toPresburgerExp subst t2
-toPresburgerPredTree _ _ = mzero
+  , typeKind t1 `eqType` typeNatKind = (:<=) <$> toPresburgerExp t1 <*> toPresburgerExp t2
+toPresburgerPredTree _ = mzero
 
-toPresburgerExp :: Substitution -> Type -> Machine Expr
-toPresburgerExp dic ty = case subsType dic ty of
+toPresburgerExp :: Type -> Machine Expr
+toPresburgerExp ty = case ty of
   TyVarTy t          -> return $ Var $ toName $ getKey $ getUnique t
   t@(TyConApp tc ts) -> body tc ts <|> Var . toName . getKey . getUnique <$> toVar t
   LitTy (NumTyLit n) -> return (K n)
@@ -393,14 +394,14 @@ toPresburgerExp dic ty = case subsType dic ty of
     body tc ts =
       let step con op
             | tc == con, [tl, tr] <- ts =
-              op <$> toPresburgerExp dic tl <*> toPresburgerExp dic tr
+              op <$> toPresburgerExp tl <*> toPresburgerExp tr
             | otherwise = mzero
       in case ts of
         [tl, tr] | tc == typeNatMulTyCon ->
           case (simpleExp tl, simpleExp tr) of
             (LitTy (NumTyLit n), LitTy (NumTyLit m)) -> return $ K $ n * m
-            (LitTy (NumTyLit n), x) -> (:*) <$> pure n <*> toPresburgerExp dic x
-            (x, LitTy (NumTyLit n)) -> (:*) <$> pure n <*> toPresburgerExp dic x
+            (LitTy (NumTyLit n), x) -> (:*) <$> pure n <*> toPresburgerExp x
+            (x, LitTy (NumTyLit n)) -> (:*) <$> pure n <*> toPresburgerExp x
             _ -> mzero
         _ ->  asum [ step con op
                    | (con, op) <- [(typeNatAddTyCon, (:+)), (typeNatSubTyCon, (:-))]]
