@@ -7,3 +7,5 @@ Changelog
 * Adds `negated-numbers` option.
 * Allows terms which includes uninterpreted terms (still much incomplete).
 * Separates `singletons` support as `singletons-presburger` package.
+* Provides an interface for extending solver with additional syntax constructs.
+  See `GHC.TypeLits.Presburger.Types` module for more detail.
