@@ -1,16 +1,19 @@
-name: ghc-typelits-presburger-core
+name: ghc-typelits-presburger
 version: '0.3.0.0'
 synopsis: Presburger Arithmetic Solver for GHC Type-level natural numbers.
-description: ! '@ghc-typelits-presburger@ augments GHC type-system with Presburger
+description: |
+  @ghc-typelits-presburger@ augments GHC type-system with Presburger
   Arithmetic Solver for Type-level natural numbers.
   This plugin only work with GHC builtin operations.
   To work with those of @singletons@ package, use @ghc-typelits-meta@ and/or @ghc-typelits-presburger@ instead.
+
+  Since 0.3.0.0, integration support with <https://hackage.haskell.org/package/singletons singletons> package moves to <https://hackage.haskell.org/package/singletons-presburger singletons-presburger>.
 
   You can use by adding this package to @build-depends@ and add the following pragma
   to the head of .hs files:
 
 
-  > OPTIONS_GHC -fplugin GHC.TypeLits.Presburger'
+  > OPTIONS_GHC -fplugin GHC.TypeLits.Presburger
 category: Math, Type System
 author: Hiromi ISHII
 maintainer: konn.jinro _at_ gmail.com
@@ -25,7 +28,8 @@ library:
   source-dirs:
   - src
   exposed-modules:
-  - GHC.TypeLits.Presburger.Core
+  - GHC.TypeLits.Presburger.Types
+  - GHC.TypeLits.Presburger
   - GHC.TypeLits.Presburger.Compat
   dependencies:
   - base >=4.7 && <5
@@ -49,7 +53,7 @@ executables:
     - -Wno-unused-imports
     dependencies:
     - base
-    - ghc-typelits-presburger-core
+    - ghc-typelits-presburger
     - equational-reasoning
     when:
     - condition: ! '!(flag(examples))'

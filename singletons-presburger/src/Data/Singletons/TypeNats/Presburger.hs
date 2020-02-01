@@ -5,7 +5,7 @@ module Data.Singletons.TypeNats.Presburger
   (plugin, singletonTranslation
   ) where
 import GHC.TypeLits.Presburger.Compat
-import GHC.TypeLits.Presburger.Core   hiding (plugin)
+import GHC.TypeLits.Presburger.Types
 
 import Control.Monad
 import Data.Reflection (Given, give, given)

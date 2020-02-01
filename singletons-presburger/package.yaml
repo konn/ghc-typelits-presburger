@@ -29,7 +29,7 @@ library:
   dependencies:
   - base >=4.7 && <5
   - equational-reasoning >=0.4.0.0
-  - ghc-typelits-presburger-core
+  - ghc-typelits-presburger
   - ghc >=7.10 && <8.9
   - ghc-tcplugins-extra >=0.2 && <0.4
   - mtl

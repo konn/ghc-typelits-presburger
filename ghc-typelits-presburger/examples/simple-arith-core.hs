@@ -2,7 +2,7 @@
 {-# LANGUAGE PolyKinds, ScopedTypeVariables, TypeFamilies, TypeInType       #-}
 {-# LANGUAGE TypeOperators, UndecidableInstances                            #-}
 {-# OPTIONS_GHC -dcore-lint #-}
-{-# OPTIONS_GHC -fplugin GHC.TypeLits.Presburger.Core #-}
+{-# OPTIONS_GHC -fplugin GHC.TypeLits.Presburger #-}
 
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 806
 {-# LANGUAGE NoStarIsType #-}

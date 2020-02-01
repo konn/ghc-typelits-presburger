@@ -40,7 +40,7 @@ install:
  - |
   stack build --no-terminal --only-dependencies \
     --flag ghc-typelits-presburger:examples \
-    --flag ghc-typelits-presburger-core:examples
+    --flag singletons-presburger:examples
 
 # Here starts the actual work to be performed for the package under test;
 # any command which exits with a non-zero exit code causes the build to fail.
@@ -48,7 +48,7 @@ script:
  - |
   stack --no-terminal --skip-ghc-check test \
       --flag ghc-typelits-presburger:examples \
-      --flag ghc-typelits-presburger-core:examples
+      --flag singletons-presburger:examples
 
 # Check that the resulting source distribution can be built & installed.
 # If there are no other `.tar.gz` files in `dist`, this can be even simpler:

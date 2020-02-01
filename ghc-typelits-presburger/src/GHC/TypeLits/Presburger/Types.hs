@@ -2,9 +2,9 @@
 {-# LANGUAGE FlexibleInstances, LambdaCase, MultiWayIf, OverloadedStrings #-}
 {-# LANGUAGE PatternGuards, RankNTypes, TypeOperators, ViewPatterns       #-}
 {-# OPTIONS_GHC -Wno-unused-imports #-}
-module GHC.TypeLits.Presburger.Core
-  ( plugin
-  , pluginWith
+-- | Since 0.3.0.0
+module GHC.TypeLits.Presburger.Types
+  ( pluginWith
   , defaultTranslation
   , Translation(..), ParseEnv, Machine
   , module Data.Integer.SAT

@@ -2,7 +2,7 @@ resolver: nightly-2020-01-25
 
 flags: {}
 packages:
-- 'ghc-typelits-presburger-core'
+- 'ghc-typelits-presburger'
 - 'singletons-presburger'
 
 allow-newer: true
