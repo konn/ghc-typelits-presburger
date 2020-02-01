@@ -28,16 +28,9 @@ library:
   - Data.Singletons.TypeNats.Presburger
   dependencies:
   - base >=4.7 && <5
-  - equational-reasoning >=0.4.0.0
   - ghc-typelits-presburger
-  - ghc >=7.10 && <8.9
-  - ghc-tcplugins-extra >=0.2 && <0.4
-  - mtl
-  - pretty
+  - ghc >=7.10 && <8.11
   - reflection
-  - syb
-  - transformers
-  - bound
 executables:
   simple-arith:
     main: simple-arith.hs
