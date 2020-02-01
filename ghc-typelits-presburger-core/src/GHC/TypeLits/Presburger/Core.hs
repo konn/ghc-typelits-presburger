@@ -1,6 +1,6 @@
 {-# LANGUAGE BangPatterns, CPP, DataKinds, FlexibleContexts               #-}
 {-# LANGUAGE FlexibleInstances, LambdaCase, MultiWayIf, OverloadedStrings #-}
-{-# LANGUAGE PatternGuards, RankNTypes, TypeOperators                     #-}
+{-# LANGUAGE PatternGuards, RankNTypes, TypeOperators, ViewPatterns       #-}
 {-# OPTIONS_GHC -Wno-unused-imports #-}
 module GHC.TypeLits.Presburger.Core
   ( plugin
@@ -453,7 +453,7 @@ toPresburgerExp ty = case ty of
   where
     body tc ts =
       let step con op
-            | tc == con, [tl, tr] <- ts =
+            | tc == con, [tl, tr] <- lastTwo ts =
               op <$> toPresburgerExp tl <*> toPresburgerExp tr
             | otherwise = mzero
       in case ts of
@@ -474,11 +474,14 @@ toPresburgerExp ty = case ty of
 
 -- simplTypeCmp :: Type -> Type
 
+lastTwo :: [a] -> [a]
+lastTwo = drop <$> subtract 2 . length <*> id
+
 simpleExp :: Given Translation => Type -> Type
 simpleExp (AppTy t1 t2) = AppTy (simpleExp t1) (simpleExp t2)
 simpleExp (FunTy t1 t2) = FunTy (simpleExp t1) (simpleExp t2)
 simpleExp (ForAllTy t1 t2) = ForAllTy t1 (simpleExp t2)
-simpleExp (TyConApp tc ts) = fromMaybe (TyConApp tc (map simpleExp ts)) $
+simpleExp (TyConApp tc (lastTwo -> ts)) = fromMaybe (TyConApp tc (map simpleExp ts)) $
   asum (map simpler
         $ [(c, (+)) | c <- natPlus given] ++
           [(c, (-)) | c <- natMinus given] ++
