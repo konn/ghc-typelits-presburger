@@ -7,7 +7,7 @@ Roughly speaking, it automatically solves constraints expressed by addition, con
 Add this package to your build-depends and add the following pragma on top of your program.
 
 ```haskell
-{-# OPTIONS_GHC -fplugin GHC.TypeLits.Presburger #-}
+{-# OPTIONS_GHC -fplugin Data.Singletons.TypeNats.Presburger #-}
 ```
 
 ## Note

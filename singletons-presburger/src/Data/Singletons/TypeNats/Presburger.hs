@@ -1,7 +1,9 @@
 {-# LANGUAGE CPP, DataKinds, FlexibleContexts, FlexibleInstances      #-}
 {-# LANGUAGE MultiWayIf, OverloadedStrings, PatternGuards, RankNTypes #-}
 {-# LANGUAGE RecordWildCards, TypeOperators, ViewPatterns             #-}
-module GHC.TypeLits.Presburger (plugin) where
+module Data.Singletons.TypeNats.Presburger
+  (plugin, singletonTranslation
+  ) where
 import GHC.TypeLits.Presburger.Compat
 import GHC.TypeLits.Presburger.Core   hiding (plugin)
 

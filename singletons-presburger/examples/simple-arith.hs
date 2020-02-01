@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP, DataKinds, FlexibleContexts, GADTs, PolyKinds     #-}
 {-# LANGUAGE ScopedTypeVariables, TemplateHaskell, TypeApplications #-}
 {-# LANGUAGE TypeFamilies, TypeInType, TypeOperators                #-}
-{-# OPTIONS_GHC -fplugin GHC.TypeLits.Presburger #-}
+{-# OPTIONS_GHC -fplugin Data.Singletons.TypeNats.Presburger #-}
 {-# OPTIONS_GHC -dcore-lint #-}
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 806
 {-# LANGUAGE NoStarIsType #-}
