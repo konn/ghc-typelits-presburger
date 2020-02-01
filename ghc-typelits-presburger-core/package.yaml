@@ -26,6 +26,7 @@ library:
   - src
   exposed-modules:
   - GHC.TypeLits.Presburger.Core
+  - GHC.TypeLits.Presburger.Compat
   dependencies:
   - base >=4.7 && <5
   - containers

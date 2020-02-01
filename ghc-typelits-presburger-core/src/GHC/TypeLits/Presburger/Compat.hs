@@ -1,31 +1,31 @@
 {-# LANGUAGE CPP, FlexibleInstances, PatternGuards, PatternSynonyms #-}
 {-# LANGUAGE TypeSynonymInstances, ViewPatterns                     #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
-module GHC.Compat (module GHC.Compat) where
+module GHC.TypeLits.Presburger.Compat (module GHC.TypeLits.Presburger.Compat) where
 import Data.Function       (on)
-import FamInst             as GHC.Compat
-import FastString          as GHC.Compat (fsLit)
-import GHC.TcPluginM.Extra as GHC.Compat (evByFiat, lookupModule, lookupName,
+import FamInst             as GHC.TypeLits.Presburger.Compat
+import FastString          as GHC.TypeLits.Presburger.Compat (fsLit)
+import GHC.TcPluginM.Extra as GHC.TypeLits.Presburger.Compat (evByFiat, lookupModule, lookupName,
                                           tracePlugin)
-import GhcPlugins          as GHC.Compat (EqRel (..), PredTree (..))
-import GhcPlugins          as GHC.Compat (classifyPredType, isEqPred,
+import GhcPlugins          as GHC.TypeLits.Presburger.Compat (EqRel (..), PredTree (..))
+import GhcPlugins          as GHC.TypeLits.Presburger.Compat (classifyPredType, isEqPred,
                                           lookupTyCon, mkTyConTy)
-import GhcPlugins          as GHC.Compat (mkTcOcc, ppr, promotedFalseDataCon)
-import GhcPlugins          as GHC.Compat (promotedTrueDataCon, text)
-import GhcPlugins          as GHC.Compat (tyConAppTyCon_maybe, typeKind)
-import GhcPlugins          as GHC.Compat (typeNatKind)
-import Module              as GHC.Compat (ModuleName, mkModuleName)
-import OccName             as GHC.Compat (emptyOccSet, mkInstTyTcOcc)
-import Plugins             as GHC.Compat (Plugin (..), defaultPlugin)
-import TcEvidence          as GHC.Compat (EvTerm)
-import TcHsType            as GHC.Compat (tcInferApps)
-import TcPluginM           as GHC.Compat (TcPluginM, tcLookupTyCon,
+import GhcPlugins          as GHC.TypeLits.Presburger.Compat (mkTcOcc, ppr, promotedFalseDataCon)
+import GhcPlugins          as GHC.TypeLits.Presburger.Compat (promotedTrueDataCon, text)
+import GhcPlugins          as GHC.TypeLits.Presburger.Compat (tyConAppTyCon_maybe, typeKind)
+import GhcPlugins          as GHC.TypeLits.Presburger.Compat (typeNatKind)
+import Module              as GHC.TypeLits.Presburger.Compat (ModuleName, mkModuleName)
+import OccName             as GHC.TypeLits.Presburger.Compat (emptyOccSet, mkInstTyTcOcc)
+import Plugins             as GHC.TypeLits.Presburger.Compat (Plugin (..), defaultPlugin)
+import TcEvidence          as GHC.TypeLits.Presburger.Compat (EvTerm)
+import TcHsType            as GHC.TypeLits.Presburger.Compat (tcInferApps)
+import TcPluginM           as GHC.TypeLits.Presburger.Compat (TcPluginM, tcLookupTyCon,
                                           tcPluginTrace)
-import TcRnMonad           as GHC.Compat (Ct, TcPluginResult (..), isWanted)
-import TcRnTypes           as GHC.Compat (TcPlugin (..), ctEvPred, ctEvidence)
-import TcType              as GHC.Compat (tcTyFamInsts)
-import TcTypeNats          as GHC.Compat
-import TyCon               as GHC.Compat
+import TcRnMonad           as GHC.TypeLits.Presburger.Compat (Ct, TcPluginResult (..), isWanted)
+import TcRnTypes           as GHC.TypeLits.Presburger.Compat (TcPlugin (..), ctEvPred, ctEvidence)
+import TcType              as GHC.TypeLits.Presburger.Compat (tcTyFamInsts)
+import TcTypeNats          as GHC.TypeLits.Presburger.Compat
+import TyCon               as GHC.TypeLits.Presburger.Compat
 #if MIN_VERSION_ghc(8,4,1)
 import TcType (TcTyVar, TcType)
 #else
@@ -36,26 +36,26 @@ import TcPluginM (zonkCt)
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 800
 import           GhcPlugins (InScopeSet, Outputable, emptyUFM)
 import qualified PrelNames  as Old
-import           TyCoRep    as GHC.Compat (TyLit (NumTyLit), Type (..))
-import           Type       as GHC.Compat (TCvSubst (..), TvSubstEnv,
+import           TyCoRep    as GHC.TypeLits.Presburger.Compat (TyLit (NumTyLit), Type (..))
+import           Type       as GHC.TypeLits.Presburger.Compat (TCvSubst (..), TvSubstEnv,
                                            emptyTCvSubst)
-import           Type       as GHC.Compat (eqType, unionTCvSubst)
+import           Type       as GHC.TypeLits.Presburger.Compat (eqType, unionTCvSubst)
 import qualified Type       as Old
-import           TysWiredIn as GHC.Compat (boolTyCon)
+import           TysWiredIn as GHC.TypeLits.Presburger.Compat (boolTyCon)
 import           Unify      as Old (tcUnifyTy)
 #else
-import Type       as GHC.Compat (TvSubst, emptyTvSubst)
-import Type       as GHC.Compat (substTy, unionTvSubst)
-import TypeRep    as GHC.Compat (TyLit (NumTyLit), Type (..))
+import Type       as GHC.TypeLits.Presburger.Compat (TvSubst, emptyTvSubst)
+import Type       as GHC.TypeLits.Presburger.Compat (substTy, unionTvSubst)
+import TypeRep    as GHC.TypeLits.Presburger.Compat (TyLit (NumTyLit), Type (..))
 import TysWiredIn as Old (eqTyCon)
-import TysWiredIn as GHC.Compat (promotedBoolTyCon)
-import Unify      as GHC.Compat (tcUnifyTy)
+import TysWiredIn as GHC.TypeLits.Presburger.Compat (promotedBoolTyCon)
+import Unify      as GHC.TypeLits.Presburger.Compat (tcUnifyTy)
 #endif
 import Data.Generics.Twins
 import TcPluginM           (lookupOrig)
 import TyCoRep             ()
-import Type                as GHC.Compat (splitTyConApp_maybe)
-import Unique              as GHC.Compat (getKey, getUnique)
+import Type                as GHC.TypeLits.Presburger.Compat (splitTyConApp_maybe)
+import Unique              as GHC.TypeLits.Presburger.Compat (getKey, getUnique)
 #if MIN_VERSION_ghc(8,4,1)
 import qualified GHC.TcPluginM.Extra as Extra
 #endif
@@ -182,6 +182,6 @@ mkSubstitution =
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ < 804
 genSubst :: Ct -> TvSubst
 genSubst ct = case classifyPredType (ctEvPred . ctEvidence $ ct) of
-  EqPred NomEq t u -> fromMaybe emptyTvSubst $ GHC.Compat.tcUnifyTy t u
+  EqPred NomEq t u -> fromMaybe emptyTvSubst $ GHC.TypeLits.Presburger.Compat.tcUnifyTy t u
   _                -> emptyTvSubst
 #endif

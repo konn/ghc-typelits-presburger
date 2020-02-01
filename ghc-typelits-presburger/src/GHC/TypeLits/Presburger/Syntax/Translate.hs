@@ -2,23 +2,23 @@
 module GHC.TypeLits.Presburger.Syntax.Translate where
 import GHC.TypeLits.Presburger.Syntax.Base
 
-import           Class                     (classTyCon)
-import           Control.Applicative       ((<|>))
-import           Control.Arrow             (second)
-import           Control.Monad             (mzero)
-import           Control.Monad.State.Class (gets, modify)
-import           Control.Monad.Trans.Maybe (MaybeT (..))
-import           Control.Monad.Trans.State (State, runState)
-import           Data.Foldable             (asum)
-import qualified Data.IntMap.Strict        as IM
-import qualified Data.Map.Strict           as M
-import           Data.Maybe                (catMaybes, fromMaybe)
+import           Class                          (classTyCon)
+import           Control.Applicative            ((<|>))
+import           Control.Arrow                  (second)
+import           Control.Monad                  (mzero)
+import           Control.Monad.State.Class      (gets, modify)
+import           Control.Monad.Trans.Maybe      (MaybeT (..))
+import           Control.Monad.Trans.State      (State, runState)
+import           Data.Foldable                  (asum)
+import qualified Data.IntMap.Strict             as IM
+import qualified Data.Map.Strict                as M
+import           Data.Maybe                     (catMaybes, fromMaybe)
 import           Data.Reflection
-import           GHC.Compat
+import           GHC.TypeLits.Presburger.Compat
 import           Type
-import           TysWiredIn                (promotedEQDataCon,
-                                            promotedGTDataCon,
-                                            promotedLTDataCon)
+import           TysWiredIn                     (promotedEQDataCon,
+                                                 promotedGTDataCon,
+                                                 promotedLTDataCon)
 
 data MyEnv  = MyEnv { emptyClsTyCon       :: TyCon
                     , eqTyCon_            :: TyCon

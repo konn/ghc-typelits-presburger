@@ -32,6 +32,7 @@ library:
   - containers
   - dlist
   - equational-reasoning >=0.4.0.0
+  - ghc-typelits-presburger-core
   - ghc >=7.10 && <8.9
   - ghc-tcplugins-extra >=0.2 && <0.4
   - mtl

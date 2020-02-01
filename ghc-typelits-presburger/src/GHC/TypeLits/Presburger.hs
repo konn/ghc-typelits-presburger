@@ -3,7 +3,7 @@
 {-# LANGUAGE RankNTypes, RecordWildCards, TypeOperators               #-}
 {-# OPTIONS_GHC -Wno-unused-imports #-}
 module GHC.TypeLits.Presburger (plugin) where
-import GHC.Compat
+import GHC.TypeLits.Presburger.Compat
 
 import           Class                          (Class, classTyCon)
 import           Control.Applicative            ((<|>))
