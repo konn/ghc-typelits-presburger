@@ -3,7 +3,11 @@
 {-# LANGUAGE PatternGuards, RankNTypes, TypeOperators                     #-}
 {-# OPTIONS_GHC -Wno-unused-imports #-}
 module GHC.TypeLits.Presburger.Core
-  ( plugin, Translation(..), ParseEnv, Machine
+  ( plugin
+  , pluginWith
+  , defaultTranslation
+  , Translation(..), ParseEnv, Machine
+  , module Data.Integer.SAT
   ) where
 import           Class                          (Class, classTyCon)
 import           Control.Applicative            ((<|>))
@@ -91,8 +95,11 @@ data PluginMode = DisallowNegatives
                 deriving (Read, Show, Eq, Ord)
 
 plugin :: Plugin
-plugin = defaultPlugin
-    { tcPlugin = Just . presburgerPlugin . procOpts
+plugin = pluginWith defaultTranslation
+
+pluginWith :: TcPluginM Translation -> Plugin
+pluginWith trans = defaultPlugin
+    { tcPlugin = Just . presburgerPlugin trans . procOpts
 #if MIN_VERSION_ghc(8,6,0)
     , pluginRecompile = purePlugin
 #endif
@@ -102,10 +109,10 @@ plugin = defaultPlugin
       | "allow-negated-numbers" `elem` opts = AllowNegatives
       | otherwise = DisallowNegatives
 
-presburgerPlugin :: PluginMode -> TcPlugin
-presburgerPlugin mode =
+presburgerPlugin :: TcPluginM Translation -> PluginMode -> TcPlugin
+presburgerPlugin trans mode =
   tracePlugin "typelits-presburger"
-  TcPlugin { tcPluginInit  = defaultTranslation
+  TcPlugin { tcPluginInit  = trans
            , tcPluginSolve = decidePresburger mode
            , tcPluginStop  = const $ return ()
            }
@@ -415,7 +422,7 @@ toPresburgerPredTree (EqPred NomEq t1 t2) -- x ~ CmpNat a b
 toPresburgerPredTree (ClassPred con ts)
   -- (n :: Nat) (<=| < | > | >= | == | /=) (m :: Nat)
   | let n = length ts, n >= 2
-  , let (t1, t2) = (ts !! (n - 2), ts !! (n - 1))
+  , [t1, t2] <- drop (n - 2) ts
   , typeKind t1 `eqType` typeNatKind
   , typeKind t2 `eqType` typeNatKind =
     let p = lookup (classTyCon con) binPropDic
@@ -447,27 +454,34 @@ toPresburgerExp ty = case ty of
               op <$> toPresburgerExp tl <*> toPresburgerExp tr
             | otherwise = mzero
       in case ts of
-        [tl, tr] | tc == typeNatMulTyCon ->
+        [tl, tr] | tc `elem` natTimes given ->
           case (simpleExp tl, simpleExp tr) of
             (LitTy (NumTyLit n), LitTy (NumTyLit m)) -> return $ K $ n * m
             (LitTy (NumTyLit n), x) -> (:*) <$> pure n <*> toPresburgerExp x
             (x, LitTy (NumTyLit n)) -> (:*) <$> pure n <*> toPresburgerExp x
             _ -> mzero
-        _ ->  asum [ step con op
-                   | (con, op) <- [(typeNatAddTyCon, (:+)), (typeNatSubTyCon, (:-))]]
+        _ ->  asum
+           $  [ step con (:+)
+              | con <- natPlus given
+              ] ++
+              [ step con (:-)
+              | con <- natMinus given
+              ]
+
 
 -- simplTypeCmp :: Type -> Type
 
-simpleExp :: Type -> Type
+simpleExp :: Given Translation => Type -> Type
 simpleExp (AppTy t1 t2) = AppTy (simpleExp t1) (simpleExp t2)
 simpleExp (FunTy t1 t2) = FunTy (simpleExp t1) (simpleExp t2)
 simpleExp (ForAllTy t1 t2) = ForAllTy t1 (simpleExp t2)
 simpleExp (TyConApp tc ts) = fromMaybe (TyConApp tc (map simpleExp ts)) $
-  asum (map simpler [(typeNatAddTyCon, (+))
-                    ,(typeNatSubTyCon, (-))
-                    ,(typeNatMulTyCon, (*))
-                    ,(typeNatExpTyCon, (^))
-                    ])
+  asum (map simpler
+        $ [(c, (+)) | c <- natPlus given] ++
+          [(c, (-)) | c <- natMinus given] ++
+          [(c, (*)) | c <- natTimes given] ++
+          [(c, (^)) | c <- natExp given]
+      )
   where
     simpler (con, op)
       | con == tc, [tl, tr] <- map simpleExp ts =
