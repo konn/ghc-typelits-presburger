@@ -138,11 +138,18 @@ instance Eq TypeEq where
 instance Ord TypeEq where
   compare = gcompare `on` runTypeEq
 
+isTrivial :: Old.PredType -> Bool
+isTrivial ty =
+  case classifyPredType ty of
+    EqPred _ l r -> l `eqType` r
+    _ -> False
+
 normaliseGivens
   :: [Ct] -> TcPluginM [Ct]
 normaliseGivens =
 #if MIN_VERSION_ghc(8,4,1)
-  fmap return . (++) <$> id <*> Extra.flattenGivens
+  fmap (return . filter (not . isTrivial . ctEvPred . ctEvidence)) 
+  . (++) <$> id <*> Extra.flattenGivens
 #else
   mapM zonkCt 
 #endif

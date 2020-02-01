@@ -136,7 +136,7 @@ handleSubtraction DisallowNegatives p0 =
     loop (l :<= r) = (:<=) <$> loopExp l <*> loopExp r
     loop (l :< r)  = (:<) <$> loopExp l <*> loopExp r
     loop (l :>= r) = (:<=) <$> loopExp l <*> loopExp r
-    loop (l :> r)  = (:<) <$> loopExp l <*> loopExp r
+    loop (l :> r)  = (:>) <$> loopExp l <*> loopExp r
     loop (l :== r) = (:==) <$> loopExp l <*> loopExp r
     loop (l :/= r) = (:/=) <$> loopExp l <*> loopExp r
 
@@ -403,20 +403,20 @@ toPresburgerPredTree (EqPred NomEq n m)  -- (n :: Nat) ~ (m :: Nat)
     (:==) <$> toPresburgerExp n
           <*> toPresburgerExp m
 toPresburgerPredTree (EqPred _ t1 t2) -- CmpNat a b ~ CmpNat c d
-  | Just (con,  [a, b]) <- splitTyConAppLastBin t1
-  , Just (con', [c, d]) <- splitTyConAppLastBin t2
+  | Just (con,  lastTwo -> [a, b]) <- splitTyConAppLastBin t1
+  , Just (con', lastTwo -> [c, d]) <- splitTyConAppLastBin t2
   , con `elem` natCompare given, con' `elem` natCompare given
   = (<=>) <$> ((:<) <$> toPresburgerExp a <*> toPresburgerExp b)
           <*> ((:<) <$> toPresburgerExp c <*> toPresburgerExp d)
 toPresburgerPredTree (EqPred NomEq t1 t2) -- CmpNat a b ~ x
-  | Just (con, [a, b]) <- splitTyConAppLastBin t1
+  | Just (con, lastTwo -> [a, b]) <- splitTyConAppLastBin t1
   , con `elem` natCompare given
   , Just cmp <- tyConAppTyCon_maybe t2 =
     MaybeT (return $ lookup cmp orderingDic)
        <*> toPresburgerExp a
        <*> toPresburgerExp b
 toPresburgerPredTree (EqPred NomEq t1 t2) -- x ~ CmpNat a b
-  | Just (con, [a, b]) <- splitTyConAppLastBin t2
+  | Just (con, lastTwo -> [a, b]) <- splitTyConAppLastBin t2
   , con `elem` natCompare given
   , Just cmp <- tyConAppTyCon_maybe t1 =
     MaybeT (return $ lookup cmp orderingDic)

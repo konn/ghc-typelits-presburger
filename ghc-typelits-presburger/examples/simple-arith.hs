@@ -110,6 +110,11 @@ flipCompare
   => Sing n -> Sing m -> FlipOrdering (Compare n m) :~: Compare m n
 flipCompare n m = $(sCases ''Ordering [|sCompare n m|] [|Refl|])
 
+ltCompare
+  :: forall n m. (KnownNat n, KnownNat m, CmpNat n m ~ LT)
+  => Sing n -> Sing m -> Compare m n :~: GT
+ltCompare _ _ = Refl
+
 main :: IO ()
 main = putStrLn "finished"
 

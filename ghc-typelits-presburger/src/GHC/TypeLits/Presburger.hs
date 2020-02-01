@@ -54,7 +54,8 @@ genSingletonCons :: TcPluginM SingletonCons
 genSingletonCons = do
   singletonOrd <- lookupModule (mkModuleName "Data.Singletons.Prelude.Ord") (fsLit "singletons")
   singletonsNum <- lookupModule (mkModuleName "Data.Singletons.Prelude.Num") (fsLit "singletons")
-
+  -- prel <- lookupModule (mkModuleName "Data.Singletons.Prelude") (fsLit "singletons")
+  -- singTrueSym0 <- tcLookupTyCon =<< lookupOrig prel (mkTcOcc "TrueSym0")
 #if MIN_VERSION_singletons(2,4,1)
   singNatLeq <- tcLookupTyCon =<< lookupOrig singletonOrd (mkTcOcc "<=")
   singNatLt <- tcLookupTyCon =<< lookupOrig singletonOrd (mkTcOcc "<")
