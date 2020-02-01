@@ -12,6 +12,10 @@ cache:
 
 matrix:
   include:
+    - env: STACK_YAML=stack-800.yaml
+      compiler: ": #GHC 8.0.2"
+    - env: STACK_YAML=stack-802.yaml
+      compiler: ": #GHC 8.2.2"
     - env: STACK_YAML=stack-804.yaml
       compiler: ": #GHC 8.4.3"
     - env: STACK_YAML=stack-806.yaml
