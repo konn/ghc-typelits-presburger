@@ -11,6 +11,7 @@ import Data.Singletons.Decide
 import Data.Singletons.Prelude
 import Data.Singletons.Prelude.Enum
 import Data.Singletons.Prelude.List
+import Data.Singletons.TypeLits
 import Data.Type.Equality
 import GHC.TypeLits                 (type (<=?), CmpNat, Nat)
 import Proof.Propositional          (Empty (..), withEmpty)
@@ -37,7 +38,6 @@ natLen _ _ = Refl
 
 
 -- The following three cases fails >= GHC 8.6.
-
 natLeqZero' :: ((n <= 0) ~ 'True) => proxy n -> n :~: 0
 natLeqZero' _ = Refl
 

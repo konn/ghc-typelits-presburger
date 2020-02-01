@@ -34,6 +34,9 @@ library:
   - ghc >=7.10 && <8.7
   - ghc-tcplugins-extra >=0.2 && <0.4
   - mtl
+  - bifunctors
+  - dlist
+  - bound
   - pretty
   - reflection
   - syb

@@ -112,8 +112,8 @@ pluginWith trans = defaultPlugin
 presburgerPlugin :: TcPluginM Translation -> PluginMode -> TcPlugin
 presburgerPlugin trans mode =
   tracePlugin "typelits-presburger"
-  TcPlugin { tcPluginInit  = trans
-           , tcPluginSolve = decidePresburger mode
+  TcPlugin { tcPluginInit  = return ()
+           , tcPluginSolve = decidePresburger mode trans
            , tcPluginStop  = const $ return ()
            }
 
@@ -253,9 +253,10 @@ instance Monoid Translation where
     , parseExpr = const mzero
     }
 
-decidePresburger :: PluginMode -> Translation -> [Ct] -> [Ct] -> [Ct] -> TcPluginM TcPluginResult
-decidePresburger _ trans gs [] [] = do
+decidePresburger :: PluginMode -> TcPluginM Translation -> () -> [Ct] -> [Ct] -> [Ct] -> TcPluginM TcPluginResult
+decidePresburger _ genTrans _ gs [] [] = do
   tcPluginTrace "Started givens with: " (ppr $ map (ctEvPred . ctEvidence) gs)
+  trans <- genTrans
   give trans $ do
     ngs <- mapM (\a -> runMachine $ (,) a <$> toPresburgerPred (deconsPred a)) gs
     let givens = catMaybes ngs
@@ -269,40 +270,42 @@ decidePresburger _ trans gs [] [] = do
       go (ct, p) (ss, prem)
         | Proved <- testIf prem p = (ct : ss, prem)
         | otherwise = (ss, assert' p prem)
-decidePresburger mode trans gs ds ws = give trans $ do
-  gs' <- normaliseGivens gs
-  let subst = mkSubstitution (gs' ++ ds)
-  tcPluginTrace "Current subst" (ppr subst)
-  tcPluginTrace "wanteds" $ ppr $ map deconsPred ws
-  tcPluginTrace "givens" $ ppr $ map (subsType subst . deconsPred) gs
-  tcPluginTrace "deriveds" $ ppr $ map deconsPred ds
-  (prems, wants, prems0) <- do
-    wants <- catMaybes <$>
-             mapM
-             (\ct -> runMachine $ (,) ct <$> toPresburgerPred
-                ( subsType subst
-                $ deconsPred $ subsCt subst ct))
-             (filter (isWanted . ctEvidence) ws)
+decidePresburger mode genTrans _ gs ds ws = do
+  trans <- genTrans
+  give trans $ do
+    gs' <- normaliseGivens gs
+    let subst = mkSubstitution (gs' ++ ds)
+    tcPluginTrace "Current subst" (ppr subst)
+    tcPluginTrace "wanteds" $ ppr $ map deconsPred ws
+    tcPluginTrace "givens" $ ppr $ map (subsType subst . deconsPred) gs
+    tcPluginTrace "deriveds" $ ppr $ map deconsPred ds
+    (prems, wants, prems0) <- do
+      wants <- catMaybes <$>
+              mapM
+              (\ct -> runMachine $ (,) ct <$> toPresburgerPred
+                  ( subsType subst
+                  $ deconsPred $ subsCt subst ct))
+              (filter (isWanted . ctEvidence) ws)
 
-    resls <- mapM (runMachine . toPresburgerPred . subsType subst . deconsPred)
-                     (gs ++ ds)
-    let prems = foldr assert' noProps $ catMaybes resls
-    return (prems, map (second $ handleSubtraction mode) wants, catMaybes resls)
-  let solved = map fst $ filter (isProved . testIf prems . snd) wants
-      coerced = [(evByFiat "ghc-typelits-presburger" t1 t2, ct)
-                | ct <- solved
-                , EqPred NomEq t1 t2 <- return (classifyPredType $ deconsPred ct)
-                ]
-  tcPluginTrace "final premises" (text $ show prems0)
-  tcPluginTrace "final goals" (text $ show $ map snd wants)
-  case testIf prems (foldr ((:&&) . snd) PTrue wants) of
-    Proved -> do
-      tcPluginTrace "Proved" (text $ show $ map snd wants)
-      tcPluginTrace "... with coercions" (ppr coerced)
-      return $ TcPluginOk coerced []
-    Disproved wit -> do
-      tcPluginTrace "Failed! " (text $ show wit)
-      return $ TcPluginContradiction $ map fst wants
+      resls <- mapM (runMachine . toPresburgerPred . subsType subst . deconsPred)
+                      (gs ++ ds)
+      let prems = foldr assert' noProps $ catMaybes resls
+      return (prems, map (second $ handleSubtraction mode) wants, catMaybes resls)
+    let solved = map fst $ filter (isProved . testIf prems . snd) wants
+        coerced = [(evByFiat "ghc-typelits-presburger" t1 t2, ct)
+                  | ct <- solved
+                  , EqPred NomEq t1 t2 <- return (classifyPredType $ deconsPred ct)
+                  ]
+    tcPluginTrace "final premises" (text $ show prems0)
+    tcPluginTrace "final goals" (text $ show $ map snd wants)
+    case testIf prems (foldr ((:&&) . snd) PTrue wants) of
+      Proved -> do
+        tcPluginTrace "Proved" (text $ show $ map snd wants)
+        tcPluginTrace "... with coercions" (ppr coerced)
+        return $ TcPluginOk coerced []
+      Disproved wit -> do
+        tcPluginTrace "Failed! " (text $ show wit)
+        return $ TcPluginContradiction $ map fst wants
 
 defaultTranslation :: TcPluginM Translation
 defaultTranslation = do

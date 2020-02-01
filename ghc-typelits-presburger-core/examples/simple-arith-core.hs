@@ -60,10 +60,8 @@ barResult = bar (Proxy :: Proxy 2)
 trans :: proxy n -> proxy m -> n <=! m -> (n + 1) <=! (m + 1)
 trans _ _  Witness = Witness
 
-
 eqv :: proxy n -> proxy m -> (n <=? m) :~: ((n + 1) <=? (m + 1))
 eqv _ _ = Refl
-
 
 predSucc :: forall proxy n. Empty (n <=! 0) => proxy n -> IsTrue (n + 1 <=? 2 * n)
 predSucc _ = Witness
