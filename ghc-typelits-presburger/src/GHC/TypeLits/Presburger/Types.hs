@@ -1,7 +1,6 @@
 {-# LANGUAGE BangPatterns, CPP, DataKinds, FlexibleContexts               #-}
 {-# LANGUAGE FlexibleInstances, LambdaCase, MultiWayIf, OverloadedStrings #-}
 {-# LANGUAGE PatternGuards, RankNTypes, TypeOperators, ViewPatterns       #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
 -- | Since 0.3.0.0
 module GHC.TypeLits.Presburger.Types
   ( pluginWith
@@ -9,7 +8,7 @@ module GHC.TypeLits.Presburger.Types
   , Translation(..), ParseEnv, Machine
   , module Data.Integer.SAT
   ) where
-import           Class                          (Class, classTyCon)
+import           Class                          (classTyCon)
 import           Control.Applicative            ((<|>))
 import           Control.Arrow                  (second)
 import           Control.Monad                  (forM_, guard, mzero, unless)
@@ -23,30 +22,17 @@ import           Data.Integer.SAT               (Expr (..), Prop (..), PropSet,
                                                  assert)
 import           Data.Integer.SAT               (checkSat, noProps, toName)
 import qualified Data.Integer.SAT               as SAT
-import qualified Data.IntSet                    as IS
 import           Data.List                      (nub)
 import qualified Data.Map.Strict                as M
-import qualified Data.Map.Strict                as M
-import           Data.Maybe                     (catMaybes, fromJust)
-import           Data.Maybe                     (fromMaybe, isNothing, mapMaybe)
-import           Data.Monoid                    (First (..))
+import           Data.Maybe                     (catMaybes, fromMaybe,
+                                                 isNothing)
 import           Data.Reflection                (Given, give, given)
-import           Data.Semigroup                 (Max (..), Option (..))
 import qualified Data.Set                       as Set
-import qualified GHC.TcPluginM.Extra            as Extra
-import           GHC.TypeLits                   (Nat)
 import           GHC.TypeLits.Presburger.Compat
-import           Outputable                     (showSDocUnsafe)
 import           PrelNames
-import           TcPluginM                      (getFamInstEnvs, lookupOrig,
-                                                 matchFam, newFlexiTyVar,
-                                                 newWanted, tcLookupClass,
-                                                 unsafeTcPluginTcM)
-import           TcRnTypes
-import           TyCoRep                        (Coercion (..),
-                                                 KindCoercion (..))
-import           Type                           (mkPrimEqPredRole, mkTyVarTy,
-                                                 splitTyConApp)
+import           TcPluginM                      (lookupOrig, newFlexiTyVar,
+                                                 newWanted, tcLookupClass)
+import           Type                           (mkPrimEqPredRole, mkTyVarTy)
 import           TysWiredIn                     (promotedEQDataCon,
                                                  promotedGTDataCon,
                                                  promotedLTDataCon)
@@ -93,9 +79,6 @@ varsExpr (Mod e _)  = varsExpr e
 data PluginMode = DisallowNegatives
                 | AllowNegatives
                 deriving (Read, Show, Eq, Ord)
-
-plugin :: Plugin
-plugin = pluginWith defaultTranslation
 
 pluginWith :: TcPluginM Translation -> Plugin
 pluginWith trans = defaultPlugin
