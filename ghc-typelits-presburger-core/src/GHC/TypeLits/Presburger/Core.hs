@@ -1,11 +1,10 @@
 {-# LANGUAGE CPP, DataKinds, FlexibleContexts, FlexibleInstances      #-}
 {-# LANGUAGE LambdaCase, MultiWayIf, OverloadedStrings, PatternGuards #-}
 {-# LANGUAGE RankNTypes, RecordWildCards, TypeOperators               #-}
-{-# LANGUAGE TypeSynonymInstances                                     #-}
 {-# OPTIONS_GHC -Wno-unused-imports #-}
-module GHC.TypeLits.Presburger.Core (plugin) where
-import GHC.TypeLits.Presburger.Compat
-
+module GHC.TypeLits.Presburger.Core
+  ( plugin, Translation(..), ParseEnv, Machine
+  ) where
 import           Class                          (Class, classTyCon)
 import           Control.Applicative            ((<|>))
 import           Control.Arrow                  (second)
@@ -26,11 +25,13 @@ import qualified Data.Map.Strict                as M
 import qualified Data.Map.Strict                as M
 import           Data.Maybe                     (catMaybes, fromJust)
 import           Data.Maybe                     (fromMaybe, isNothing, mapMaybe)
+import           Data.Monoid                    (First (..))
 import           Data.Reflection                (Given, give, given)
 import           Data.Semigroup                 (Max (..), Option (..))
 import qualified Data.Set                       as Set
 import qualified GHC.TcPluginM.Extra            as Extra
 import           GHC.TypeLits                   (Nat)
+import           GHC.TypeLits.Presburger.Compat
 import           Outputable                     (showSDocUnsafe)
 import           TcPluginM                      (getFamInstEnvs, lookupOrig,
                                                  matchFam, newFlexiTyVar,
@@ -103,7 +104,7 @@ plugin = defaultPlugin
 presburgerPlugin :: PluginMode -> TcPlugin
 presburgerPlugin mode =
   tracePlugin "typelits-presburger"
-  TcPlugin { tcPluginInit  = return () -- tcPluginIO $ newIORef emptySubstitution
+  TcPlugin { tcPluginInit  = defaultTranslation
            , tcPluginSolve = decidePresburger mode
            , tcPluginStop  = const $ return ()
            }
@@ -150,54 +151,93 @@ handleSubtraction DisallowNegatives p0 =
       | otherwise = (negate c :*) <$> loopExp (Negate e)
     loopExp e@(K _) = return e
 
-
-type PresState = ()
-
 data Translation =
   Translation
-    { isEmpty       :: [TyCon]
-    , voids         :: [TyCon]
-    , natPlus       :: [TyCon]
-    , natMinus      :: [TyCon]
-    , natMimes      :: [TyCon]
-    , natLeq        :: [TyCon]
-    , natLeqBool    :: [TyCon]
-    , natGeq        :: [TyCon]
-    , natGeqBool    :: [TyCon]
-    , natLt         :: [TyCon]
-    , natLtBool     :: [TyCon]
-    , natGt         :: [TyCon]
-    , natGtBool     :: [TyCon]
-    , orderingLL    :: [TyCon]
-    , orderingGT    :: [TyCon]
-    , orderingEQ    :: [TyCon]
-    , natCompare    :: [TyCon]
-    , parsePredTree :: Translation -> (Translation -> Type -> Maybe Expr) -> PredTree -> Maybe Prop
-    , parseExp      :: Translation -> Type -> Maybe Expr
+    { isEmpty     :: [TyCon]
+    , isTrue      :: [TyCon]
+    , voids       :: [TyCon]
+    , tyEq        :: [TyCon]
+    , tyEqBool    :: [TyCon]
+    , tyEqWitness :: [TyCon]
+    , natPlus     :: [TyCon]
+    , natMinus    :: [TyCon]
+    , natTimes    :: [TyCon]
+    , natLeq      :: [TyCon]
+    , natLeqBool  :: [TyCon]
+    , natGeq      :: [TyCon]
+    , natGeqBool  :: [TyCon]
+    , natLt       :: [TyCon]
+    , natLtBool   :: [TyCon]
+    , natGt       :: [TyCon]
+    , natGtBool   :: [TyCon]
+    , orderingLT  :: [TyCon]
+    , orderingGT  :: [TyCon]
+    , orderingEQ  :: [TyCon]
+    , natCompare  :: [TyCon]
+    , parsePred   :: (Type -> Machine Expr) -> Type -> Machine Prop
+    , parseExpr   :: Type -> Machine Expr
     }
 
-data MyEnv  = MyEnv { emptyClsTyCon :: TyCon
-                    , eqTyCon_      :: TyCon
-                    , eqWitCon_     :: TyCon
-                    , isTrueCon_    :: TyCon
-                    , voidTyCon     :: TyCon
-                    }
+instance Semigroup Translation where
+  l <> r =
+    Translation
+      { isEmpty = isEmpty l <> isEmpty r
+      , isTrue = isTrue l <> isTrue r
+      , voids = voids l <> voids r
+      , tyEq = tyEq l <> tyEq r
+      , tyEqBool = tyEqBool l <> tyEqBool r
+      , tyEqWitness = tyEqWitness l <> tyEqWitness r
+      , natPlus = natPlus l <> natPlus r
+      , natMinus = natMinus l <> natMinus r
+      , natTimes = natTimes l <> natTimes r
+      , natLeq = natLeq l <> natLeq r
+      , natGeq = natGeq l <> natGeq r
+      , natLt = natLt l <> natLt r
+      , natGt = natGt l <> natGt r
+      , natLeqBool = natLeqBool l <> natLeqBool r
+      , natGeqBool = natGeqBool l <> natGeqBool r
+      , natLtBool = natLtBool l <> natLtBool r
+      , natGtBool = natGtBool l <> natGtBool r
+      , orderingLT = orderingLT l <> orderingLT r
+      , orderingGT = orderingGT l <> orderingGT r
+      , orderingEQ = orderingEQ l <> orderingEQ r
+      , natCompare = natCompare l <> natCompare r
+      , parsePred = \f ty -> parsePred l f ty <|> parsePred r f ty
+      , parseExpr = (<|>) <$> parseExpr l <*> parseExpr r
+      }
 
-eqTyCon :: Given MyEnv => TyCon
-eqTyCon = eqTyCon_ given
+instance Monoid Translation where
+  mempty = Translation
+    { isEmpty = mempty
+    , isTrue = mempty
+    , tyEq  = mempty
+    , tyEqBool = mempty
+    , tyEqWitness = mempty
+    , voids = mempty
+    , natPlus = mempty
+    , natMinus = mempty
+    , natTimes = mempty
+    , natLeq = mempty
+    , natGeq = mempty
+    , natLt = mempty
+    , natGt = mempty
+    , natLeqBool = mempty
+    , natGeqBool = mempty
+    , natLtBool = mempty
+    , natGtBool = mempty
+    , orderingLT = mempty
+    , orderingGT = mempty
+    , orderingEQ = mempty
+    , natCompare = mempty
+    , parsePred = const $ const mzero
+    , parseExpr = const mzero
+    }
 
-eqWitnessTyCon :: Given MyEnv => TyCon
-eqWitnessTyCon = eqWitCon_ given
-
-isTrueTyCon :: Given MyEnv => TyCon
-isTrueTyCon = isTrueCon_ given
-
-decidePresburger :: PluginMode -> PresState -> [Ct] -> [Ct] -> [Ct] -> TcPluginM TcPluginResult
-decidePresburger _ _ref gs [] [] = do
+decidePresburger :: PluginMode -> Translation -> [Ct] -> [Ct] -> [Ct] -> TcPluginM TcPluginResult
+decidePresburger _ trans gs [] [] = do
   tcPluginTrace "Started givens with: " (ppr $ map (ctEvPred . ctEvidence) gs)
-  withTyCons $ do
-    let subst = mkSubstitution []
-    ngs <- mapM (\a -> runMachine $ (,) a <$> toPresburgerPred subst (deconsPred a)) gs
+  give trans $ do
+    ngs <- mapM (\a -> runMachine $ (,) a <$> toPresburgerPred (deconsPred a)) gs
     let givens = catMaybes ngs
         prems0 = map snd givens
         prems  = foldr assert' noProps prems0
@@ -209,8 +249,7 @@ decidePresburger _ _ref gs [] [] = do
       go (ct, p) (ss, prem)
         | Proved <- testIf prem p = (ct : ss, prem)
         | otherwise = (ss, assert' p prem)
-decidePresburger mode _ref gs ds ws = withTyCons $ do
-  tcPluginTrace "Env" $ ppr (emptyTyCon, eqTyCon, eqWitnessTyCon, isTrueTyCon)
+decidePresburger mode trans gs ds ws = give trans $ do
   gs' <- normaliseGivens gs
   let subst = mkSubstitution (gs' ++ ds)
   tcPluginTrace "Current subst" (ppr subst)
@@ -220,12 +259,12 @@ decidePresburger mode _ref gs ds ws = withTyCons $ do
   (prems, wants, prems0) <- do
     wants <- catMaybes <$>
              mapM
-             (\ct -> runMachine $ (,) ct <$> toPresburgerPred subst
+             (\ct -> runMachine $ (,) ct <$> toPresburgerPred
                 ( subsType subst
                 $ deconsPred $ subsCt subst ct))
              (filter (isWanted . ctEvidence) ws)
 
-    resls <- mapM (runMachine . toPresburgerPred subst . subsType subst . deconsPred)
+    resls <- mapM (runMachine . toPresburgerPred . subsType subst . deconsPred)
                      (gs ++ ds)
     let prems = foldr assert' noProps $ catMaybes resls
     return (prems, map (second $ handleSubtraction mode) wants, catMaybes resls)
@@ -245,8 +284,8 @@ decidePresburger mode _ref gs ds ws = withTyCons $ do
       tcPluginTrace "Failed! " (text $ show wit)
       return $ TcPluginContradiction $ map fst wants
 
-withTyCons :: (Given MyEnv => TcPluginM a) -> TcPluginM a
-withTyCons act = do
+defaultTranslation :: TcPluginM Translation
+defaultTranslation = do
   emd <- lookupModule (mkModuleName "Proof.Propositional.Empty") (fsLit "equational-reasoning")
   emptyClsTyCon <- classTyCon <$> (tcLookupClass =<< lookupOrig emd (mkTcOcc "Empty"))
   eqTyCon_ <- getEqTyCon
@@ -255,7 +294,14 @@ withTyCons act = do
   isTrueCon_ <- tcLookupTyCon =<< lookupOrig pmd (mkTcOcc "IsTrue")
   vmd <- lookupModule (mkModuleName "Data.Void") (fsLit "base")
   voidTyCon <- tcLookupTyCon =<< lookupOrig vmd (mkTcOcc "Void")
-  give MyEnv{..} act
+  return
+    mempty
+    { isEmpty = [emptyClsTyCon]
+    , tyEq = [eqTyCon_]
+    , tyEqWitness = [eqWitCon_]
+    , isTrue = [isTrueCon_]
+    , voids = [voidTyCon]
+    }
 
 (<=>) :: Prop -> Prop -> Prop
 p <=> q =  (p :&& q) :|| (Not p :&& Not q)
@@ -269,100 +315,96 @@ withEv ct
 deconsPred :: Ct -> Type
 deconsPred = ctEvPred . ctEvidence
 
-emptyTyCon :: Given MyEnv => TyCon
-emptyTyCon = emptyClsTyCon given
-
-toPresburgerPred :: Given MyEnv => Substitution -> Type -> Machine Prop
-toPresburgerPred subst (TyConApp con [t1, t2])
-  | con == typeNatLeqTyCon = (:<=) <$> toPresburgerExp subst t1 <*> toPresburgerExp subst t2
-toPresburgerPred subst ty
+toPresburgerPred :: Given Translation => Type -> Machine Prop
+toPresburgerPred (TyConApp con [t1, t2])
+  | con == typeNatLeqTyCon = (:<=) <$> toPresburgerExp t1 <*> toPresburgerExp t2
+toPresburgerPred ty
   | Just (con, []) <- splitTyConApp_maybe ty
   , con == promotedTrueDataCon = return PTrue
   | Just (con, []) <- splitTyConApp_maybe ty
   , con == promotedFalseDataCon = return PFalse
-  | isEqPred ty = toPresburgerPredTree subst $ classifyPredType ty
+  | isEqPred ty = toPresburgerPredTree $ classifyPredType ty
   | Just (con, [l, r]) <- splitTyConApp_maybe ty -- l ~ r
-  , con == eqTyCon = toPresburgerPredTree subst $ EqPred NomEq l r
+  , con `elem` tyEq given = toPresburgerPredTree $ EqPred NomEq l r
   | Just (con, [_k, l, r]) <- splitTyConApp_maybe ty -- l (:~: {k}) r
-  , con == eqWitnessTyCon = toPresburgerPredTree subst $ EqPred NomEq l r
+  , con `elem` tyEqWitness given = toPresburgerPredTree $ EqPred NomEq l r
   | Just (con, [l]) <- splitTyConApp_maybe ty -- Empty l => ...
-  , con == emptyTyCon = Not <$> toPresburgerPred subst l
+  , con `elem` isEmpty given = Not <$> toPresburgerPred l
   | Just (con, [l]) <- splitTyConApp_maybe ty -- IsTrue l =>
-  , con == isTrueTyCon = toPresburgerPred subst l
-  | otherwise = mzero
+  , con `elem` isTrue given = toPresburgerPred l
+  | otherwise = parsePred given toPresburgerExp ty
 
-boolLeqs :: Given MyEnv => [TyCon]
-boolLeqs = [typeNatLeqTyCon]
-
-toPresburgerPredTree :: Given MyEnv => Substitution -> PredTree -> Machine Prop
-toPresburgerPredTree subst (EqPred NomEq p false) -- P ~ 'False <=> Not P ~ 'True
-  | Just promotedFalseDataCon  == tyConAppTyCon_maybe (subsType subst false) =
-    Not <$> toPresburgerPredTree subst (EqPred NomEq p (mkTyConTy promotedTrueDataCon))
-toPresburgerPredTree subst (EqPred NomEq p b)  -- (n :<=? m) ~ 'True
-  | Just promotedTrueDataCon  == tyConAppTyCon_maybe (subsType subst b)
-  , Just (con, [t1, t2]) <- splitTyConApp_maybe (subsType subst p)
-  , con `elem` boolLeqs = (:<=) <$> toPresburgerExp subst t1  <*> toPresburgerExp subst t2
-toPresburgerPredTree subst (EqPred NomEq p q)  -- (p :: Bool) ~ (q :: Bool)
+toPresburgerPredTree :: Given Translation => PredTree -> Machine Prop
+toPresburgerPredTree (EqPred NomEq p false) -- P ~ 'False <=> Not P ~ 'True
+  | Just promotedFalseDataCon  == tyConAppTyCon_maybe false =
+    Not <$> toPresburgerPredTree (EqPred NomEq p (mkTyConTy promotedTrueDataCon))
+toPresburgerPredTree (EqPred NomEq p b)  -- (n :<=? m) ~ 'True
+  | Just promotedTrueDataCon  == tyConAppTyCon_maybe b
+  , Just (con, [t1, t2]) <- splitTyConApp_maybe p
+  , con `elem` natLeqBool given = (:<=) <$> toPresburgerExp t1  <*> toPresburgerExp t2
+toPresburgerPredTree (EqPred NomEq p q)  -- (p :: Bool) ~ (q :: Bool)
     | typeKind p `eqType` mkTyConTy promotedBoolTyCon = do
       lift $ lift $ tcPluginTrace "EQBOOL:" $ ppr (p, q)
-      (<=>) <$> toPresburgerPred subst p
-            <*> toPresburgerPred subst q
-toPresburgerPredTree subst (EqPred NomEq n m)  -- (n :: Nat) ~ (m :: Nat)
+      (<=>) <$> toPresburgerPred p
+            <*> toPresburgerPred q
+toPresburgerPredTree (EqPred NomEq n m)  -- (n :: Nat) ~ (m :: Nat)
   | typeKind n `eqType` typeNatKind =
-    (:==) <$> toPresburgerExp subst n
-          <*> toPresburgerExp subst m
-toPresburgerPredTree subst (EqPred _ t1 t2) -- CmpNat a b ~ CmpNat c d
-  | Just (con,  [a, b]) <- splitTyConApp_maybe (subsType subst t1)
-  , Just (con', [c, d]) <- splitTyConApp_maybe (subsType subst t2)
+    (:==) <$> toPresburgerExp n
+          <*> toPresburgerExp m
+toPresburgerPredTree (EqPred _ t1 t2) -- CmpNat a b ~ CmpNat c d
+  | Just (con,  [a, b]) <- splitTyConApp_maybe t1
+  , Just (con', [c, d]) <- splitTyConApp_maybe t2
   , con `elem` [typeNatCmpTyCon], con' `elem` [typeNatCmpTyCon]
-  = (<=>) <$> ((:<) <$> toPresburgerExp subst a <*> toPresburgerExp subst b)
-          <*> ((:<) <$> toPresburgerExp subst c <*> toPresburgerExp subst d)
-toPresburgerPredTree subst (EqPred NomEq t1 t2) -- CmpNat a b ~ x
-  | Just (con, [a, b]) <- splitTyConApp_maybe (subsType subst t1)
+  = (<=>) <$> ((:<) <$> toPresburgerExp a <*> toPresburgerExp b)
+          <*> ((:<) <$> toPresburgerExp c <*> toPresburgerExp d)
+toPresburgerPredTree (EqPred NomEq t1 t2) -- CmpNat a b ~ x
+  | Just (con, [a, b]) <- splitTyConApp_maybe t1
   , con `elem` [typeNatCmpTyCon]
-  , Just cmp <- tyConAppTyCon_maybe (subsType subst t2) =
+  , Just cmp <- tyConAppTyCon_maybe t2 =
     let dic = [(promotedLTDataCon, (:<))
               ,(promotedEQDataCon, (:==))
               ,(promotedGTDataCon, (:>))
               ]
     in MaybeT (return $ lookup cmp dic)
-       <*> toPresburgerExp subst a
-       <*> toPresburgerExp subst b
-toPresburgerPredTree subst (EqPred NomEq t1 t2) -- x ~ CmpNat a b
-  | Just (con, [a, b]) <- splitTyConApp_maybe (subsType subst t2)
+       <*> toPresburgerExp a
+       <*> toPresburgerExp b
+toPresburgerPredTree (EqPred NomEq t1 t2) -- x ~ CmpNat a b
+  | Just (con, [a, b]) <- splitTyConApp_maybe t2
   , con `elem` [typeNatCmpTyCon]
-  , Just cmp <- tyConAppTyCon_maybe (subsType subst t1) =
+  , Just cmp <- tyConAppTyCon_maybe t1 =
     let dic = [(promotedLTDataCon, (:<))
               ,(promotedEQDataCon, (:==))
               ,(promotedGTDataCon, (:>))
               ]
     in MaybeT (return $ lookup cmp dic)
-       <*> toPresburgerExp subst a
-       <*> toPresburgerExp subst b
-toPresburgerPredTree subst (ClassPred con [t1, t2]) -- (n :: Nat) <= (m :: Nat)
+       <*> toPresburgerExp a
+       <*> toPresburgerExp b
+toPresburgerPredTree (ClassPred con [t1, t2]) -- (n :: Nat) <= (m :: Nat)
   | typeNatLeqTyCon == classTyCon con
-  , typeKind t1 `eqType` typeNatKind = (:<=) <$> toPresburgerExp subst t1 <*> toPresburgerExp subst t2
-toPresburgerPredTree _ _ = mzero
+  , typeKind t1 `eqType` typeNatKind = (:<=) <$> toPresburgerExp t1 <*> toPresburgerExp t2
+toPresburgerPredTree _ = mzero
 
-toPresburgerExp :: Substitution -> Type -> Machine Expr
-toPresburgerExp dic ty = case subsType dic ty of
+toPresburgerExp :: Given Translation => Type -> Machine Expr
+toPresburgerExp ty = case ty of
   TyVarTy t          -> return $ Var $ toName $ getKey $ getUnique t
   t@(TyConApp tc ts) -> body tc ts <|> Var . toName . getKey . getUnique <$> toVar t
   LitTy (NumTyLit n) -> return (K n)
   LitTy _            -> mzero
-  t                  -> Var . toName . getKey .getUnique <$> toVar t
+  t                  ->
+        parseExpr given ty
+    <|> Var . toName . getKey .getUnique <$> toVar t
   where
     body tc ts =
       let step con op
             | tc == con, [tl, tr] <- ts =
-              op <$> toPresburgerExp dic tl <*> toPresburgerExp dic tr
+              op <$> toPresburgerExp tl <*> toPresburgerExp tr
             | otherwise = mzero
       in case ts of
         [tl, tr] | tc == typeNatMulTyCon ->
           case (simpleExp tl, simpleExp tr) of
             (LitTy (NumTyLit n), LitTy (NumTyLit m)) -> return $ K $ n * m
-            (LitTy (NumTyLit n), x) -> (:*) <$> pure n <*> toPresburgerExp dic x
-            (x, LitTy (NumTyLit n)) -> (:*) <$> pure n <*> toPresburgerExp dic x
+            (LitTy (NumTyLit n), x) -> (:*) <$> pure n <*> toPresburgerExp x
+            (x, LitTy (NumTyLit n)) -> (:*) <$> pure n <*> toPresburgerExp x
             _ -> mzero
         _ ->  asum [ step con op
                    | (con, op) <- [(typeNatAddTyCon, (:+)), (typeNatSubTyCon, (:-))]]
