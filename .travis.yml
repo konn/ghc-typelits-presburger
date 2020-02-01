@@ -7,6 +7,7 @@ cache:
     - $HOME/.stack
     - $HOME/.cabal
     - $HOME/.ghc
+    - $HOME/.local
     - $TRAVIS_BUILD_DIR/**/.stack-work
     - $TRAVIS_BUILD_DIR/stack*.yaml.lock
 
