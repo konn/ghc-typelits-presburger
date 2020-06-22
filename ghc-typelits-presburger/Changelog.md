@@ -1,5 +1,7 @@
 Changelog
 ==========
+## 0.3.0.1
+* Supports GHC >= 8.10.
 
 ## 0.3.0.0
 * Drops support for GHC < 8.4
