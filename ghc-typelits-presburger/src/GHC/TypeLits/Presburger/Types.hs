@@ -11,6 +11,7 @@ module GHC.TypeLits.Presburger.Types
 import           Class                          (classTyCon)
 import           Control.Applicative            ((<|>))
 import           Control.Arrow                  (second)
+import           Outputable (showSDocUnsafe)  
 import           Control.Monad                  (forM_, guard, mzero, unless)
 import           Control.Monad.State.Class
 import           Control.Monad.Trans.Class
@@ -32,10 +33,16 @@ import           GHC.TypeLits.Presburger.Compat
 import           PrelNames
 import           TcPluginM                      (lookupOrig, newFlexiTyVar,
                                                  newWanted, tcLookupClass)
-import           Type                           (mkPrimEqPredRole, mkTyVarTy)
+import           Type                           (mkTyVarTy)
 import           TysWiredIn                     (promotedEQDataCon,
                                                  promotedGTDataCon,
                                                  promotedLTDataCon)
+#if MIN_VERSION_ghc(8,8,1)
+import TysWiredIn (eqTyConName)
+#else
+import PrelNames (eqTyConName)
+#endif
+
 import           Var
 #if MIN_VERSION_ghc(8,6,0)
 import Plugins (purePlugin)
@@ -238,7 +245,7 @@ instance Monoid Translation where
 
 decidePresburger :: PluginMode -> TcPluginM Translation -> () -> [Ct] -> [Ct] -> [Ct] -> TcPluginM TcPluginResult
 decidePresburger _ genTrans _ gs [] [] = do
-  tcPluginTrace "Started givens with: " (ppr $ map (ctEvPred . ctEvidence) gs)
+  tcPluginTrace "pres: Started givens with: " (ppr $ map (ctEvPred . ctEvidence) gs)
   trans <- genTrans
   give trans $ do
     ngs <- mapM (\a -> runMachine $ (,) a <$> toPresburgerPred (deconsPred a)) gs
@@ -258,10 +265,10 @@ decidePresburger mode genTrans _ gs ds ws = do
   give trans $ do
     gs' <- normaliseGivens gs
     let subst = mkSubstitution (gs' ++ ds)
-    tcPluginTrace "Current subst" (ppr subst)
-    tcPluginTrace "wanteds" $ ppr $ map deconsPred ws
-    tcPluginTrace "givens" $ ppr $ map (subsType subst . deconsPred) gs
-    tcPluginTrace "deriveds" $ ppr $ map deconsPred ds
+    tcPluginTrace "pres: Current subst" (ppr subst)
+    tcPluginTrace "pres: wanteds" $ ppr $ map (subsType subst . deconsPred . subsCt subst) ws
+    tcPluginTrace "pres: givens" $ ppr $ map (subsType subst . deconsPred) gs
+    tcPluginTrace "pres: deriveds" $ ppr $ map deconsPred ds
     (prems, wants, prems0) <- do
       wants <- catMaybes <$>
               mapM
@@ -279,15 +286,15 @@ decidePresburger mode genTrans _ gs ds ws = do
                   | ct <- solved
                   , EqPred NomEq t1 t2 <- return (classifyPredType $ deconsPred ct)
                   ]
-    tcPluginTrace "final premises" (text $ show prems0)
-    tcPluginTrace "final goals" (text $ show $ map snd wants)
+    tcPluginTrace "pres: final premises" (text $ show prems0)
+    tcPluginTrace "pres: final goals" (text $ show $ map snd wants)
     case testIf prems (foldr ((:&&) . snd) PTrue wants) of
       Proved -> do
-        tcPluginTrace "Proved" (text $ show $ map snd wants)
-        tcPluginTrace "... with coercions" (ppr coerced)
+        tcPluginTrace "pres: Proved" (text $ show $ map snd wants)
+        tcPluginTrace "pres: ... with coercions" (ppr coerced)
         return $ TcPluginOk coerced []
       Disproved wit -> do
-        tcPluginTrace "Failed! " (text $ show wit)
+        tcPluginTrace "pres: Failed! " (text $ show wit)
         return $ TcPluginContradiction $ map fst wants
 
 defaultTranslation :: TcPluginM Translation
@@ -326,10 +333,10 @@ defaultTranslation = do
 p <=> q =  (p :&& q) :|| (Not p :&& Not q)
 
 withEv :: Ct -> (EvTerm, Ct)
-withEv ct
-  | EqPred _ t1 t2 <- classifyPredType (deconsPred ct) =
-      (evByFiat "ghc-typelits-presburger" t1 t2, ct)
-  | otherwise = undefined
+withEv ct =
+  case classifyPredType (deconsPred ct) of
+    EqPred _ t1 t2 -> (evByFiat "ghc-typelits-presburger" t1 t2, ct)
+    _ -> error $ "UnknownPredEv: " <> showSDocUnsafe (ppr ct)
 
 orderingDic :: Given Translation => [(TyCon, Expr -> Expr -> Prop)]
 orderingDic =
@@ -349,6 +356,8 @@ toPresburgerPred ty
   , con `elem` trueData given = return PTrue
   | Just (con, []) <- splitTyConApp_maybe ty
   , con `elem` falseData given = return PFalse
+  | cls@(EqPred NomEq _ _) <- classifyPredType ty
+  = toPresburgerPredTree cls
   | isEqPred ty = toPresburgerPredTree $ classifyPredType ty
   | Just (con, [l, r]) <- splitTyConApp_maybe ty -- l ~ r
   , con `elem` (tyEq given ++ tyEqBool given)
@@ -378,7 +387,7 @@ toPresburgerPredTree (EqPred NomEq p b)  -- (n :<=? m) ~ 'True
   , con `elem` natLeqBool given = (:<=) <$> toPresburgerExp t1  <*> toPresburgerExp t2
 toPresburgerPredTree (EqPred NomEq p q)  -- (p :: Bool) ~ (q :: Bool)
     | typeKind p `eqType` mkTyConTy promotedBoolTyCon = do
-      lift $ lift $ tcPluginTrace "EQBOOL:" $ ppr (p, q)
+      lift $ lift $ tcPluginTrace "pres: EQBOOL:" $ ppr (p, q)
       (<=>) <$> toPresburgerPred p
             <*> toPresburgerPred q
 toPresburgerPredTree (EqPred NomEq n m)  -- (n :: Nat) ~ (m :: Nat)
@@ -462,7 +471,11 @@ lastTwo = drop <$> subtract 2 . length <*> id
 
 simpleExp :: Given Translation => Type -> Type
 simpleExp (AppTy t1 t2) = AppTy (simpleExp t1) (simpleExp t2)
+#if MIN_VERSION_ghc(8,10,1)
+simpleExp (FunTy f t1 t2) = FunTy f (simpleExp t1) (simpleExp t2)
+#else
 simpleExp (FunTy t1 t2) = FunTy (simpleExp t1) (simpleExp t2)
+#endif
 simpleExp (ForAllTy t1 t2) = ForAllTy t1 (simpleExp t2)
 simpleExp (TyConApp tc (lastTwo -> ts)) = fromMaybe (TyConApp tc (map simpleExp ts)) $
   asum (map simpler
