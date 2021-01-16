@@ -84,6 +84,7 @@ jobs:
     - uses: haskell/actions/setup@v1.1.7
       with:
         ghc-version: ${{ matrix.ghc }}
+        stack-no-global: true
         enable-stack: true
 
     - name: Cache
