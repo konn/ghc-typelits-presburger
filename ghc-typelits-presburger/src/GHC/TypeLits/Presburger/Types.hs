@@ -32,10 +32,23 @@ import Control.Monad.Trans.Class
 import Control.Monad.Trans.Maybe (MaybeT (..))
 import Control.Monad.Trans.RWS.Strict (runRWS, tell)
 import Control.Monad.Trans.State (StateT, runStateT)
+#if MIN_VERSION_ghc(8,8,1)
+import TysWiredIn (eqTyConName)
+#else
+import PrelNames (eqTyConName)
+#endif
+
+#if MIN_VERSION_ghc(8,6,0)
+import Plugins (purePlugin)
+import GhcPlugins (InstalledUnitId, PackageName(..), lookupPackageName, fsToUnitId, lookupPackage)
+#endif
+
+import Data.Char (isDigit)
 import Data.Foldable (asum)
 import Data.Integer.SAT (Expr (..), Prop (..), PropSet, assert, checkSat, noProps, toName)
 import qualified Data.Integer.SAT as SAT
 import Data.List (nub)
+import qualified Data.List as L
 import qualified Data.Map.Strict as M
 import Data.Maybe
   ( catMaybes,
@@ -46,8 +59,12 @@ import Data.Maybe
   )
 import Data.Reflection (Given, give, given)
 import qualified Data.Set as Set
+import FastString
 import GHC.TypeLits.Presburger.Compat
+import HscTypes (HscEnv (hsc_dflags))
+import Module (InstalledUnitId (InstalledUnitId))
 import Outputable (showSDocUnsafe)
+import Packages (initPackages)
 import PrelNames
 import TcPluginM
   ( getTopEnv,
@@ -63,21 +80,7 @@ import TysWiredIn
     promotedGTDataCon,
     promotedLTDataCon,
   )
-#if MIN_VERSION_ghc(8,8,1)
-import TysWiredIn (eqTyConName)
-#else
-import PrelNames (eqTyConName)
-#endif
-
 import Var
-
-#if MIN_VERSION_ghc(8,6,0)
-import Plugins (purePlugin)
-import GhcPlugins (unpackFS, InstalledUnitId, initPackages, PackageName(..), lookupPackageName, fsToUnitId, FastString, lookupPackage, HscEnv(hsc_dflags))
-import qualified Data.List as L
-import Data.Char (isDigit)
-import Module (InstalledUnitId(InstalledUnitId))
-#endif
 
 assert' :: Prop -> PropSet -> PropSet
 assert' p ps = foldr assert ps (p : varPos)
@@ -351,23 +354,46 @@ decidePresburger mode genTrans _ gs _ds ws = do
         tcPluginTrace "pres: Failed! " (text $ show wit)
         return $ TcPluginContradiction $ map fst wants
 
+eqReasoning :: FastString
+eqReasoning = fsLit "equational-reasoning"
+
 defaultTranslation :: TcPluginM Translation
 defaultTranslation = do
-  emd <- lookupModule (mkModuleName "Proof.Propositional.Empty") (fsLit "equational-reasoning")
-  emptyClsTyCon <- classTyCon <$> (tcLookupClass =<< lookupOrig emd (mkTcOcc "Empty"))
+  dflags <- hsc_dflags <$> getTopEnv
+  (_, packs) <- tcPluginIO $ initPackages dflags
+  tcPluginTrace "pres: packs" $ ppr (map (\(InstalledUnitId p) -> p) packs)
+  let eqThere = fromMaybe False $
+        listToMaybe $ do
+          InstalledUnitId pname <- packs
+          rest <-
+            maybeToList $
+              L.stripPrefix "equational-reasoning-" $ unpackFS pname
+          pure $ null rest || isDigit (head rest)
+  (isEmpties, isTrues) <-
+    if eqThere
+      then do
+        tcPluginTrace "pres: equational-reasoning activated!" $ ppr ()
+        emd <- lookupModule (mkModuleName "Proof.Propositional.Empty") eqReasoning
+        pmd <- lookupModule (mkModuleName "Proof.Propositional") eqReasoning
+
+        emptyClsTyCon <- classTyCon <$> (tcLookupClass =<< lookupOrig emd (mkTcOcc "Empty"))
+        isTrueCon_ <- tcLookupTyCon =<< lookupOrig pmd (mkTcOcc "IsTrue")
+        pure ([emptyClsTyCon], [isTrueCon_])
+      else do
+        tcPluginTrace "pres: No equational-reasoning found." $ ppr ()
+        pure ([], [])
+
   eqTyCon_ <- getEqTyCon
   eqWitCon_ <- getEqWitnessTyCon
-  pmd <- lookupModule (mkModuleName "Proof.Propositional") (fsLit "equational-reasoning")
-  isTrueCon_ <- tcLookupTyCon =<< lookupOrig pmd (mkTcOcc "IsTrue")
   vmd <- lookupModule (mkModuleName "Data.Void") (fsLit "base")
   voidTyCon <- tcLookupTyCon =<< lookupOrig vmd (mkTcOcc "Void")
   nLeq <- tcLookupTyCon =<< lookupOrig gHC_TYPENATS (mkTcOcc "<=")
   return
     mempty
-      { isEmpty = [emptyClsTyCon]
+      { isEmpty = isEmpties
       , tyEq = [eqTyCon_]
       , tyEqWitness = [eqWitCon_]
-      , isTrue = [isTrueCon_]
+      , isTrue = isTrues
       , voids = [voidTyCon]
       , natMinus = [typeNatSubTyCon]
       , natPlus = [typeNatAddTyCon]
