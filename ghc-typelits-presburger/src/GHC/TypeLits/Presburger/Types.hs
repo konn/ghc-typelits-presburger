@@ -32,10 +32,6 @@ import Control.Monad.Trans.Class
 import Control.Monad.Trans.Maybe (MaybeT (..))
 import Control.Monad.Trans.RWS.Strict (runRWS, tell)
 import Control.Monad.Trans.State (StateT, runStateT)
-import Data.Foldable (asum)
-import Data.Integer.SAT (Expr (..), Prop (..), PropSet, assert, checkSat, noProps, toName)
-import qualified Data.Integer.SAT as SAT
-import Data.List (nub)
 #if MIN_VERSION_ghc(8,8,1)
 import TysWiredIn (eqTyConName)
 #else
@@ -44,10 +40,14 @@ import PrelNames (eqTyConName)
 
 #if MIN_VERSION_ghc(8,6,0)
 import Plugins (purePlugin)
-import GhcPlugins (InstalledUnitId, initPackages, PackageName(..), lookupPackageName, fsToUnitId, lookupPackage, HscEnv(hsc_dflags))
-import Data.Char (isDigit)
+import GhcPlugins (InstalledUnitId, PackageName(..), lookupPackageName, fsToUnitId, lookupPackage)
 #endif
 
+import Data.Char (isDigit)
+import Data.Foldable (asum)
+import Data.Integer.SAT (Expr (..), Prop (..), PropSet, assert, checkSat, noProps, toName)
+import qualified Data.Integer.SAT as SAT
+import Data.List (nub)
 import qualified Data.List as L
 import qualified Data.Map.Strict as M
 import Data.Maybe
@@ -61,8 +61,10 @@ import Data.Reflection (Given, give, given)
 import qualified Data.Set as Set
 import FastString
 import GHC.TypeLits.Presburger.Compat
+import HscTypes (HscEnv (hsc_dflags))
 import Module (InstalledUnitId (InstalledUnitId))
 import Outputable (showSDocUnsafe)
+import Packages (initPackages)
 import PrelNames
 import TcPluginM
   ( getTopEnv,
