@@ -9,6 +9,7 @@ import GHC.TypeLits.Presburger.Types
 
 import Control.Monad
 import Data.Reflection (Given, give, given)
+import GHC             (mkModule, moduleUnitId)
 import TcPluginM       (lookupOrig, matchFam)
 import Type            (splitTyConApp)
 
@@ -26,6 +27,8 @@ data SingletonCons
       , singNatMinus       :: TyCon
       , singNatTimes       :: TyCon
       , singNatCompare     :: TyCon
+      , singTrueSym0       :: TyCon
+      , singFalseSym0      :: TyCon
       , caseNameForSingLeq :: TyCon
       , caseNameForSingGeq :: TyCon
       , caseNameForSingLt  :: TyCon
@@ -50,14 +53,17 @@ toTranslation scs@SingletonCons{..} =
     , natMinus = [singNatMinus]
     , natTimes = [singNatTimes]
     , parsePred = parseSingPred
+    , trueData = [singTrueSym0]
+    , falseData = [singFalseSym0]
     }
 
 genSingletonCons :: TcPluginM SingletonCons
 genSingletonCons = do
   singletonOrd <- lookupModule (mkModuleName "Data.Singletons.Prelude.Ord") (fsLit "singletons")
   singletonsNum <- lookupModule (mkModuleName "Data.Singletons.Prelude.Num") (fsLit "singletons")
-  -- prel <- lookupModule (mkModuleName "Data.Singletons.Prelude") (fsLit "singletons")
-  -- singTrueSym0 <- tcLookupTyCon =<< lookupOrig prel (mkTcOcc "TrueSym0")
+  let prel = mkModule (moduleUnitId singletonsNum) (mkModuleName "Data.Singletons.Prelude.Instances")
+  singTrueSym0 <- tcLookupTyCon =<< lookupOrig prel (mkTcOcc "TrueSym0")
+  singFalseSym0 <- tcLookupTyCon =<< lookupOrig prel (mkTcOcc "FalseSym0")
 #if MIN_VERSION_singletons(2,4,1)
   singNatLeq <- tcLookupTyCon =<< lookupOrig singletonOrd (mkTcOcc "<=")
   singNatLt <- tcLookupTyCon =<< lookupOrig singletonOrd (mkTcOcc "<")
