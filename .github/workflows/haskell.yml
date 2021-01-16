@@ -1,0 +1,127 @@
+name: Haskell CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        ghc: ['8.4.3', '8.6.5', '8.8.4', '8.10.3']
+
+    runs-on: ubuntu-latest
+    name: Haskell GHC ${{ matrix.ghc }} Build
+    env:
+      STACK_YAML: stack-${{matrix.ghc}}.yaml
+
+    steps:
+    - uses: actions/checkout@v2
+    - uses: haskell/actions/setup@v1.1.7
+      with:
+        ghc-version: ${{ matrix.ghc }}
+        enable-stack: true
+
+    - name: Cache
+      uses: actions/cache@v2
+      env:
+        cache-name: cache-stack-lock-${{matrix.ghc}}
+      with:
+        path: ./stack-${{matrix.ghc}}.yaml.lock
+        key:  ${{ runner.os }}-${{env.cache-name}}-${{ hashFiles(${{env.STACK_YAML}}) }}-${{ hashFiles('**/package.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-${{env.cache-name}}-${{ hashFiles(${{env.STACK_YAML}}) }}-
+          ${{ runner.os }}-${{env.cache-name}}-
+
+    - name: Cache
+      uses: actions/cache@v2
+      env:
+        cache-name: stack-global-cache-${{matrix.ghc}}
+      with:
+        path: ~/.stack
+        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles(${{env.STACK_YAML}}) }}-${{ hashFiles('**/package.yaml') }}-${{hashFiles('**/*.hs')}}-${{git.sha}}
+        restore-keys: |
+          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles(${{env.STACK_YAML}}) }}-${{ hashFiles('**/package.yaml') }}-${{hashFiles('**/*.hs')}}-
+          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles(${{env.STACK_YAML}}) }}-${{ hashFiles('**/package.yaml') }}-
+          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles(${{env.STACK_YAML}}) }}-
+          ${{ runner.os }}-build-${{ env.cache-name }}-
+
+    - name: Cache
+      uses: actions/cache@v2
+      env:
+        cache-name: stack-work-cache-${{matrix.ghc}}
+      with:
+        path: "**/.stack-work"
+        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles(${{env.STACK_YAML}}) }}-${{ hashFiles('**/package.yaml') }}-${{hashFiles('**/*.hs')}}-${{git.sha}}
+        restore-keys: |
+          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles(${{env.STACK_YAML}}) }}-${{ hashFiles('**/package.yaml') }}-${{hashFiles('**/*.hs')}}-
+          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles(${{env.STACK_YAML}}) }}-${{ hashFiles('**/package.yaml') }}-
+          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles(${{env.STACK_YAML}}) }}-
+          ${{ runner.os }}-build-${{ env.cache-name }}-
+
+    - name: Install dependencies
+      run: |
+        stack build --only-dependencies --tests --bench --no-run-tests --no-run-benchmarks
+    - name: Build
+      run: stack build --tests --bench --no-run-tests --no-run-benchmarks
+    - name: Run tests
+      run: stack test --test --bench --no-run-benchmarks
+
+  test:
+    strategy:
+      matrix:
+        ghc: ['8.4.3', '8.6.5', '8.8.4', '8.10.3']
+
+    runs-on: ubuntu-latest
+    name: Haskell GHC ${{ matrix.ghc }} Test
+    env:
+      STACK_YAML: stack-${{matrix.ghc}}.yaml
+
+    steps:
+    - uses: actions/checkout@v2
+    - uses: haskell/actions/setup@v1.1.7
+      with:
+        ghc-version: ${{ matrix.ghc }}
+        enable-stack: true
+
+    - name: Cache
+      uses: actions/cache@v2
+      env:
+        cache-name: cache-stack-lock-${{matrix.ghc}}
+      with:
+        path: ./stack-${{matrix.ghc}}.yaml.lock
+        key:  ${{ runner.os }}-${{env.cache-name}}-${{ hashFiles(${{env.STACK_YAML}}) }}-${{ hashFiles('**/package.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-${{env.cache-name}}-${{ hashFiles(${{env.STACK_YAML}}) }}-
+          ${{ runner.os }}-${{env.cache-name}}-
+
+    - name: Cache
+      uses: actions/cache@v2
+      env:
+        cache-name: stack-global-cache-${{matrix.ghc}}
+      with:
+        path: ~/.stack
+        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles(${{env.STACK_YAML}}) }}-${{ hashFiles('**/package.yaml') }}-${{hashFiles('**/*.hs')}}-${{git.sha}}
+        restore-keys: |
+          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles(${{env.STACK_YAML}}) }}-${{ hashFiles('**/package.yaml') }}-${{hashFiles('**/*.hs')}}-
+          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles(${{env.STACK_YAML}}) }}-${{ hashFiles('**/package.yaml') }}-
+          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles(${{env.STACK_YAML}}) }}-
+          ${{ runner.os }}-build-${{ env.cache-name }}-
+
+    - name: Cache
+      uses: actions/cache@v2
+      env:
+        cache-name: stack-work-cache-${{matrix.ghc}}
+      with:
+        path: "**/.stack-work"
+        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles(${{env.STACK_YAML}}) }}-${{ hashFiles('**/package.yaml') }}-${{hashFiles('**/*.hs')}}-${{git.sha}}
+        restore-keys: |
+          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles(${{env.STACK_YAML}}) }}-${{ hashFiles('**/package.yaml') }}-${{hashFiles('**/*.hs')}}-
+          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles(${{env.STACK_YAML}}) }}-${{ hashFiles('**/package.yaml') }}-
+          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles(${{env.STACK_YAML}}) }}-
+          ${{ runner.os }}-build-${{ env.cache-name }}-
+
+    - name: Run tests
+      run: stack test --test --bench --no-run-benchmarks
