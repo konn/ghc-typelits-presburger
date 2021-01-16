@@ -1,0 +1,9 @@
+cradle:
+  stack:
+    components:
+    - path: "src"
+      component: "ghc-typelits-presburger:lib"
+    - path: "examples/simple-arith-core.hs"
+      component: "ghc-typelits-presburger:exe:simple-arith-core"
+    - path: "test"
+      component: "ghc-typelits-presburger:test:test-typeltis-presburger"
