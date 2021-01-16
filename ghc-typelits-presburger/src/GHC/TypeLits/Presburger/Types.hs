@@ -108,8 +108,6 @@ varsExpr (e :+ v) = nub $ varsExpr e ++ varsExpr v
 varsExpr (e :- v) = nub $ varsExpr e ++ varsExpr v
 varsExpr (_ :* v) = varsExpr v
 varsExpr (Negate e) = varsExpr e
-varsExpr (Min l r) = nub $ varsExpr l ++ varsExpr r
-varsExpr (Max l r) = nub $ varsExpr l ++ varsExpr r
 varsExpr (Var i) = [i]
 varsExpr (K _) = []
 varsExpr (If p e v) = nub $ varsProp p ++ varsExpr e ++ varsExpr v
@@ -183,8 +181,6 @@ handleSubtraction DisallowNegatives p0 =
     loopExp (c :* e)
       | c > 0 = (c :*) <$> loopExp e
       | otherwise = (negate c :*) <$> loopExp (Negate e)
-    loopExp (Min l r) = Min <$> loopExp l <*> loopExp r
-    loopExp (Max l r) = Max <$> loopExp l <*> loopExp r
     loopExp (If p l r) = If <$> loop p <*> loopExp l <*> loopExp r
     loopExp e@(K _) = return e
 
@@ -210,8 +206,6 @@ data Translation = Translation
   , natLtBool :: [TyCon]
   , natGt :: [TyCon]
   , natGtBool :: [TyCon]
-  , natMin :: [TyCon]
-  , natMax :: [TyCon]
   , orderingLT :: [TyCon]
   , orderingGT :: [TyCon]
   , orderingEQ :: [TyCon]
@@ -250,8 +244,6 @@ instance Semigroup Translation where
       , falseData = falseData l <> falseData r
       , parsePred = \f ty -> parsePred l f ty <|> parsePred r f ty
       , parseExpr = (<|>) <$> parseExpr l <*> parseExpr r
-      , natMin = natMin l <> natMin r
-      , natMax = natMax l <> natMax r
       }
 
 instance Monoid Translation where
@@ -284,8 +276,6 @@ instance Monoid Translation where
       , falseData = []
       , parsePred = const $ const mzero
       , parseExpr = const mzero
-      , natMin = mempty
-      , natMax = mempty
       }
 
 decidePresburger :: PluginMode -> TcPluginM Translation -> () -> [Ct] -> [Ct] -> [Ct] -> TcPluginM TcPluginResult
@@ -548,12 +538,6 @@ toPresburgerExp ty = case ty of
                 ]
                   ++ [ step con (:-)
                      | con <- natMinus given
-                     ]
-                  ++ [ step con Min
-                     | con <- natMin given
-                     ]
-                  ++ [ step con Max
-                     | con <- natMin given
                      ]
 
 -- simplTypeCmp :: Type -> Type
