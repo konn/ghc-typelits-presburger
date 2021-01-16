@@ -75,6 +75,8 @@ jobs:
         ghc: ['8.4.3', '8.6.5', '8.8.4', '8.10.3']
 
     runs-on: ubuntu-latest
+    needs:
+    - build
     name: Haskell GHC ${{ matrix.ghc }} Test
     env:
       STACK_YAML: stack-${{matrix.ghc}}.yaml
