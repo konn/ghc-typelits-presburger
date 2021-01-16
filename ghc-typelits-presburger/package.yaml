@@ -24,6 +24,10 @@ tested-with: GHC==8.4.3 GHC==8.6.3 GHC==8.8.3 GHC==8.10.1
 ghc-options:
   - -Wall
   - -Wno-dodgy-imports
+
+dependencies:
+- base
+
 library:
   source-dirs:
     - src
@@ -59,3 +63,18 @@ flags:
     description: Builds example
     manual: false
     default: false
+
+tests:
+  test-typeltis-presburger:
+    source-dirs: test
+    main: test.hs
+    build-tools:
+    - tasty-discover
+    dependencies:
+    - ghc-typelits-presburger
+    - equational-reasoning
+    - tasty
+    - tasty-discover
+    - tasty-expected-failure
+    - tasty-hunit
+    - text
