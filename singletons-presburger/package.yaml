@@ -1,5 +1,5 @@
 name: singletons-presburger
-version: "0.3.0.1"
+version: "0.4.0.0"
 synopsis: Presburger Arithmetic Solver for GHC Type-level natural numbers with Singletons package.
 description: |
   The @singletons-presburger@ plugin augments GHC type-system with Presburger
@@ -28,7 +28,7 @@ library:
     - Data.Singletons.TypeNats.Presburger
   dependencies:
     - base >=4.7 && <5
-    - ghc-typelits-presburger
+    - ghc-typelits-presburger >= 0.4
     - ghc >=7.10 && <8.11
     - reflection
 executables:

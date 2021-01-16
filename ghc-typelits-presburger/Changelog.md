@@ -1,5 +1,8 @@
 Changelog
 ==========
+## 0.4.0.0
+* Fixes constraint solving (fixes #9); this may change the previous (unsound) behaviour, and hence it is breaking change.
+
 ## 0.3.0.1
 * Supports GHC >= 8.10.
 
