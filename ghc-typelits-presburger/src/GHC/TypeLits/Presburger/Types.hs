@@ -111,6 +111,8 @@ varsExpr (e :+ v) = nub $ varsExpr e ++ varsExpr v
 varsExpr (e :- v) = nub $ varsExpr e ++ varsExpr v
 varsExpr (_ :* v) = varsExpr v
 varsExpr (Negate e) = varsExpr e
+varsExpr (Min l r) = nub $ varsExpr l ++ varsExpr r
+varsExpr (Max l r) = nub $ varsExpr l ++ varsExpr r
 varsExpr (Var i) = [i]
 varsExpr (K _) = []
 varsExpr (If p e v) = nub $ varsProp p ++ varsExpr e ++ varsExpr v
@@ -184,6 +186,8 @@ handleSubtraction DisallowNegatives p0 =
     loopExp (c :* e)
       | c > 0 = (c :*) <$> loopExp e
       | otherwise = (negate c :*) <$> loopExp (Negate e)
+    loopExp (Min l r) = Min <$> loopExp l <*> loopExp r
+    loopExp (Max l r) = Max <$> loopExp l <*> loopExp r
     loopExp (If p l r) = If <$> loop p <*> loopExp l <*> loopExp r
     loopExp e@(K _) = return e
 
@@ -209,12 +213,14 @@ data Translation = Translation
   , natLtBool :: [TyCon]
   , natGt :: [TyCon]
   , natGtBool :: [TyCon]
+  , natMin :: [TyCon]
+  , natMax :: [TyCon]
   , orderingLT :: [TyCon]
   , orderingGT :: [TyCon]
   , orderingEQ :: [TyCon]
   , natCompare :: [TyCon]
   , parsePred :: (Type -> Machine Expr) -> Type -> Machine Prop
-  , parseExpr :: Type -> Machine Expr
+  , parseExpr :: (Type -> Machine Expr) -> Type -> Machine Expr
   }
 
 instance Semigroup Translation where
@@ -246,7 +252,9 @@ instance Semigroup Translation where
       , trueData = trueData l <> trueData r
       , falseData = falseData l <> falseData r
       , parsePred = \f ty -> parsePred l f ty <|> parsePred r f ty
-      , parseExpr = (<|>) <$> parseExpr l <*> parseExpr r
+      , parseExpr = \toE -> (<|>) <$> parseExpr l toE <*> parseExpr r toE
+      , natMin = natMin l <> natMin r
+      , natMax = natMax l <> natMax r
       }
 
 instance Monoid Translation where
@@ -278,7 +286,9 @@ instance Monoid Translation where
       , trueData = []
       , falseData = []
       , parsePred = const $ const mzero
-      , parseExpr = const mzero
+      , parseExpr = const $ const mzero
+      , natMin = mempty
+      , natMax = mempty
       }
 
 decidePresburger :: PluginMode -> TcPluginM Translation -> () -> [Ct] -> [Ct] -> [Ct] -> TcPluginM TcPluginResult
@@ -293,7 +303,9 @@ decidePresburger _ genTrans _ gs [] [] = do
         (solved, _) = foldr go ([], noProps) givens
     if isNothing (checkSat prems)
       then return $ TcPluginContradiction gs
-      else return $ TcPluginOk (map withEv solved) []
+      else do
+        tcPluginTrace "Redundant solveds" $ ppr solved
+        return $ TcPluginOk (map withEv solved) []
   where
     go (ct, p) (ss, prem)
       | Proved <- testIf prem p = (ct : ss, prem)
@@ -514,11 +526,14 @@ binPropDic =
 toPresburgerExp :: Given Translation => Type -> Machine Expr
 toPresburgerExp ty = case ty of
   TyVarTy t -> return $ Var $ toName $ getKey $ getUnique t
-  t@(TyConApp tc ts) -> body tc ts <|> Var . toName . getKey . getUnique <$> toVar t
+  t@(TyConApp tc ts) ->
+    parseExpr given toPresburgerExp ty
+      <|> body tc ts
+      <|> Var . toName . getKey . getUnique <$> toVar t
   LitTy (NumTyLit n) -> return (K n)
   LitTy _ -> mzero
   t ->
-    parseExpr given ty
+    parseExpr given toPresburgerExp ty
       <|> Var . toName . getKey . getUnique <$> toVar t
   where
     body tc ts =
@@ -541,6 +556,12 @@ toPresburgerExp ty = case ty of
                 ]
                   ++ [ step con (:-)
                      | con <- natMinus given
+                     ]
+                  ++ [ step con Min
+                     | con <- natMin given
+                     ]
+                  ++ [ step con Max
+                     | con <- natMin given
                      ]
 
 -- simplTypeCmp :: Type -> Type

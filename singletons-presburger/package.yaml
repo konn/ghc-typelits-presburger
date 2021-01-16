@@ -30,6 +30,7 @@ library:
     - base >=4.7 && <5
     - ghc-typelits-presburger
     - ghc >=7.10 && <8.11
+    - mtl
     - reflection
 executables:
   simple-arith:
