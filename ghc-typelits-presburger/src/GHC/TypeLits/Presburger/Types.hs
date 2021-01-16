@@ -36,6 +36,19 @@ import Data.Foldable (asum)
 import Data.Integer.SAT (Expr (..), Prop (..), PropSet, assert, checkSat, noProps, toName)
 import qualified Data.Integer.SAT as SAT
 import Data.List (nub)
+#if MIN_VERSION_ghc(8,8,1)
+import TysWiredIn (eqTyConName)
+#else
+import PrelNames (eqTyConName)
+#endif
+
+#if MIN_VERSION_ghc(8,6,0)
+import Plugins (purePlugin)
+import GhcPlugins (InstalledUnitId, initPackages, PackageName(..), lookupPackageName, fsToUnitId, lookupPackage, HscEnv(hsc_dflags))
+import Data.Char (isDigit)
+#endif
+
+import qualified Data.List as L
 import qualified Data.Map.Strict as M
 import Data.Maybe
   ( catMaybes,
@@ -46,7 +59,9 @@ import Data.Maybe
   )
 import Data.Reflection (Given, give, given)
 import qualified Data.Set as Set
+import FastString
 import GHC.TypeLits.Presburger.Compat
+import Module (InstalledUnitId (InstalledUnitId))
 import Outputable (showSDocUnsafe)
 import PrelNames
 import TcPluginM
@@ -63,21 +78,7 @@ import TysWiredIn
     promotedGTDataCon,
     promotedLTDataCon,
   )
-#if MIN_VERSION_ghc(8,8,1)
-import TysWiredIn (eqTyConName)
-#else
-import PrelNames (eqTyConName)
-#endif
-
 import Var
-
-#if MIN_VERSION_ghc(8,6,0)
-import Plugins (purePlugin)
-import GhcPlugins (unpackFS, InstalledUnitId, initPackages, PackageName(..), lookupPackageName, fsToUnitId, FastString, lookupPackage, HscEnv(hsc_dflags))
-import qualified Data.List as L
-import Data.Char (isDigit)
-import Module (InstalledUnitId(InstalledUnitId))
-#endif
 
 assert' :: Prop -> PropSet -> PropSet
 assert' p ps = foldr assert ps (p : varPos)
