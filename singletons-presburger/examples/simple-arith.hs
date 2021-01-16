@@ -9,15 +9,14 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeInType #-}
 {-# LANGUAGE TypeOperators #-}
-{-# OPTIONS_GHC -dcore-lint #-}
-{-# OPTIONS_GHC -fplugin Data.Singletons.TypeNats.Presburger #-}
-
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 806
 {-# LANGUAGE NoStarIsType #-}
 #endif
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 810
 {-# LANGUAGE StandaloneKindSignatures #-}
 #endif
+{-# OPTIONS_GHC -dcore-lint #-}
+{-# OPTIONS_GHC -fplugin Data.Singletons.TypeNats.Presburger #-}
 
 module Main where
 
@@ -54,7 +53,6 @@ natLen ::
   (Length ys - Length xs) + Length xs :~: Length ys
 natLen _ _ = Refl
 
--- The following three cases fails >= GHC 8.6.
 natLeqZero' :: ((n <= 0) ~ 'True) => proxy n -> n :~: 0
 natLeqZero' _ = Refl
 
@@ -113,8 +111,17 @@ succCompare _ _ = Refl
 eqToRefl :: Sing (n :: Nat) -> Sing (m :: Nat) -> CmpNat n m :~: 'EQ -> n :~: m
 eqToRefl _n _m Refl = Refl
 
-minMax :: (n <= m) => Min n m :~: n
-minMax = Refl
+minFlip :: (n <= m) ~ 'True => Proxy (m :: Nat) -> Proxy n -> Min m n :~: n
+minFlip _ _ = Refl
+
+minMax :: (n <= m) ~ 'True => Proxy (m :: Nat) -> Proxy n -> Max m n :~: m
+minMax _ _ = Refl
+
+minComm :: Proxy (m :: Nat) -> Proxy n -> Min n m :~: Min m n
+minComm _ _ = Refl
+
+maxComm :: Proxy (m :: Nat) -> Proxy n -> Max n m :~: Max m n
+maxComm _ _ = Refl
 
 singletonsOnly
   [d|
@@ -130,7 +137,8 @@ flipCompare ::
   Sing n ->
   Sing m ->
   FlipOrdering (Compare n m) :~: Compare m n
-flipCompare n m = $(sCases ''Ordering [|sCompare n m|] [|Refl|])
+flipCompare n m =
+  $(sCases ''Ordering [|sCompare n m|] [|Refl|])
 
 ltCompare ::
   forall n m.

@@ -220,7 +220,7 @@ data Translation = Translation
   , orderingEQ :: [TyCon]
   , natCompare :: [TyCon]
   , parsePred :: (Type -> Machine Expr) -> Type -> Machine Prop
-  , parseExpr :: Type -> Machine Expr
+  , parseExpr :: (Type -> Machine Expr) -> Type -> Machine Expr
   }
 
 instance Semigroup Translation where
@@ -252,7 +252,7 @@ instance Semigroup Translation where
       , trueData = trueData l <> trueData r
       , falseData = falseData l <> falseData r
       , parsePred = \f ty -> parsePred l f ty <|> parsePred r f ty
-      , parseExpr = (<|>) <$> parseExpr l <*> parseExpr r
+      , parseExpr = \toE -> (<|>) <$> parseExpr l toE <*> parseExpr r toE
       , natMin = natMin l <> natMin r
       , natMax = natMax l <> natMax r
       }
@@ -286,7 +286,7 @@ instance Monoid Translation where
       , trueData = []
       , falseData = []
       , parsePred = const $ const mzero
-      , parseExpr = const mzero
+      , parseExpr = const $ const mzero
       , natMin = mempty
       , natMax = mempty
       }
@@ -303,7 +303,9 @@ decidePresburger _ genTrans _ gs [] [] = do
         (solved, _) = foldr go ([], noProps) givens
     if isNothing (checkSat prems)
       then return $ TcPluginContradiction gs
-      else return $ TcPluginOk (map withEv solved) []
+      else do
+        tcPluginTrace "Redundant solveds" $ ppr solved
+        return $ TcPluginOk (map withEv solved) []
   where
     go (ct, p) (ss, prem)
       | Proved <- testIf prem p = (ct : ss, prem)
@@ -524,11 +526,14 @@ binPropDic =
 toPresburgerExp :: Given Translation => Type -> Machine Expr
 toPresburgerExp ty = case ty of
   TyVarTy t -> return $ Var $ toName $ getKey $ getUnique t
-  t@(TyConApp tc ts) -> body tc ts <|> Var . toName . getKey . getUnique <$> toVar t
+  t@(TyConApp tc ts) ->
+    parseExpr given toPresburgerExp ty
+      <|> body tc ts
+      <|> Var . toName . getKey . getUnique <$> toVar t
   LitTy (NumTyLit n) -> return (K n)
   LitTy _ -> mzero
   t ->
-    parseExpr given ty
+    parseExpr given toPresburgerExp ty
       <|> Var . toName . getKey . getUnique <$> toVar t
   where
     body tc ts =

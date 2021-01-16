@@ -17,6 +17,7 @@ module Data.Singletons.TypeNats.Presburger
 where
 
 import Control.Monad
+import Control.Monad.Trans (MonadTrans (lift))
 import Data.Reflection (Given, give, given)
 import GHC (mkModule, moduleUnitId)
 import GHC.TypeLits.Presburger.Compat
@@ -40,12 +41,12 @@ data SingletonCons = SingletonCons
   , singNatCompare :: TyCon
   , singTrueSym0 :: TyCon
   , singFalseSym0 :: TyCon
-  , singMin :: TyCon
-  , singMax :: TyCon
   , caseNameForSingLeq :: TyCon
   , caseNameForSingGeq :: TyCon
   , caseNameForSingLt :: TyCon
   , caseNameForSingGt :: TyCon
+  , singMin :: TyCon
+  , singMax :: TyCon
   , caseNameForMin :: TyCon
   , caseNameForMax :: TyCon
   }
@@ -67,11 +68,11 @@ toTranslation scs@SingletonCons {..} =
       , natPlus = [singNatPlus]
       , natMinus = [singNatMinus]
       , natTimes = [singNatTimes]
+      , parsePred = parseSingPred
+      , parseExpr = parseSingExpr
+      , trueData = [singTrueSym0]
       , natMin = [singMin]
       , natMax = [singMax]
-      , parsePred = parseSingPred
-      , -- , parseExpr = parseSingExpr
-        trueData = [singTrueSym0]
       , falseData = [singFalseSym0]
       }
 
@@ -105,17 +106,24 @@ genSingletonCons = do
   caseNameForSingLt <- getCaseNameForSingletonBinRel singNatLt
   caseNameForSingGeq <- getCaseNameForSingletonBinRel singNatGeq
   caseNameForSingGt <- getCaseNameForSingletonBinRel singNatGt
-  caseNameForMin <- getCaseNameForSingletonMinLike singMin
-  caseNameForMax <- getCaseNameForSingletonMinLike singMax
+  caseNameForMin <- getCaseNameForSingletonBinOp singMin
+  caseNameForMax <- getCaseNameForSingletonBinOp singMax
   singNatCompare <- tcLookupTyCon =<< lookupOrig singletonOrd (mkTcOcc "Compare")
+  tcPluginTrace "pres: minMaxes" $
+    ppr (singMin, singMax, caseNameForMin, caseNameForMax)
   return SingletonCons {..}
 
-getCaseNameForSingletonMinLike :: TyCon -> TcPluginM TyCon
-getCaseNameForSingletonMinLike con = do
+getCaseNameForSingletonBinOp :: TyCon -> TcPluginM TyCon
+getCaseNameForSingletonBinOp con = do
   let vars = [typeNatKind, LitTy (NumTyLit 0), LitTy (NumTyLit 0)]
   tcPluginTrace "matching... for " (ppr con)
-  Just (con', [_, _, _]) <- fmap (splitTyConApp . snd) <$> matchFam con vars
-  pure con'
+  Just (appTy0, [n, b, bdy, r]) <- fmap (splitTyConApp . snd) <$> matchFam con vars
+  let (appTy, args) = splitTyConApp bdy
+  Just innermost <- fmap snd <$> matchFam appTy args
+  Just (_, dat) <- matchFam appTy0 [n, b, innermost, r]
+  Just dat' <- fmap snd <$> uncurry matchFam (splitTyConApp dat)
+  let Just (con', _) = splitTyConApp_maybe dat'
+  return con'
 
 getCaseNameForSingletonBinRel :: TyCon -> TcPluginM TyCon
 getCaseNameForSingletonBinRel con = do
@@ -132,6 +140,26 @@ getCaseNameForSingletonBinRel con = do
 lastTwo :: [a] -> [a]
 lastTwo = drop <$> subtract 2 . length <*> id
 
+parseSingExpr ::
+  (Given SingletonCons) =>
+  (Type -> Machine Expr) ->
+  Type ->
+  Machine Expr
+parseSingExpr toE ty
+  | Just (con, [_, l, r, _]) <- splitTyConApp_maybe ty
+    , Just bin <- lookup con minLikeCaseDic = do
+    lift $ lift $ tcPluginTrace "hit!" $ ppr (ty, con)
+    bin <$> toE l <*> toE r
+  | otherwise = do
+    lift $ lift $ tcPluginTrace "I don't know how to read:" $ ppr (ty, splitTyConApp_maybe ty)
+    mzero
+
+minLikeCaseDic :: Given SingletonCons => [(TyCon, Expr -> Expr -> Expr)]
+minLikeCaseDic =
+  [ (caseNameForMin given, Min)
+  , (caseNameForMax given, Max)
+  ]
+
 parseSingPred ::
   (Given SingletonCons) =>
   (Type -> Machine Expr) ->
@@ -144,23 +172,9 @@ parseSingPred toExp ty
     , Just (cmp, lastTwo -> [l, r]) <- splitTyConApp_maybe cmpTy
     , cmp `elem` [singNatCompare given, typeNatCmpTyCon] =
     bin <$> toExp l <*> toExp r
-  | otherwise = mzero
-
-minLikeCaseDic :: Given SingletonCons => [(TyCon, Expr -> Expr -> Expr)]
-minLikeCaseDic =
-  [ (caseNameForMin given, Min)
-  , (caseNameForMax given, Max)
-  ]
-
-parseSingExpr ::
-  (Given SingletonCons) =>
-  Type ->
-  Machine Expr
-parseSingExpr ty
-  | Just (con, [l, r, _]) <- splitTyConApp_maybe ty
-    , Just bin <- lookup con minLikeCaseDic =
-    bin <$> parseSingExpr l <*> parseSingExpr r
-  | otherwise = mzero
+  | otherwise = do
+    lift $ lift $ tcPluginTrace "pres: Miokuring" (ppr ty)
+    mzero
 
 compCaseDic :: Given SingletonCons => [(TyCon, Expr -> Expr -> Prop)]
 compCaseDic =
