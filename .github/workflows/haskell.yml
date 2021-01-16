@@ -30,9 +30,9 @@ jobs:
         cache-name: cache-stack-lock-${{matrix.ghc}}
       with:
         path: ./stack-${{matrix.ghc}}.yaml.lock
-        key:  ${{ runner.os }}-${{env.cache-name}}-${{ hashFiles(${{env.STACK_YAML}}) }}-${{ hashFiles('**/package.yaml') }}
+        key:  ${{ runner.os }}-${{env.cache-name}}-${{ hashFiles('${{env.STACK_YAML}}') }}-${{ hashFiles('**/package.yaml') }}
         restore-keys: |
-          ${{ runner.os }}-${{env.cache-name}}-${{ hashFiles(${{env.STACK_YAML}}) }}-
+          ${{ runner.os }}-${{env.cache-name}}-${{ hashFiles('${{env.STACK_YAML}}') }}-
           ${{ runner.os }}-${{env.cache-name}}-
 
     - name: Cache
@@ -41,11 +41,11 @@ jobs:
         cache-name: stack-global-cache-${{matrix.ghc}}
       with:
         path: ~/.stack
-        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles(${{env.STACK_YAML}}) }}-${{ hashFiles('**/package.yaml') }}-${{hashFiles('**/*.hs')}}-${{git.sha}}
+        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('${{env.STACK_YAML}}') }}-${{ hashFiles('**/package.yaml') }}-${{hashFiles('**/*.hs')}}-${{git.sha}}
         restore-keys: |
-          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles(${{env.STACK_YAML}}) }}-${{ hashFiles('**/package.yaml') }}-${{hashFiles('**/*.hs')}}-
-          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles(${{env.STACK_YAML}}) }}-${{ hashFiles('**/package.yaml') }}-
-          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles(${{env.STACK_YAML}}) }}-
+          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('${{env.STACK_YAML}}') }}-${{ hashFiles('**/package.yaml') }}-${{hashFiles('**/*.hs')}}-
+          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('${{env.STACK_YAML}}') }}-${{ hashFiles('**/package.yaml') }}-
+          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('${{env.STACK_YAML}}') }}-
           ${{ runner.os }}-build-${{ env.cache-name }}-
 
     - name: Cache
@@ -54,11 +54,11 @@ jobs:
         cache-name: stack-work-cache-${{matrix.ghc}}
       with:
         path: "**/.stack-work"
-        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles(${{env.STACK_YAML}}) }}-${{ hashFiles('**/package.yaml') }}-${{hashFiles('**/*.hs')}}-${{git.sha}}
+        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('${{env.STACK_YAML}}') }}-${{ hashFiles('**/package.yaml') }}-${{hashFiles('**/*.hs')}}-${{git.sha}}
         restore-keys: |
-          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles(${{env.STACK_YAML}}) }}-${{ hashFiles('**/package.yaml') }}-${{hashFiles('**/*.hs')}}-
-          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles(${{env.STACK_YAML}}) }}-${{ hashFiles('**/package.yaml') }}-
-          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles(${{env.STACK_YAML}}) }}-
+          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('${{env.STACK_YAML}}') }}-${{ hashFiles('**/package.yaml') }}-${{hashFiles('**/*.hs')}}-
+          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('${{env.STACK_YAML}}') }}-${{ hashFiles('**/package.yaml') }}-
+          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('${{env.STACK_YAML}}') }}-
           ${{ runner.os }}-build-${{ env.cache-name }}-
 
     - name: Install dependencies
@@ -92,9 +92,9 @@ jobs:
         cache-name: cache-stack-lock-${{matrix.ghc}}
       with:
         path: ./stack-${{matrix.ghc}}.yaml.lock
-        key:  ${{ runner.os }}-${{env.cache-name}}-${{ hashFiles(${{env.STACK_YAML}}) }}-${{ hashFiles('**/package.yaml') }}
+        key:  ${{ runner.os }}-${{env.cache-name}}-${{ hashFiles('${{env.STACK_YAML}}') }}-${{ hashFiles('**/package.yaml') }}
         restore-keys: |
-          ${{ runner.os }}-${{env.cache-name}}-${{ hashFiles(${{env.STACK_YAML}}) }}-
+          ${{ runner.os }}-${{env.cache-name}}-${{ hashFiles('${{env.STACK_YAML}}') }}-
           ${{ runner.os }}-${{env.cache-name}}-
 
     - name: Cache
@@ -103,11 +103,11 @@ jobs:
         cache-name: stack-global-cache-${{matrix.ghc}}
       with:
         path: ~/.stack
-        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles(${{env.STACK_YAML}}) }}-${{ hashFiles('**/package.yaml') }}-${{hashFiles('**/*.hs')}}-${{git.sha}}
+        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('${{env.STACK_YAML}}') }}-${{ hashFiles('**/package.yaml') }}-${{hashFiles('**/*.hs')}}-${{git.sha}}
         restore-keys: |
-          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles(${{env.STACK_YAML}}) }}-${{ hashFiles('**/package.yaml') }}-${{hashFiles('**/*.hs')}}-
-          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles(${{env.STACK_YAML}}) }}-${{ hashFiles('**/package.yaml') }}-
-          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles(${{env.STACK_YAML}}) }}-
+          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('${{env.STACK_YAML}}') }}-${{ hashFiles('**/package.yaml') }}-${{hashFiles('**/*.hs')}}-
+          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('${{env.STACK_YAML}}') }}-${{ hashFiles('**/package.yaml') }}-
+          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('${{env.STACK_YAML}}') }}-
           ${{ runner.os }}-build-${{ env.cache-name }}-
 
     - name: Cache
@@ -116,11 +116,11 @@ jobs:
         cache-name: stack-work-cache-${{matrix.ghc}}
       with:
         path: "**/.stack-work"
-        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles(${{env.STACK_YAML}}) }}-${{ hashFiles('**/package.yaml') }}-${{hashFiles('**/*.hs')}}-${{git.sha}}
+        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('${{env.STACK_YAML}}') }}-${{ hashFiles('**/package.yaml') }}-${{hashFiles('**/*.hs')}}-${{git.sha}}
         restore-keys: |
-          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles(${{env.STACK_YAML}}) }}-${{ hashFiles('**/package.yaml') }}-${{hashFiles('**/*.hs')}}-
-          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles(${{env.STACK_YAML}}) }}-${{ hashFiles('**/package.yaml') }}-
-          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles(${{env.STACK_YAML}}) }}-
+          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('${{env.STACK_YAML}}') }}-${{ hashFiles('**/package.yaml') }}-${{hashFiles('**/*.hs')}}-
+          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('${{env.STACK_YAML}}') }}-${{ hashFiles('**/package.yaml') }}-
+          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('${{env.STACK_YAML}}') }}-
           ${{ runner.os }}-build-${{ env.cache-name }}-
 
     - name: Run tests
