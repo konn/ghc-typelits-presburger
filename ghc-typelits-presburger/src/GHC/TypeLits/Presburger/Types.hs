@@ -8,6 +8,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE ViewPatterns #-}
 
@@ -25,7 +26,7 @@ where
 import Class (classTyCon)
 import Control.Applicative ((<|>))
 import Control.Arrow (second)
-import Control.Monad (forM_, guard, mzero, unless)
+import Control.Monad (forM, forM_, guard, mzero, unless)
 import Control.Monad.State.Class
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Maybe (MaybeT (..))
@@ -40,6 +41,8 @@ import Data.Maybe
   ( catMaybes,
     fromMaybe,
     isNothing,
+    listToMaybe,
+    maybeToList,
   )
 import Data.Reflection (Given, give, given)
 import qualified Data.Set as Set
@@ -47,10 +50,12 @@ import GHC.TypeLits.Presburger.Compat
 import Outputable (showSDocUnsafe)
 import PrelNames
 import TcPluginM
-  ( lookupOrig,
+  ( getTopEnv,
+    lookupOrig,
     newFlexiTyVar,
     newWanted,
     tcLookupClass,
+    tcPluginIO,
   )
 import Type (mkTyVarTy)
 import TysWiredIn
@@ -68,6 +73,10 @@ import Var
 
 #if MIN_VERSION_ghc(8,6,0)
 import Plugins (purePlugin)
+import GhcPlugins (unpackFS, InstalledUnitId, initPackages, PackageName(..), lookupPackageName, fsToUnitId, FastString, lookupPackage, HscEnv(hsc_dflags))
+import qualified Data.List as L
+import Data.Char (isDigit)
+import Module (InstalledUnitId(InstalledUnitId))
 #endif
 
 assert' :: Prop -> PropSet -> PropSet
@@ -99,6 +108,8 @@ varsExpr (e :+ v) = nub $ varsExpr e ++ varsExpr v
 varsExpr (e :- v) = nub $ varsExpr e ++ varsExpr v
 varsExpr (_ :* v) = varsExpr v
 varsExpr (Negate e) = varsExpr e
+varsExpr (Min l r) = nub $ varsExpr l ++ varsExpr r
+varsExpr (Max l r) = nub $ varsExpr l ++ varsExpr r
 varsExpr (Var i) = [i]
 varsExpr (K _) = []
 varsExpr (If p e v) = nub $ varsProp p ++ varsExpr e ++ varsExpr v
@@ -172,6 +183,9 @@ handleSubtraction DisallowNegatives p0 =
     loopExp (c :* e)
       | c > 0 = (c :*) <$> loopExp e
       | otherwise = (negate c :*) <$> loopExp (Negate e)
+    loopExp (Min l r) = Min <$> loopExp l <*> loopExp r
+    loopExp (Max l r) = Max <$> loopExp l <*> loopExp r
+    loopExp (If p l r) = If <$> loop p <*> loopExp l <*> loopExp r
     loopExp e@(K _) = return e
 
 data Translation = Translation
@@ -196,6 +210,8 @@ data Translation = Translation
   , natLtBool :: [TyCon]
   , natGt :: [TyCon]
   , natGtBool :: [TyCon]
+  , natMin :: [TyCon]
+  , natMax :: [TyCon]
   , orderingLT :: [TyCon]
   , orderingGT :: [TyCon]
   , orderingEQ :: [TyCon]
@@ -234,6 +250,8 @@ instance Semigroup Translation where
       , falseData = falseData l <> falseData r
       , parsePred = \f ty -> parsePred l f ty <|> parsePred r f ty
       , parseExpr = (<|>) <$> parseExpr l <*> parseExpr r
+      , natMin = natMin l <> natMin r
+      , natMax = natMax l <> natMax r
       }
 
 instance Monoid Translation where
@@ -266,6 +284,8 @@ instance Monoid Translation where
       , falseData = []
       , parsePred = const $ const mzero
       , parseExpr = const mzero
+      , natMin = mempty
+      , natMax = mempty
       }
 
 decidePresburger :: PluginMode -> TcPluginM Translation -> () -> [Ct] -> [Ct] -> [Ct] -> TcPluginM TcPluginResult
@@ -331,23 +351,46 @@ decidePresburger mode genTrans _ gs _ds ws = do
         tcPluginTrace "pres: Failed! " (text $ show wit)
         return $ TcPluginContradiction $ map fst wants
 
+eqReasoning :: FastString
+eqReasoning = fsLit "equational-reasoning"
+
 defaultTranslation :: TcPluginM Translation
 defaultTranslation = do
-  emd <- lookupModule (mkModuleName "Proof.Propositional.Empty") (fsLit "equational-reasoning")
-  emptyClsTyCon <- classTyCon <$> (tcLookupClass =<< lookupOrig emd (mkTcOcc "Empty"))
+  dflags <- hsc_dflags <$> getTopEnv
+  (_, packs) <- tcPluginIO $ initPackages dflags
+  tcPluginTrace "pres: packs" $ ppr (map (\(InstalledUnitId p) -> p) packs)
+  let eqThere = fromMaybe False $
+        listToMaybe $ do
+          InstalledUnitId pname <- packs
+          rest <-
+            maybeToList $
+              L.stripPrefix "equational-reasoning-" $ unpackFS pname
+          pure $ null rest || isDigit (head rest)
+  (isEmpties, isTrues) <-
+    if eqThere
+      then do
+        tcPluginTrace "pres: equational-reasoning activated!" $ ppr ()
+        emd <- lookupModule (mkModuleName "Proof.Propositional.Empty") eqReasoning
+        pmd <- lookupModule (mkModuleName "Proof.Propositional") eqReasoning
+
+        emptyClsTyCon <- classTyCon <$> (tcLookupClass =<< lookupOrig emd (mkTcOcc "Empty"))
+        isTrueCon_ <- tcLookupTyCon =<< lookupOrig pmd (mkTcOcc "IsTrue")
+        pure ([emptyClsTyCon], [isTrueCon_])
+      else do
+        tcPluginTrace "pres: No equational-reasoning found." $ ppr ()
+        pure ([], [])
+
   eqTyCon_ <- getEqTyCon
   eqWitCon_ <- getEqWitnessTyCon
-  pmd <- lookupModule (mkModuleName "Proof.Propositional") (fsLit "equational-reasoning")
-  isTrueCon_ <- tcLookupTyCon =<< lookupOrig pmd (mkTcOcc "IsTrue")
   vmd <- lookupModule (mkModuleName "Data.Void") (fsLit "base")
   voidTyCon <- tcLookupTyCon =<< lookupOrig vmd (mkTcOcc "Void")
   nLeq <- tcLookupTyCon =<< lookupOrig gHC_TYPENATS (mkTcOcc "<=")
   return
     mempty
-      { isEmpty = [emptyClsTyCon]
+      { isEmpty = isEmpties
       , tyEq = [eqTyCon_]
       , tyEqWitness = [eqWitCon_]
-      , isTrue = [isTrueCon_]
+      , isTrue = isTrues
       , voids = [voidTyCon]
       , natMinus = [typeNatSubTyCon]
       , natPlus = [typeNatAddTyCon]
@@ -505,6 +548,12 @@ toPresburgerExp ty = case ty of
                 ]
                   ++ [ step con (:-)
                      | con <- natMinus given
+                     ]
+                  ++ [ step con Min
+                     | con <- natMin given
+                     ]
+                  ++ [ step con Max
+                     | con <- natMin given
                      ]
 
 -- simplTypeCmp :: Type -> Type
