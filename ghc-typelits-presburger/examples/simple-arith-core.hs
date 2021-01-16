@@ -88,20 +88,3 @@ eqToRefl _n _m Refl = Refl
 
 main :: IO ()
 main = putStrLn "finished"
-
-data Vec (n :: Nat) a where
-  Nil :: Vec 0 a
-  (:-) :: a -> Vec n a -> Vec (n + 1) a
-
-infixr 9 :-
-
-zipMVec :: Vec n a -> Vec n b -> Vec n (a, b)
-zipMVec Nil Nil = Nil
-zipMVec zs@(a :- as) (b :- bs) = (a, b) :- zipMVec zs bs
-
-spin :: Vec n a -> Vec n a -> ()
-spin _ _ = ()
-
-unSpin :: Vec n a -> ()
-unSpin Nil = ()
-unSpin zs@(_ :- ws) = spin zs ws

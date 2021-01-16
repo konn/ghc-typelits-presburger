@@ -1,4 +1,3 @@
-{-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module GHC.TypeLits.PresburgerSpec where
@@ -17,7 +16,7 @@ test_recursiveContradiction :: TestTree
 test_recursiveContradiction =
   testGroup
     "n ~ n + 1 in recursive call should be rejected as type error"
-    [ testCase "Without plugin" do
+    [ testCase "Without plugin" $ do
         eith <- try $ void (evaluate $ NoPlugin.zipMVec (True :- Nil) (() :- Nil))
         case eith of
           Left (TypeError msg)
@@ -25,7 +24,7 @@ test_recursiveContradiction =
                 `T.isInfixOf` T.pack msg ->
               pure ()
           _ -> assertFailure $ "TypeError with mismatch expected, but got: " <> show eith
-    , testCase "With plugin" do
+    , testCase "With plugin" $ do
         eith <- try $ void (evaluate $ Plugin.zipMVec (True :- Nil) (() :- Nil))
         case eith of
           Left (TypeError msg)
@@ -39,7 +38,7 @@ test_nonrecursiveContradiction :: TestTree
 test_nonrecursiveContradiction =
   testGroup
     "n ~ n + 1 in non-recursive call should be rejected as type error"
-    [ testCase "Without plugin" do
+    [ testCase "Without plugin" $ do
         eith <- try $ void (evaluate $ NoPlugin.unSpin (True :- Nil))
         case eith of
           Left (TypeError msg)
@@ -47,7 +46,7 @@ test_nonrecursiveContradiction =
                 `T.isInfixOf` T.pack msg ->
               pure ()
           _ -> assertFailure $ "TypeError with mismatch expected, but got: " <> show eith
-    , testCase "With plugin" do
+    , testCase "With plugin" $ do
         eith <- try $ void (evaluate $ Plugin.unSpin (True :- Nil))
         case eith of
           Left (TypeError msg)
