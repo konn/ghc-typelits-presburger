@@ -1,16 +1,25 @@
-{-# LANGUAGE CPP, DataKinds, FlexibleContexts, GADTs, PolyKinds     #-}
-{-# LANGUAGE ScopedTypeVariables, TemplateHaskell, TypeApplications #-}
-{-# LANGUAGE TypeFamilies, TypeInType, TypeOperators                #-}
-{-# OPTIONS_GHC -fplugin Data.Singletons.TypeNats.Presburger #-}
-{-# OPTIONS_GHC -dcore-lint #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeInType #-}
+{-# LANGUAGE TypeOperators #-}
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 806
 {-# LANGUAGE NoStarIsType #-}
 #endif
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 810
 {-# LANGUAGE StandaloneKindSignatures #-}
 #endif
+{-# OPTIONS_GHC -dcore-lint #-}
+{-# OPTIONS_GHC -fplugin Data.Singletons.TypeNats.Presburger #-}
 
 module Main where
+
 import Data.Singletons.Decide
 import Data.Singletons.Prelude
 import Data.Singletons.Prelude.Enum
@@ -18,9 +27,8 @@ import Data.Singletons.Prelude.List
 import Data.Singletons.TH
 import Data.Singletons.TypeLits
 import Data.Type.Equality
-import GHC.TypeLits                 (type (<=?), CmpNat, Nat)
-import Proof.Propositional          (Empty (..), withEmpty)
-import Proof.Propositional          (IsTrue (Witness))
+import GHC.TypeLits (CmpNat, Nat, type (<=?))
+import Proof.Propositional (Empty (..), IsTrue (Witness), withEmpty)
 
 #if !MIN_VERSION_singletons(2,4,0)
 import Data.Promotion.Prelude.Num
@@ -35,14 +43,16 @@ infixl 7 *
 #endif
 
 type n <=! m = IsTrue (n <=? m)
+
 infix 4 <=!
 
-natLen :: (Length xs <= Length ys) ~ 'True
-       => proxy xs -> proxy ys -> (Length ys - Length xs) + Length xs :~: Length ys
+natLen ::
+  (Length xs <= Length ys) ~ 'True =>
+  proxy xs ->
+  proxy ys ->
+  (Length ys - Length xs) + Length xs :~: Length ys
 natLen _ _ = Refl
 
-
--- The following three cases fails >= GHC 8.6.
 natLeqZero' :: ((n <= 0) ~ 'True) => proxy n -> n :~: 0
 natLeqZero' _ = Refl
 
@@ -59,7 +69,7 @@ data NatView (n :: Nat) where
 viewNat :: Sing n -> NatView n
 viewNat sn =
   case sn %~ (sing :: Sing 0) of
-    Proved Refl    -> IsZero
+    Proved Refl -> IsZero
     Disproved _emp -> withEmpty _emp $ IsSucc $ sPred sn
 
 plusLeq :: (n <= m) ~ 'True => proxy (n :: Nat) -> proxy m -> ((m - n) + n :~: m)
@@ -84,7 +94,7 @@ bar :: ((2 * (n + 1)) ~ ((2 * n) + 2)) => proxy n -> ()
 bar _ = ()
 
 trans :: proxy n -> proxy m -> n <=! m -> (n + 1) <=! (m + 1)
-trans _ _  Witness = Witness
+trans _ _ Witness = Witness
 
 eqv :: proxy n -> proxy m -> (n <=? m) :~: ((n + 1) <=? (m + 1))
 eqv _ _ = Refl
@@ -101,23 +111,42 @@ succCompare _ _ = Refl
 eqToRefl :: Sing (n :: Nat) -> Sing (m :: Nat) -> CmpNat n m :~: 'EQ -> n :~: m
 eqToRefl _n _m Refl = Refl
 
-singletonsOnly [d|
-  flipOrdering :: Ordering -> Ordering
-  flipOrdering EQ = EQ
-  flipOrdering LT = GT
-  flipOrdering GT = LT
- |]
+minFlip :: (n <= m) ~ 'True => Proxy (m :: Nat) -> Proxy n -> Min m n :~: n
+minFlip _ _ = Refl
 
-flipCompare
-  :: forall n m. (KnownNat n, KnownNat m)
-  => Sing n -> Sing m -> FlipOrdering (Compare n m) :~: Compare m n
-flipCompare n m = $(sCases ''Ordering [|sCompare n m|] [|Refl|])
+minMax :: (n <= m) ~ 'True => Proxy (m :: Nat) -> Proxy n -> Max m n :~: m
+minMax _ _ = Refl
 
-ltCompare
-  :: forall n m. (KnownNat n, KnownNat m, CmpNat n m ~ LT)
-  => Sing n -> Sing m -> Compare m n :~: GT
+minComm :: Proxy (m :: Nat) -> Proxy n -> Min n m :~: Min m n
+minComm _ _ = Refl
+
+maxComm :: Proxy (m :: Nat) -> Proxy n -> Max n m :~: Max m n
+maxComm _ _ = Refl
+
+singletonsOnly
+  [d|
+    flipOrdering :: Ordering -> Ordering
+    flipOrdering EQ = EQ
+    flipOrdering LT = GT
+    flipOrdering GT = LT
+    |]
+
+flipCompare ::
+  forall n m.
+  (KnownNat n, KnownNat m) =>
+  Sing n ->
+  Sing m ->
+  FlipOrdering (Compare n m) :~: Compare m n
+flipCompare n m =
+  $(sCases ''Ordering [|sCompare n m|] [|Refl|])
+
+ltCompare ::
+  forall n m.
+  (KnownNat n, KnownNat m, CmpNat n m ~ LT) =>
+  Sing n ->
+  Sing m ->
+  Compare m n :~: GT
 ltCompare _ _ = Refl
 
 main :: IO ()
 main = putStrLn "finished"
-
