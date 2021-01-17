@@ -6,5 +6,9 @@
   ],
   "files.exclude": {
     "**/.stack-work": true
-  }
+  },
+  "github-actions.workflows.pinned.workflows": [
+    ".github/workflows/haskell.yml"
+  ],
+  "github-actions.workflows.pinned.refresh.enabled": true,
 }
