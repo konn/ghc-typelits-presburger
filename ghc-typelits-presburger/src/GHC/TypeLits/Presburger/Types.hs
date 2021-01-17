@@ -305,7 +305,7 @@ decidePresburger _ genTrans _ gs [] [] = do
       then return $ TcPluginContradiction gs
       else do
         tcPluginTrace "Redundant solveds" $ ppr solved
-        return $ TcPluginOk (map withEv solved) []
+        return $ TcPluginOk [] []
   where
     go (ct, p) (ss, prem)
       | Proved <- testIf prem p = (ct : ss, prem)
