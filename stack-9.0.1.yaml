@@ -1,4 +1,4 @@
-resolver: ghc-9.0.0.20201227
+resolver: nightly-2021-01-17
 compiler: ghc-9.0.0.20201227
 compiler-check: match-exact
 setup-info:
@@ -21,23 +21,11 @@ packages:
 #  - "singletons-presburger"
 
 extra-deps:
-- ghc-tcplugins-extra-0.4.1@sha256:da65d916a26250c8a412e8839da818e4f095321e1c326aec2d360ccbee5f9cdb,1700
-- reflection-2.1.6@sha256:044acb7caf41a9d8246878f849baed2dffbc4582d0a1e5c7c079d4287239e970,3976
-- singletons-2.7@sha256:558f88d376f30e8dabde9163a96d2ebcbe2fe533e08d20ab136eea91ad046da3,7605
 - github: dreixel/syb
   commit: 61db19714933ce532f5579a9ce34d52a9efe2c76
-- th-desugar-1.11@sha256:573a176b4642c1ad1f40eef76ad2bfc6bdafe3e5d162f7a6bb08132488cc5496,3577
-- fail-4.9.0.0@sha256:35d1ee29364447c1b7d616bb1ee31f162b73e85fea91d7ca6441cf901398f572,1051
-- ordered-containers-0.2.2@sha256:ebf2be3f592d9cf148ea6b8375f8af97148d44f82d8d04476899285e965afdbf,810
-- semigroups-0.19.1@sha256:ecae129621e0d2f77bef2f01e4458c2e0567ab6e1f39579c61d7cec8058ebb0e,6262
-- th-abstraction-0.4.2.0@sha256:2c754cd15370f8c59c8e6c37d44428a78d0b4afc94e13b3958a1a50cd16f6e84,2124
-- th-lift-0.8.2@sha256:ab5ed1df84986ad28174a965a41f1b7f54684c72871cd90a43c0e53dd6153c5d,2598
-- th-orphans-0.13.11@sha256:d98891aa568fac0995e240f45f88ca844478722cb3a049b9340601f062867caf,2845
-- th-compat-0.1@sha256:ff11df2bbd6ad519987f8fe5b2fd783349260681a91565a40d4096bb0a536b0b,2818
-- th-lift-instances-0.1.18@sha256:4439beb99d2e0f1f3fac8adf182d9462220b77b148511124d09c0375cb590863,2608
-- th-reify-many-0.1.9@sha256:6ac71be9f3220cc7efeade308d5305dbe3fdfffae5a94d8a8ee70d180d0a2254,1752
-- safe-0.3.19@sha256:0910dafb8898f52bde4c646e560228a0fd08b1fca5457f222d2f5c0fad6d2039,2317
-- th-expand-syns-0.4.6.0@sha256:73309fcbacca99a8c478c3cb86643e27c733e1ca3c7d3121e93960c02b0ff313,1223
-- transformers-compat-0.6.6@sha256:510709db2b12d1510d70de824ee544ca0a9e6f27aa7e299218cbacc0750b4a5e,5560
-- vector-0.12.1.2@sha256:9291bc581f36e51d5bda9fce57cb980fbec3dd292996896f285fef39eb80a9a0,7364
-- primitive-0.7.1.0@sha256:e7a412791f676df3e5cd5df6e8282fb2925932b0f7e1f51cd590deec369e945a,2728
+- github: konn/equational-reasoning-in-haskell
+  commit: f1f1dbc376e5ce544b6535b851cda5404fe0a5ae
+- github: mgsloan/th-expand-syns
+  commit: 6a64927ebd6b85cc3c67c00c88c3c7c019d31573
+- github: goldfirere/th-desugar
+  commit: e22709ebfc43c12fb690622eb0da09d2b3c4ba73
