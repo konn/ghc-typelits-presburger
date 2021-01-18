@@ -144,6 +144,7 @@ import Plugins as GHC.TypeLits.Presburger.Compat (purePlugin)
 #if MIN_VERSION_ghc(8,8,1)
 import Name
 import TysWiredIn as GHC.TypeLits.Presburger.Compat (eqTyConName) 
+import qualified TysWiredIn
 #else
 import PrelNames as GHC.TypeLits.Presburger.Compat (eqTyConName) 
 #endif
