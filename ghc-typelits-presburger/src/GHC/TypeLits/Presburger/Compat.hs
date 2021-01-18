@@ -3,68 +3,149 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 module GHC.TypeLits.Presburger.Compat (module GHC.TypeLits.Presburger.Compat) where
 import Data.Function       (on)
-import FamInst             as GHC.TypeLits.Presburger.Compat
-import FastString          as GHC.TypeLits.Presburger.Compat (fsLit)
-import Class
 import GHC.TcPluginM.Extra as GHC.TypeLits.Presburger.Compat (evByFiat, lookupModule, lookupName,
                                           tracePlugin)
-import GhcPlugins          as GHC.TypeLits.Presburger.Compat (lookupTyCon, mkTyConTy)
-import GhcPlugins          as GHC.TypeLits.Presburger.Compat (mkTcOcc, ppr, promotedFalseDataCon)
-import GhcPlugins          as GHC.TypeLits.Presburger.Compat (promotedTrueDataCon, text)
-import GhcPlugins          as GHC.TypeLits.Presburger.Compat (tyConAppTyCon_maybe, typeKind)
-import GhcPlugins          as GHC.TypeLits.Presburger.Compat (typeNatKind)
-import Module              as GHC.TypeLits.Presburger.Compat (ModuleName, mkModuleName)
-import OccName             as GHC.TypeLits.Presburger.Compat (emptyOccSet, mkInstTyTcOcc)
-import Plugins             as GHC.TypeLits.Presburger.Compat (Plugin (..), defaultPlugin)
-import TcEvidence          as GHC.TypeLits.Presburger.Compat (EvTerm)
-import TcHsType            as GHC.TypeLits.Presburger.Compat (tcInferApps)
-import TcPluginM           as GHC.TypeLits.Presburger.Compat (TcPluginM, tcLookupTyCon,
-                                          tcPluginTrace)
-import TcRnMonad           as GHC.TypeLits.Presburger.Compat (TcPluginResult (..))
-import TcRnTypes           as GHC.TypeLits.Presburger.Compat (TcPlugin (..))
-import TcType              as GHC.TypeLits.Presburger.Compat (tcTyFamInsts)
-import TcTypeNats          as GHC.TypeLits.Presburger.Compat
-import TyCon               as GHC.TypeLits.Presburger.Compat
+import Data.Generics.Twins
+
+#if MIN_VERSION_ghc(9,0,0)
+import GHC.Builtin.Names as GHC.TypeLits.Presburger.Compat (gHC_TYPENATS)
+import qualified GHC.Builtin.Names as Old
+import GHC.Builtin.Types as GHC.TypeLits.Presburger.Compat
+  ( boolTyCon,
+    eqTyConName,
+    promotedEQDataCon,
+    promotedGTDataCon,
+    promotedLTDataCon,
+  )
+import qualified GHC.Builtin.Types as TysWiredIn
+import GHC.Builtin.Types.Literals as GHC.TypeLits.Presburger.Compat
+import GHC.Core.Class as GHC.TypeLits.Presburger.Compat (className, classTyCon)
+import GHC.Core.FamInstEnv as GHC.TypeLits.Presburger.Compat
+import GHC.Core.Predicate as GHC.TypeLits.Presburger.Compat (EqRel (..), Pred (..), isEqPred, mkPrimEqPredRole)
+import qualified GHC.Core.Predicate as Old (classifyPredType)
+import GHC.Core.TyCo.Rep as GHC.TypeLits.Presburger.Compat (TyLit (NumTyLit), Type (..))
+import GHC.Core.TyCon as GHC.TypeLits.Presburger.Compat
+import qualified GHC.Core.Type as Old
+import GHC.Core.Unify as Old (tcUnifyTy)
+import GHC.Data.FastString as GHC.TypeLits.Presburger.Compat (FastString, fsLit, unpackFS)
+import GHC.Driver.Types as GHC.TypeLits.Presburger.Compat (HscEnv (hsc_dflags))
+import GHC.Driver.Session (unitState)
+import GHC.Plugins (InScopeSet, Outputable, emptyUFM)
+import GHC.Plugins as GHC.TypeLits.Presburger.Compat
+  ( PackageName (..),
+    Plugin (..),
+    TCvSubst (..),
+    TvSubstEnv,
+    TyVar,
+    defaultPlugin,
+    emptyTCvSubst,
+    eqType,
+    lookupTyCon,
+    mkTcOcc,
+    mkTyConTy,
+    mkTyVarTy,
+    ppr,
+    promotedFalseDataCon,
+    promotedTrueDataCon,
+    purePlugin,
+    splitTyConApp_maybe,
+    text,
+    tyConAppTyCon_maybe,
+    typeKind,
+    typeNatKind,
+    unionTCvSubst,
+  )
+import GHC.Tc.Plugin (lookupOrig)
+import GHC.Tc.Plugin as GHC.TypeLits.Presburger.Compat
+  ( TcPluginM,
+    getTopEnv,
+    lookupOrig,
+    newFlexiTyVar,
+    newWanted,
+    tcLookupClass,
+    tcLookupTyCon,
+    tcPluginIO,
+    tcPluginTrace,
+  )
+import GHC.Tc.Types as GHC.TypeLits.Presburger.Compat (TcPlugin (..), TcPluginResult (..))
+import GHC.Tc.Types.Constraint as GHC.TypeLits.Presburger.Compat
+  ( Ct,
+    ctEvPred,
+    ctEvidence,
+    isWanted,
+  )
+import GHC.Tc.Types.Evidence as GHC.TypeLits.Presburger.Compat (EvTerm)
+import GHC.Tc.Utils.TcType (TcTyVar, TcType)
+import GHC.Tc.Utils.TcType as GHC.TypeLits.Presburger.Compat (tcTyFamInsts)
+import qualified GHC.TcPluginM.Extra as Extra
+import GHC.Types.Name.Occurrence as GHC.TypeLits.Presburger.Compat (emptyOccSet, mkInstTyTcOcc)
+import GHC.Types.Unique as GHC.TypeLits.Presburger.Compat (getKey, getUnique)
+import GHC.Unit.Module as GHC.TypeLits.Presburger.Compat (ModuleName, mkModuleName)
+import GHC.Unit.State as GHC.TypeLits.Presburger.Compat (lookupPackageName)
+import GHC.Unit.State (initUnits, UnitState (preloadUnits))
+import GHC.Unit.Types (UnitId(..), fsToUnit, toUnitId)
+import GHC.Utils.Outputable as GHC.TypeLits.Presburger.Compat (showSDocUnsafe)
+-- GHC 9 Ends HERE
+#else
+import Class as GHC.TypeLits.Presburger.Compat (classTyCon, className)
+import FastString as GHC.TypeLits.Presburger.Compat (FastString, fsLit, unpackFS)
+import GhcPlugins (InScopeSet, Outputable, emptyUFM, InstalledUnitId(..), initPackages)
+import GhcPlugins as GHC.TypeLits.Presburger.Compat (PackageName (..), fsToUnitId, lookupPackageName, lookupTyCon, mkTcOcc, mkTyConTy, ppr, promotedFalseDataCon, promotedTrueDataCon, text, tyConAppTyCon_maybe, typeKind, typeNatKind)
+import HscTypes as GHC.TypeLits.Presburger.Compat (HscEnv (hsc_dflags))
+import Module as GHC.TypeLits.Presburger.Compat (ModuleName, mkModuleName)
+import OccName as GHC.TypeLits.Presburger.Compat (emptyOccSet, mkInstTyTcOcc)
+import Outputable as GHC.TypeLits.Presburger.Compat (showSDocUnsafe)
+import Plugins as GHC.TypeLits.Presburger.Compat (Plugin (..), defaultPlugin)
+import PrelNames as GHC.TypeLits.Presburger.Compat (gHC_TYPENATS)
+import qualified PrelNames as Old
+import TcEvidence as GHC.TypeLits.Presburger.Compat (EvTerm)
+import TcHsType as GHC.TypeLits.Presburger.Compat (tcInferApps)
+import TcPluginM as GHC.TypeLits.Presburger.Compat
+  ( TcPluginM,
+    getTopEnv,
+    lookupOrig,
+    newFlexiTyVar,
+    newWanted,
+    tcLookupClass,
+    tcLookupTyCon,
+    tcPluginIO,
+    tcPluginTrace,
+  )
+import TcRnMonad as GHC.TypeLits.Presburger.Compat (TcPluginResult (..))
+import TcRnTypes as GHC.TypeLits.Presburger.Compat (TcPlugin (..))
+import TcType as GHC.TypeLits.Presburger.Compat (tcTyFamInsts)
+import TcTypeNats as GHC.TypeLits.Presburger.Compat
+import TyCoRep ()
+import TyCoRep as GHC.TypeLits.Presburger.Compat (TyLit (NumTyLit), Type (..))
+import TyCon as GHC.TypeLits.Presburger.Compat
+import Type as GHC.TypeLits.Presburger.Compat (TCvSubst (..), TvSubstEnv, emptyTCvSubst, eqType, mkTyVarTy, splitTyConApp_maybe, unionTCvSubst)
+import qualified Type as Old
+import TysWiredIn as GHC.TypeLits.Presburger.Compat
+  ( boolTyCon,
+    promotedEQDataCon,
+    promotedGTDataCon,
+    promotedLTDataCon,
+  )
+import Unify as Old (tcUnifyTy)
+import Unique as GHC.TypeLits.Presburger.Compat (getKey, getUnique)
+import Var as GHC.TypeLits.Presburger.Compat (TyVar)
+-- Conditional imports for GHC <9
 #if MIN_VERSION_ghc(8,4,1)
 import TcType (TcTyVar, TcType)
+import qualified GHC.TcPluginM.Extra as Extra
 #else
-import TcRnTypes (cc_ev, ctev_pred)
 import Data.Maybe
 import TcPluginM (zonkCt)
+import TcRnTypes (cc_ev, ctev_pred)
 #endif
-#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 800
-import           GhcPlugins (InScopeSet, Outputable, emptyUFM)
-import qualified PrelNames  as Old
-import           TyCoRep    as GHC.TypeLits.Presburger.Compat (TyLit (NumTyLit), Type (..))
-import           Type       as GHC.TypeLits.Presburger.Compat (TCvSubst (..), TvSubstEnv,
-                                           emptyTCvSubst)
-import           Type       as GHC.TypeLits.Presburger.Compat (eqType, unionTCvSubst)
-import qualified Type       as Old
-import           TysWiredIn as GHC.TypeLits.Presburger.Compat (boolTyCon)
-import           Unify      as Old (tcUnifyTy)
-#else
-import Type       as GHC.TypeLits.Presburger.Compat (TvSubst, emptyTvSubst)
-import Type       as GHC.TypeLits.Presburger.Compat (substTy, unionTvSubst)
-import TypeRep    as GHC.TypeLits.Presburger.Compat (TyLit (NumTyLit), Type (..))
-import TysWiredIn as Old (eqTyCon)
-import TysWiredIn as GHC.TypeLits.Presburger.Compat (promotedBoolTyCon)
-import Unify      as GHC.TypeLits.Presburger.Compat (tcUnifyTy)
-#endif
-import Data.Generics.Twins
-import TcPluginM           (lookupOrig)
-import TyCoRep             ()
-import Type                as GHC.TypeLits.Presburger.Compat (splitTyConApp_maybe)
-import Unique              as GHC.TypeLits.Presburger.Compat (getKey, getUnique)
-#if MIN_VERSION_ghc(8,4,1)
-import qualified GHC.TcPluginM.Extra as Extra
+#if MIN_VERSION_ghc(8,6,0)
+import Plugins as GHC.TypeLits.Presburger.Compat (purePlugin)
 #endif
 #if MIN_VERSION_ghc(8,8,1)
-import qualified TysWiredIn
-#endif
-#if MIN_VERSION_ghc(8,8,1)
-import TysWiredIn (eqTyConName)
+import Name
+import TysWiredIn as GHC.TypeLits.Presburger.Compat (eqTyConName) 
 #else
-import PrelNames (eqTyConName)
+import PrelNames as GHC.TypeLits.Presburger.Compat (eqTyConName) 
 #endif
 
 #if MIN_VERSION_ghc(8,10,1)
@@ -83,7 +164,7 @@ import TcRnMonad as GHC.TypeLits.Presburger.Compat (Ct, isWanted)
 import Type      as GHC.TypeLits.Presburger.Compat (mkPrimEqPredRole)
 import TcRnTypes as GHC.TypeLits.Presburger.Compat (ctEvPred, ctEvidence)
 #endif
-
+#endif
 
 #if MIN_VERSION_ghc(8,10,1)
 type PredTree = Pred
@@ -154,10 +235,14 @@ getEqWitnessTyCon = do
   tcLookupTyCon =<< lookupOrig md (mkTcOcc ":~:")
 
 decompFunTy :: Type -> [Type]
+#if MIN_VERSION_ghc(9,0,0)
+decompFunTy (FunTy _ _ t1 t2) = t1 : decompFunTy t2
+#else
 #if MIN_VERSION_ghc(8,10,1)
 decompFunTy (FunTy _ t1 t2) = t1 : decompFunTy t2
 #else
 decompFunTy (FunTy t1 t2) = t1 : decompFunTy t2
+#endif
 #endif
 decompFunTy t             = [t]
 
@@ -232,3 +317,27 @@ classifyPredType ty = case Old.classifyPredType ty of
     | className cls == eqTyConName
     -> EqPred NomEq t1 t2
   e -> e
+
+#if MIN_VERSION_ghc(9,0,0)
+fsToUnitId :: FastString -> UnitId
+fsToUnitId = toUnitId . fsToUnit
+#endif
+
+type RawUnitId = FastString
+preloadedUnitsM :: TcPluginM [FastString] 
+#if MIN_VERSION_ghc(9,0,0)
+preloadedUnitsM = do
+  dflags <- hsc_dflags <$> getTopEnv
+  packs <- tcPluginIO $ preloadUnits . unitState <$> initUnits dflags
+  let packNames = map (\(UnitId p) -> p) packs
+  tcPluginTrace "pres: packs" $ ppr packNames
+  pure packNames
+#else
+preloadedUnitsM = do
+  dflags <- hsc_dflags <$> getTopEnv
+  (_, packs) <- tcPluginIO $ initPackages dflags
+  let packNames = map (\(InstalledUnitId p) -> p) packs
+  tcPluginTrace "pres: packs" $ ppr packNames
+  pure packNames
+#endif
+

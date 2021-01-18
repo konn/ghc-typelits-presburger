@@ -38,13 +38,13 @@ library:
   dependencies:
     - base >=4.7 && <5
     - containers
-    - ghc >=7.10 && <8.11
     - ghc-tcplugins-extra >=0.2 && <0.5
     - mtl
     - pretty
     - reflection
     - syb
     - transformers
+    - ghc
 executables:
   simple-arith-core:
     main: simple-arith-core.hs
