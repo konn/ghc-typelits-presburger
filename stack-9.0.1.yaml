@@ -18,11 +18,10 @@ allow-newer: true
 flags: {}
 packages:
 - "ghc-typelits-presburger"
-# - "singletons-presburger"
+- "singletons-presburger"
 
 extra-deps:
-- github: dreixel/syb
-  commit: 61db19714933ce532f5579a9ce34d52a9efe2c76
+- syb-0.7.2.1
 - github: konn/equational-reasoning-in-haskell
   commit: f1f1dbc376e5ce544b6535b851cda5404fe0a5ae
 - github: mgsloan/th-expand-syns
