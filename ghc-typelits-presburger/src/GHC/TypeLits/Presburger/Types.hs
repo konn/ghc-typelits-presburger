@@ -351,6 +351,7 @@ defaultTranslation = do
         pure ([], [])
 
   eqTyCon_ <- getEqTyCon
+  eqBoolTyCon <- tcLookupTyCon =<< lookupOrig dATA_TYPE_EQUALITY (mkTcOcc "==")
   eqWitCon_ <- getEqWitnessTyCon
   vmd <- lookupModule (mkModuleName "Data.Void") (fsLit "base")
   voidTyCon <- tcLookupTyCon =<< lookupOrig vmd (mkTcOcc "Void")
@@ -360,6 +361,7 @@ defaultTranslation = do
       { isEmpty = isEmpties
       , tyEq = [eqTyCon_]
       , tyEqWitness = [eqWitCon_]
+      , tyEqBool = [eqBoolTyCon]
       , isTrue = isTrues
       , voids = [voidTyCon]
       , natMinus = [typeNatSubTyCon]
@@ -420,6 +422,14 @@ toPresburgerPred ty
   | Just (con, [l]) <- splitTyConApp_maybe ty -- IsTrue l =>
     , con `elem` isTrue given =
     toPresburgerPred l
+  | Just (con, ts) <- splitTyConApp_maybe ty
+    , let n = length ts
+    , n >= 2
+    , [t1, t2] <- drop (n - 2) ts
+    , typeKind t1 `eqType` typeNatKind
+    , typeKind t2 `eqType` typeNatKind =
+    let p = lookup con binPropDic
+     in MaybeT (return p) <*> toPresburgerExp t1 <*> toPresburgerExp t2
   | otherwise = parsePred given toPresburgerExp ty
 
 splitTyConAppLastBin :: Type -> Maybe (TyCon, [Type])
@@ -438,6 +448,12 @@ toPresburgerPredTree (EqPred NomEq p b) -- (n :<=? m) ~ 'True
     , Just (con, [t1, t2]) <- splitTyConAppLastBin p
     , con `elem` natLeqBool given =
     (:<=) <$> toPresburgerExp t1 <*> toPresburgerExp t2
+toPresburgerPredTree (EqPred NomEq p b) -- (n :<=? m) ~ 'True
+  | maybe False (`elem` trueData given) $ tyConAppTyCon_maybe b =
+    toPresburgerPred p
+toPresburgerPredTree (EqPred NomEq b p) -- 'True ~ (n :<=? m)
+  | maybe False (`elem` trueData given) $ tyConAppTyCon_maybe b =
+    toPresburgerPred p
 toPresburgerPredTree (EqPred NomEq p q) -- (p :: Bool) ~ (q :: Bool)
   | typeKind p `eqType` mkTyConTy promotedBoolTyCon = do
     lift $ lift $ tcPluginTrace "pres: EQBOOL:" $ ppr (p, q)
@@ -487,6 +503,7 @@ binPropDic =
     ++ [(n, (:>=)) | n <- natGeq given ++ natGeqBool given]
     ++ [(n, (:==)) | n <- tyEq given ++ tyEqBool given]
     ++ [(n, (:/=)) | n <- tyNeqBool given]
+    ++ [(n, (:==)) | n <- tyEqBool given]
 
 toPresburgerExp :: Given Translation => Type -> Machine Expr
 toPresburgerExp ty = case ty of
@@ -511,8 +528,8 @@ toPresburgerExp ty = case ty of
             [tl, tr] | tc `elem` natTimes given ->
               case (simpleExp tl, simpleExp tr) of
                 (LitTy (NumTyLit n), LitTy (NumTyLit m)) -> return $ K $ n * m
-                (LitTy (NumTyLit n), x) -> (:*) <$> pure n <*> toPresburgerExp x
-                (x, LitTy (NumTyLit n)) -> (:*) <$> pure n <*> toPresburgerExp x
+                (LitTy (NumTyLit n), x) -> (:*) n <$> toPresburgerExp x
+                (x, LitTy (NumTyLit n)) -> (:*) n <$> toPresburgerExp x
                 _ -> mzero
             _ ->
               asum $

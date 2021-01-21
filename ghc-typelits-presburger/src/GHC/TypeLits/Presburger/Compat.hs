@@ -8,7 +8,7 @@ import GHC.TcPluginM.Extra as GHC.TypeLits.Presburger.Compat (evByFiat, lookupMo
 import Data.Generics.Twins
 
 #if MIN_VERSION_ghc(9,0,0)
-import GHC.Builtin.Names as GHC.TypeLits.Presburger.Compat (gHC_TYPENATS)
+import GHC.Builtin.Names as GHC.TypeLits.Presburger.Compat (gHC_TYPENATS, dATA_TYPE_EQUALITY)
 import qualified GHC.Builtin.Names as Old
 import GHC.Builtin.Types as GHC.TypeLits.Presburger.Compat
   ( boolTyCon,
@@ -96,7 +96,7 @@ import Module as GHC.TypeLits.Presburger.Compat (ModuleName, mkModuleName)
 import OccName as GHC.TypeLits.Presburger.Compat (emptyOccSet, mkInstTyTcOcc)
 import Outputable as GHC.TypeLits.Presburger.Compat (showSDocUnsafe)
 import Plugins as GHC.TypeLits.Presburger.Compat (Plugin (..), defaultPlugin)
-import PrelNames as GHC.TypeLits.Presburger.Compat (gHC_TYPENATS)
+import PrelNames as GHC.TypeLits.Presburger.Compat (gHC_TYPENATS, dATA_TYPE_EQUALITY)
 import qualified PrelNames as Old
 import TcEvidence as GHC.TypeLits.Presburger.Compat (EvTerm)
 import TcHsType as GHC.TypeLits.Presburger.Compat (tcInferApps)

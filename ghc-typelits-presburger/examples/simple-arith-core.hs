@@ -62,7 +62,7 @@ hoge :: proxy n -> IsTrue (n + 1 <=? n) -> a
 hoge _ Witness = absurdTrueFalse Refl
 #endif
 
-bar :: ((2 * (n + 1)) ~ ((2 * n) + 2)) => proxy n -> ()
+bar :: (2 * (n + 1)) ~ (2 * n + 2) => proxy n -> ()
 bar _ = ()
 
 barResult :: ()
@@ -88,3 +88,15 @@ eqToRefl _n _m Refl = Refl
 
 main :: IO ()
 main = putStrLn "finished"
+
+rangeEql ::
+  ((n == 0) ~ 'False) =>
+  pxy n ->
+  (1 <=? n) :~: 'True
+rangeEql _ = Refl
+
+rangeEqlLeq ::
+  ((n == 3) ~ 'False, n <= 3) =>
+  pxy n ->
+  (n <=? 2) :~: 'True
+rangeEqlLeq _ = Refl
