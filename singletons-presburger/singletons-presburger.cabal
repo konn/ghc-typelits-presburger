@@ -4,10 +4,10 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 4a896c13e850651dd7aebd018bc50e93c2e6f5224d7c3356bd5efb6d01a086b6
+-- hash: c78fc73861dc22536c4a5d4040b2f5ab8962bbf61f89477aa3af5160d720b11c
 
 name:           singletons-presburger
-version:        0.5.0.0
+version:        0.5.1.0
 synopsis:       Presburger Arithmetic Solver for GHC Type-level natural numbers with Singletons package.
 description:    The @singletons-presburger@ plugin augments GHC type-system with Presburger
                 Arithmetic Solver for Type-level natural numbers, with integration with <https://hackage.haskell.org/package/singletons singletons> package.
