@@ -20,4 +20,3 @@ Since 0.5, one don't need to add `equational-reasoning` to dependency; but if yo
 
 ## Note
 This package includes the modified version of code from [`presburger` package](https://hackage.haskell.org/package/presburger) by yav, because yav's original package doesn't compile with GHC 8.4.
-Once these are fixed, we drop that code.
