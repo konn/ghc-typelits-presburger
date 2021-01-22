@@ -73,11 +73,30 @@ toTranslation scs@SingletonCons {..} =
       , falseData = [singFalseSym0]
       }
 
+singPackage :: FastString
+#if defined(MIN_VERISION_singletons_base)
+singPackage = "singletons-base"
+#else
+singPackage = "singletons"
+#endif
+
+ordModName, numModName, prelInstName :: ModuleName
+#if defined(SINGLETONS_BASE)
+ordModName = mkModuleName "Data.Ord.Singletons"
+numModName = mkModuleName "GHC.Num.Singletons"
+prelInstName = mkModuleName "Data.Singletons.Base.Instances"
+#else
+ordModName = mkModuleName "Data.Singletons.Prelude.Ord"
+numModName = mkModuleName "Data.Singletons.Prelude.Num"
+prelInstName = mkModuleName "Data.Singletons.Prelude.Instances"
+#endif
+
 genSingletonCons :: TcPluginM SingletonCons
 genSingletonCons = do
-  singletonOrd <- lookupModule (mkModuleName "Data.Singletons.Prelude.Ord") (fsLit "singletons")
-  singletonsNum <- lookupModule (mkModuleName "Data.Singletons.Prelude.Num") (fsLit "singletons")
-  let prel = mkModule (moduleUnitId singletonsNum) (mkModuleName "Data.Singletons.Prelude.Instances")
+  singletonOrd <- lookupModule ordModName singPackage
+  let singUnit = moduleUnit' singletonOrd
+      prel = mkModule singUnit prelInstName
+      singletonsNum = mkModule singUnit numModName
   singTrueSym0 <- tcLookupTyCon =<< lookupOrig prel (mkTcOcc "TrueSym0")
   singFalseSym0 <- tcLookupTyCon =<< lookupOrig prel (mkTcOcc "FalseSym0")
 #if MIN_VERSION_singletons(2,4,1)

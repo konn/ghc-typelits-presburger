@@ -32,7 +32,7 @@ import GHC.Unit.Types as GHC.TypeLits.Presburger.Compat (mkModule)
 import GHC.Data.FastString as GHC.TypeLits.Presburger.Compat (FastString, fsLit, unpackFS)
 import GHC.Driver.Types as GHC.TypeLits.Presburger.Compat (HscEnv (hsc_dflags))
 import GHC.Driver.Session (unitState)
-import GHC.Plugins (InScopeSet, Outputable, emptyUFM, moduleUnit)
+import GHC.Plugins (InScopeSet, Outputable, emptyUFM, moduleUnit, Unit)
 import GHC.Plugins as GHC.TypeLits.Presburger.Compat
   ( PackageName (..),
     Plugin (..),
@@ -349,9 +349,13 @@ preloadedUnitsM = do
   pure packNames
 #endif
 
-moduleUnitId :: Module -> UnitId
+
 #if MIN_VERSION_ghc(9,0,0)
-moduleUnitId = toUnitId . moduleUnit
+type ModuleUnit = Unit
+moduleUnit' :: Module -> ModuleUnit
+moduleUnit' = moduleUnit
 #else
-moduleUnitId = GHC.moduleUnitId
+type ModuleUnit = UnitId
+moduleUnit' :: Module -> ModuleUnit
+moduleUnit' = GHC.moduleUnitId
 #endif
