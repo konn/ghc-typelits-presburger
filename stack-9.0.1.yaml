@@ -22,7 +22,7 @@ packages:
 
 extra-deps:
 - syb-0.7.2.1
-- equational-reasoning-in-haskell-0.6.0.4
+- equational-reasoning-0.6.0.4
 - indexed-traversable-instances-0.1
 - github: mgsloan/th-expand-syns
   commit: 6a64927ebd6b85cc3c67c00c88c3c7c019d31573
