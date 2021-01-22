@@ -32,7 +32,7 @@ import GHC.Unit.Types as GHC.TypeLits.Presburger.Compat (mkModule)
 import GHC.Data.FastString as GHC.TypeLits.Presburger.Compat (FastString, fsLit, unpackFS)
 import GHC.Driver.Types as GHC.TypeLits.Presburger.Compat (HscEnv (hsc_dflags))
 import GHC.Driver.Session (unitState)
-import GHC.Plugins (InScopeSet, Outputable, emptyUFM. moduleUnit)
+import GHC.Plugins (InScopeSet, Outputable, emptyUFM, moduleUnit)
 import GHC.Plugins as GHC.TypeLits.Presburger.Compat
   ( PackageName (..),
     Plugin (..),
