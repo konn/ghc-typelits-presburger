@@ -19,11 +19,8 @@ where
 import Control.Monad
 import Control.Monad.Trans (MonadTrans (lift))
 import Data.Reflection (Given, give, given)
-import GHC (mkModule, moduleUnitId)
 import GHC.TypeLits.Presburger.Compat
 import GHC.TypeLits.Presburger.Types
-import TcPluginM (lookupOrig, matchFam)
-import Type (splitTyConApp)
 
 plugin :: Plugin
 plugin =

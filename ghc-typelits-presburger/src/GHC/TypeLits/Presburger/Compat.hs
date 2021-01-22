@@ -27,6 +27,8 @@ import GHC.Core.TyCo.Rep as GHC.TypeLits.Presburger.Compat (TyLit (NumTyLit), Ty
 import GHC.Core.TyCon as GHC.TypeLits.Presburger.Compat
 import qualified GHC.Core.Type as Old
 import GHC.Core.Unify as Old (tcUnifyTy)
+import GHC.Unit.Types (Module, UnitId, toUnitId)
+import GHC.Unit.Types as GHC.TypeLits.Presburger.Compat (mkModule)
 import GHC.Data.FastString as GHC.TypeLits.Presburger.Compat (FastString, fsLit, unpackFS)
 import GHC.Driver.Types as GHC.TypeLits.Presburger.Compat (HscEnv (hsc_dflags))
 import GHC.Driver.Session (unitState)
@@ -48,6 +50,7 @@ import GHC.Plugins as GHC.TypeLits.Presburger.Compat
     promotedFalseDataCon,
     promotedTrueDataCon,
     purePlugin,
+    splitTyConApp,
     splitTyConApp_maybe,
     text,
     tyConAppTyCon_maybe,
@@ -62,6 +65,7 @@ import GHC.Tc.Plugin as GHC.TypeLits.Presburger.Compat
     lookupOrig,
     newFlexiTyVar,
     newWanted,
+    matchFam,
     tcLookupClass,
     tcLookupTyCon,
     tcPluginIO,
@@ -92,7 +96,8 @@ import FastString as GHC.TypeLits.Presburger.Compat (FastString, fsLit, unpackFS
 import GhcPlugins (InScopeSet, Outputable, emptyUFM, InstalledUnitId(..), initPackages)
 import GhcPlugins as GHC.TypeLits.Presburger.Compat (PackageName (..), fsToUnitId, lookupPackageName, lookupTyCon, mkTcOcc, mkTyConTy, ppr, promotedFalseDataCon, promotedTrueDataCon, text, tyConAppTyCon_maybe, typeKind, typeNatKind)
 import HscTypes as GHC.TypeLits.Presburger.Compat (HscEnv (hsc_dflags))
-import Module as GHC.TypeLits.Presburger.Compat (ModuleName, mkModuleName)
+import Module as GHC.TypeLits.Presburger.Compat (ModuleName, mkModuleName, mkModule)
+import Module (Module, UnitId)
 import OccName as GHC.TypeLits.Presburger.Compat (emptyOccSet, mkInstTyTcOcc)
 import Outputable as GHC.TypeLits.Presburger.Compat (showSDocUnsafe)
 import Plugins as GHC.TypeLits.Presburger.Compat (Plugin (..), defaultPlugin)
@@ -104,6 +109,7 @@ import TcPluginM as GHC.TypeLits.Presburger.Compat
   ( TcPluginM,
     getTopEnv,
     lookupOrig,
+    matchFam,
     newFlexiTyVar,
     newWanted,
     tcLookupClass,
@@ -118,7 +124,7 @@ import TcTypeNats as GHC.TypeLits.Presburger.Compat
 import TyCoRep ()
 import TyCoRep as GHC.TypeLits.Presburger.Compat (TyLit (NumTyLit), Type (..))
 import TyCon as GHC.TypeLits.Presburger.Compat
-import Type as GHC.TypeLits.Presburger.Compat (TCvSubst (..), TvSubstEnv, emptyTCvSubst, eqType, mkTyVarTy, splitTyConApp_maybe, unionTCvSubst)
+import Type as GHC.TypeLits.Presburger.Compat (TCvSubst (..), TvSubstEnv, emptyTCvSubst, eqType, mkTyVarTy, splitTyConApp, splitTyConApp_maybe, unionTCvSubst)
 import qualified Type as Old
 import TysWiredIn as GHC.TypeLits.Presburger.Compat
   ( boolTyCon,
@@ -164,6 +170,7 @@ import qualified GhcPlugins as Old (classifyPredType)
 import TcRnMonad as GHC.TypeLits.Presburger.Compat (Ct, isWanted)
 import Type      as GHC.TypeLits.Presburger.Compat (mkPrimEqPredRole)
 import TcRnTypes as GHC.TypeLits.Presburger.Compat (ctEvPred, ctEvidence)
+import qualified GHC
 #endif
 #endif
 
@@ -342,3 +349,9 @@ preloadedUnitsM = do
   pure packNames
 #endif
 
+moduleUnitId :: Module -> UnitId
+#if MIN_VERSION_ghc(9,0,0)
+moduleUnitId = toUnitId . moduleUnit
+#else
+moduleUnitId = GHC.moduleUnitId
+#endif
