@@ -9,6 +9,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeInType #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 806
 {-# LANGUAGE NoStarIsType #-}
 #endif
@@ -20,12 +21,20 @@
 
 module Main where
 
+#if defined(SINGLETONS_BASE)
+import Prelude.Singletons
+import Data.Singletons.Base.Enum
+import Data.Singletons.TH
+import GHC.TypeLits.Singletons
+#else
 import Data.Singletons.Decide
 import Data.Singletons.Prelude
 import Data.Singletons.Prelude.Enum
 import Data.Singletons.Prelude.List
 import Data.Singletons.TH
 import Data.Singletons.TypeLits
+#endif
+
 import Data.Type.Equality
 import GHC.TypeLits (CmpNat, Nat, type (<=?))
 import Proof.Propositional (Empty (..), IsTrue (Witness), withEmpty)

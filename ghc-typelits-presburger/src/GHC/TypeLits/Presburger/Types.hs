@@ -23,7 +23,6 @@ module GHC.TypeLits.Presburger.Types
   )
 where
 
-import Class (classTyCon)
 import Control.Applicative ((<|>))
 import Control.Arrow (second)
 import Control.Monad (forM, forM_, guard, mzero, unless)
@@ -32,17 +31,6 @@ import Control.Monad.Trans.Class
 import Control.Monad.Trans.Maybe (MaybeT (..))
 import Control.Monad.Trans.RWS.Strict (runRWS, tell)
 import Control.Monad.Trans.State (StateT, runStateT)
-#if MIN_VERSION_ghc(8,8,1)
-import TysWiredIn (eqTyConName)
-#else
-import PrelNames (eqTyConName)
-#endif
-
-#if MIN_VERSION_ghc(8,6,0)
-import Plugins (purePlugin)
-import GhcPlugins (InstalledUnitId, PackageName(..), lookupPackageName, fsToUnitId, lookupPackage)
-#endif
-
 import Data.Char (isDigit)
 import Data.Foldable (asum)
 import Data.Integer.SAT (Expr (..), Prop (..), PropSet, assert, checkSat, noProps, toName)
@@ -59,28 +47,7 @@ import Data.Maybe
   )
 import Data.Reflection (Given, give, given)
 import qualified Data.Set as Set
-import FastString
 import GHC.TypeLits.Presburger.Compat
-import HscTypes (HscEnv (hsc_dflags))
-import Module (InstalledUnitId (InstalledUnitId))
-import Outputable (showSDocUnsafe)
-import Packages (initPackages)
-import PrelNames
-import TcPluginM
-  ( getTopEnv,
-    lookupOrig,
-    newFlexiTyVar,
-    newWanted,
-    tcLookupClass,
-    tcPluginIO,
-  )
-import Type (mkTyVarTy)
-import TysWiredIn
-  ( promotedEQDataCon,
-    promotedGTDataCon,
-    promotedLTDataCon,
-  )
-import Var
 
 assert' :: Prop -> PropSet -> PropSet
 assert' p ps = foldr assert ps (p : varPos)
@@ -361,12 +328,10 @@ eqReasoning = fsLit "equational-reasoning"
 
 defaultTranslation :: TcPluginM Translation
 defaultTranslation = do
-  dflags <- hsc_dflags <$> getTopEnv
-  (_, packs) <- tcPluginIO $ initPackages dflags
-  tcPluginTrace "pres: packs" $ ppr (map (\(InstalledUnitId p) -> p) packs)
+  packs <- preloadedUnitsM
   let eqThere = fromMaybe False $
         listToMaybe $ do
-          InstalledUnitId pname <- packs
+          pname <- packs
           rest <-
             maybeToList $
               L.stripPrefix "equational-reasoning-" $ unpackFS pname
@@ -386,6 +351,7 @@ defaultTranslation = do
         pure ([], [])
 
   eqTyCon_ <- getEqTyCon
+  eqBoolTyCon <- tcLookupTyCon =<< lookupOrig dATA_TYPE_EQUALITY (mkTcOcc "==")
   eqWitCon_ <- getEqWitnessTyCon
   vmd <- lookupModule (mkModuleName "Data.Void") (fsLit "base")
   voidTyCon <- tcLookupTyCon =<< lookupOrig vmd (mkTcOcc "Void")
@@ -395,6 +361,7 @@ defaultTranslation = do
       { isEmpty = isEmpties
       , tyEq = [eqTyCon_]
       , tyEqWitness = [eqWitCon_]
+      , tyEqBool = [eqBoolTyCon]
       , isTrue = isTrues
       , voids = [voidTyCon]
       , natMinus = [typeNatSubTyCon]
@@ -455,6 +422,14 @@ toPresburgerPred ty
   | Just (con, [l]) <- splitTyConApp_maybe ty -- IsTrue l =>
     , con `elem` isTrue given =
     toPresburgerPred l
+  | Just (con, ts) <- splitTyConApp_maybe ty
+    , let n = length ts
+    , n >= 2
+    , [t1, t2] <- drop (n - 2) ts
+    , typeKind t1 `eqType` typeNatKind
+    , typeKind t2 `eqType` typeNatKind =
+    let p = lookup con binPropDic
+     in MaybeT (return p) <*> toPresburgerExp t1 <*> toPresburgerExp t2
   | otherwise = parsePred given toPresburgerExp ty
 
 splitTyConAppLastBin :: Type -> Maybe (TyCon, [Type])
@@ -473,6 +448,12 @@ toPresburgerPredTree (EqPred NomEq p b) -- (n :<=? m) ~ 'True
     , Just (con, [t1, t2]) <- splitTyConAppLastBin p
     , con `elem` natLeqBool given =
     (:<=) <$> toPresburgerExp t1 <*> toPresburgerExp t2
+toPresburgerPredTree (EqPred NomEq p b) -- (n :<=? m) ~ 'True
+  | maybe False (`elem` trueData given) $ tyConAppTyCon_maybe b =
+    toPresburgerPred p
+toPresburgerPredTree (EqPred NomEq b p) -- 'True ~ (n :<=? m)
+  | maybe False (`elem` trueData given) $ tyConAppTyCon_maybe b =
+    toPresburgerPred p
 toPresburgerPredTree (EqPred NomEq p q) -- (p :: Bool) ~ (q :: Bool)
   | typeKind p `eqType` mkTyConTy promotedBoolTyCon = do
     lift $ lift $ tcPluginTrace "pres: EQBOOL:" $ ppr (p, q)
@@ -522,6 +503,7 @@ binPropDic =
     ++ [(n, (:>=)) | n <- natGeq given ++ natGeqBool given]
     ++ [(n, (:==)) | n <- tyEq given ++ tyEqBool given]
     ++ [(n, (:/=)) | n <- tyNeqBool given]
+    ++ [(n, (:==)) | n <- tyEqBool given]
 
 toPresburgerExp :: Given Translation => Type -> Machine Expr
 toPresburgerExp ty = case ty of
@@ -546,8 +528,8 @@ toPresburgerExp ty = case ty of
             [tl, tr] | tc `elem` natTimes given ->
               case (simpleExp tl, simpleExp tr) of
                 (LitTy (NumTyLit n), LitTy (NumTyLit m)) -> return $ K $ n * m
-                (LitTy (NumTyLit n), x) -> (:*) <$> pure n <*> toPresburgerExp x
-                (x, LitTy (NumTyLit n)) -> (:*) <$> pure n <*> toPresburgerExp x
+                (LitTy (NumTyLit n), x) -> (:*) n <$> toPresburgerExp x
+                (x, LitTy (NumTyLit n)) -> (:*) n <$> toPresburgerExp x
                 _ -> mzero
             _ ->
               asum $
@@ -571,10 +553,14 @@ lastTwo = drop <$> subtract 2 . length <*> id
 
 simpleExp :: Given Translation => Type -> Type
 simpleExp (AppTy t1 t2) = AppTy (simpleExp t1) (simpleExp t2)
+#if MIN_VERSION_ghc(9,0,0)
+simpleExp (FunTy f m t1 t2) = FunTy f m (simpleExp t1) (simpleExp t2)
+#else
 #if MIN_VERSION_ghc(8,10,1)
 simpleExp (FunTy f t1 t2) = FunTy f (simpleExp t1) (simpleExp t2)
 #else
 simpleExp (FunTy t1 t2) = FunTy (simpleExp t1) (simpleExp t2)
+#endif
 #endif
 simpleExp (ForAllTy t1 t2) = ForAllTy t1 (simpleExp t2)
 simpleExp (TyConApp tc (lastTwo -> ts)) =
