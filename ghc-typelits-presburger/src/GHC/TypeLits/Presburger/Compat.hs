@@ -32,7 +32,7 @@ import GHC.Unit.Types as GHC.TypeLits.Presburger.Compat (mkModule)
 import GHC.Data.FastString as GHC.TypeLits.Presburger.Compat (FastString, fsLit, unpackFS)
 import GHC.Driver.Types as GHC.TypeLits.Presburger.Compat (HscEnv (hsc_dflags))
 import GHC.Driver.Session (unitState)
-import GHC.Plugins (InScopeSet, Outputable, emptyUFM)
+import GHC.Plugins (InScopeSet, Outputable, emptyUFM. moduleUnit)
 import GHC.Plugins as GHC.TypeLits.Presburger.Compat
   ( PackageName (..),
     Plugin (..),
@@ -139,6 +139,7 @@ import Var as GHC.TypeLits.Presburger.Compat (TyVar)
 #if MIN_VERSION_ghc(8,4,1)
 import TcType (TcTyVar, TcType)
 import qualified GHC.TcPluginM.Extra as Extra
+import qualified GHC
 #else
 import Data.Maybe
 import TcPluginM (zonkCt)
@@ -170,7 +171,6 @@ import qualified GhcPlugins as Old (classifyPredType)
 import TcRnMonad as GHC.TypeLits.Presburger.Compat (Ct, isWanted)
 import Type      as GHC.TypeLits.Presburger.Compat (mkPrimEqPredRole)
 import TcRnTypes as GHC.TypeLits.Presburger.Compat (ctEvPred, ctEvidence)
-import qualified GHC
 #endif
 #endif
 
