@@ -22,8 +22,8 @@ packages:
 
 extra-deps:
 - syb-0.7.2.1
-- github: konn/equational-reasoning-in-haskell
-  commit: f1f1dbc376e5ce544b6535b851cda5404fe0a5ae
+- equational-reasoning-in-haskell-0.6.0.4
+- indexed-traversable-instances-0.1
 - github: mgsloan/th-expand-syns
   commit: 6a64927ebd6b85cc3c67c00c88c3c7c019d31573
 - github: goldfirere/th-desugar
@@ -38,4 +38,3 @@ extra-deps:
   - singletons-base
 - github: ekmett/lens
   commit: 6815396accd3d6ba14bd5bfe4dec2fe516fc33c4
-- indexed-traversable-instances-0.1@sha256:3aaf97040001bbe583e29c2b9c7d41660df265e6565a0d2ac09a3ed5b8bc21be,2874
