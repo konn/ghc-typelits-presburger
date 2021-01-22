@@ -1,0 +1,15 @@
+pull_request_rules:
+  - name: Automatic merge on approval
+    conditions:
+      - "#approved-reviews-by>=1"
+      - "base=master"
+      - "label=merge me"
+      - status-success=Haskell GHC 8.4.3 Test
+      - status-success=Haskell GHC 8.6.5 Test
+      - status-success=Haskell GHC 8.8.4 Test
+      - status-success=Haskell GHC 8.10.3 Test
+      - status-success=Haskell GHC 9.0.1 Test
+    actions:
+      merge:
+        strict: smart+fasttrack
+        method: squash
