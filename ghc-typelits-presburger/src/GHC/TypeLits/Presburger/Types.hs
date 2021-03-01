@@ -267,16 +267,9 @@ decidePresburger _ genTrans _ gs [] [] = do
     let givens = catMaybes ngs
         prems0 = map snd givens
         prems = foldr assert' noProps prems0
-        (solved, _) = foldr go ([], noProps) givens
     if isNothing (checkSat prems)
       then return $ TcPluginContradiction gs
-      else do
-        tcPluginTrace "Redundant solveds" $ ppr solved
-        return $ TcPluginOk (map withEv solved) []
-  where
-    go (ct, p) (ss, prem)
-      | Proved <- testIf prem p = (ct : ss, prem)
-      | otherwise = (ss, assert' p prem)
+      else return $ TcPluginOk [] []
 decidePresburger mode genTrans _ gs _ds ws = do
   trans <- genTrans
   give trans $ do
