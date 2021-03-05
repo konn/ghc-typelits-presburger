@@ -1,5 +1,5 @@
 name: ghc-typelits-presburger
-version: "0.5.2.0"
+version: "0.6.0.0"
 synopsis: Presburger Arithmetic Solver for GHC Type-level natural numbers.
 description: |
   @ghc-typelits-presburger@ augments GHC type-system with Presburger
@@ -34,11 +34,14 @@ library:
   exposed-modules:
     - GHC.TypeLits.Presburger.Types
     - GHC.TypeLits.Presburger
+    - GHC.TypeLits.Presburger.Syntax
     - GHC.TypeLits.Presburger.Compat
   dependencies:
     - base >=4.7 && <5
     - containers
     - ghc-tcplugins-extra >=0.2 && <0.5
+    - template-haskell
+    - th-expand-syns
     - mtl
     - pretty
     - reflection

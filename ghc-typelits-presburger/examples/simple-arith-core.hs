@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -11,6 +12,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -dcore-lint #-}
+{-# OPTIONS_GHC -ddump-tc-trace -ddump-to-file #-}
 {-# OPTIONS_GHC -fplugin GHC.TypeLits.Presburger #-}
 
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 806
@@ -100,3 +102,16 @@ rangeEqlLeq ::
   pxy n ->
   (n <=? 2) :~: 'True
 rangeEqlLeq _ = Refl
+
+data Dict c where
+  Dict :: c => Dict c
+
+data NonEq a b where
+  NonEq :: (a == b) ~ 'False => NonEq a b
+
+type family (===) a b :: Bool where
+  (===) a a = 'True
+  (===) _ _ = 'False
+
+not0ToLeq0 :: (KnownNat n, (n <= 3, (n == 0) ~ 'False, (n === 0) ~ 'False), n <= 3) => proxy n -> Dict (4 - n <= 3)
+not0ToLeq0 _ = Dict

@@ -3,13 +3,21 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE UndecidableSuperClasses #-}
 {-# LANGUAGE ViewPatterns #-}
 
 -- | Since 0.3.0.0
@@ -24,17 +32,19 @@ module GHC.TypeLits.Presburger.Types
 where
 
 import Control.Applicative ((<|>))
-import Control.Arrow (second)
+import Control.Arrow (second, (***), first)
 import Control.Monad (forM, forM_, guard, mzero, unless)
-import Control.Monad.State.Class
+import Control.Monad.State.Class ( gets, modify, MonadState(get) )
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Maybe (MaybeT (..))
 import Control.Monad.Trans.RWS.Strict (runRWS, tell)
 import Control.Monad.Trans.State (StateT, runStateT)
 import Data.Char (isDigit)
 import Data.Foldable (asum)
+import Data.Generics (everywhere, gshow)
 import Data.Integer.SAT (Expr (..), Prop (..), PropSet, assert, checkSat, noProps, toName)
 import qualified Data.Integer.SAT as SAT
+import Data.Kind (Constraint)
 import Data.List (nub)
 import qualified Data.List as L
 import qualified Data.Map.Strict as M
@@ -47,7 +57,13 @@ import Data.Maybe
   )
 import Data.Reflection (Given, give, given)
 import qualified Data.Set as Set
+import Data.Type.Bool
+import Data.Type.Equality (type (==))
+import GHC.TypeLits (Nat, Symbol, type (+))
 import GHC.TypeLits.Presburger.Compat
+import GHC.TypeLits.Presburger.Syntax ()
+import GHC.TypeLits.Presburger.Syntax.Core
+import Text.Read (readMaybe)
 
 assert' :: Prop -> PropSet -> PropSet
 assert' p ps = foldr assert ps (p : varPos)
@@ -95,6 +111,7 @@ pluginWith :: TcPluginM Translation -> Plugin
 pluginWith trans =
   defaultPlugin
     { tcPlugin = Just . presburgerPlugin trans . procOpts
+    , parsedResultAction = \_ _ -> addVocabModule
 #if MIN_VERSION_ghc(8,6,0)
     , pluginRecompile = purePlugin
 #endif
@@ -103,6 +120,44 @@ pluginWith trans =
     procOpts opts
       | "allow-negated-numbers" `elem` opts = AllowNegatives
       | otherwise = DisallowNegatives
+
+addVocabModule :: HsParsedModule -> Hsc HsParsedModule
+addVocabModule pm@HsParsedModule {hpm_module = L loc mdl} =
+  pure $
+    pm {hpm_module = L loc $ addVocabModuleImport mdl}
+
+addVocabModuleImport :: HsModule GhcPs -> HsModule GhcPs
+addVocabModuleImport hsMod@HsModule {..}
+  | any
+      ( (== mkModuleName "GHC.TypeLits.Presburger.Syntax")
+          . unLoc
+          . ideclName
+          . unLoc
+      )
+      hsmodImports =
+    hsMod
+  | otherwise =
+    hsMod
+      { hsmodImports =
+          hsmodImports
+            ++ [ L
+                  noSrcSpan
+                  ImportDecl
+                    { ideclExt = noExtField
+                    , ideclSourceSrc = NoSourceText
+                    , ideclName = L noSrcSpan $ mkModuleName "GHC.TypeLits.Presburger.Syntax"
+                    , ideclPkgQual = Nothing
+                    , ideclSource = False
+                    , ideclSafe = False
+#if __GLASGOW_HASKELL__ >= 810
+                    , ideclQualified = NotQualified
+#endif
+                    , ideclImplicit = False
+                    , ideclAs = Nothing
+                    , ideclHiding = Just (True, L noSrcSpan [])
+                    }
+               ]
+      }
 
 presburgerPlugin :: TcPluginM Translation -> PluginMode -> TcPlugin
 presburgerPlugin trans mode =
@@ -319,8 +374,80 @@ decidePresburger mode genTrans _ gs _ds ws = do
 eqReasoning :: FastString
 eqReasoning = fsLit "equational-reasoning"
 
+demotePromotedVocab
+  :: Type -> Maybe Operator
+demotePromotedVocab ty = do
+  (tyC, []) <- splitTyConApp_maybe ty
+  dCon <- isPromotedDataCon_maybe tyC
+  readMaybe $ showSDocUnsafe $ pprNameUnqualified $ getName dCon
+
+demoteArgSpec :: ArgOfDataCon -> TySynDataCon -> Type -> Maybe DemotedArgSpec
+demoteArgSpec argOfName tySynName ty = do
+  (tyC, takeLast 2 -> [specTy, argsTy]) <- splitTyConApp_maybe ty
+  argOf <- isPromotedDataCon_maybe tyC
+  guard $ argOf == argOfName
+  synSpec <- demoteTySynSpec tySynName specTy
+  argIndices <- demoteNatList argsTy
+  pure $ ArgOf synSpec argIndices
+
+demoteNatList :: Type -> Maybe [Int]
+demoteNatList = go
+  where
+    go ty = do
+              (nilTyC, _) <- splitTyConApp_maybe ty
+              nilC <- isPromotedDataCon_maybe nilTyC
+              [] <$ guard (nilDataCon == nilC)
+      <|> do
+            (consTyC, args) <- splitTyConApp_maybe ty
+            [l, r] <- pure $ 
+              drop (length args - 2) args
+            consC <- isPromotedDataCon_maybe consTyC
+            guard (consDataCon  == consC)
+            x <- isNumLitTy l
+            xs <- go r
+            pure $ fromIntegral x : xs
+
+demoteTySynSpec :: TySynDataCon -> Type -> Maybe DemotedTySynSpec
+demoteTySynSpec tySynDataCon ty = do
+  (tyC, takeLast 3 -> [pkgSymb, modSymb, tyFamSymb]) <- splitTyConApp_maybe ty
+  datC <- isPromotedDataCon_maybe tyC
+  guard $ datC == tySynDataCon
+  pkg <- unpackFS <$> isStrLitTy pkgSymb
+  mdl <- unpackFS <$> isStrLitTy modSymb
+  fam <- unpackFS <$> isStrLitTy tyFamSymb
+  pure $ TySyn pkg mdl fam
+
+type ArgOfDataCon = DataCon
+type TySynDataCon = DataCon
+
+parseSyntaxTrans
+  :: ArgOfDataCon -> TySynDataCon -> [Type] -> Maybe (Operator, DemotedArgSpec)
+parseSyntaxTrans argOfCon tySynCon (takeLast 2 -> [op, spc]) = 
+  (,) <$> demotePromotedVocab op <*> demoteArgSpec argOfCon tySynCon spc
+parseSyntaxTrans _ _ _ = Nothing
+
+takeLast :: Int -> [a] -> [a]
+takeLast n xs = drop (length xs - n) xs
+
 defaultTranslation :: TcPluginM Translation
 defaultTranslation = do
+  presUnit <-
+    moduleUnit'
+      <$> lookupModule
+        (mkModuleName "GHC.TypeLits.Presburger")
+        (fsLit "ghc-typelits-presburger")
+  let vocabM = mkModule presUnit $ mkModuleName "GHC.TypeLits.Presburger.Syntax.Core"
+  ienvs <- getInstEnvs
+  syntaxClsName <- lookupName vocabM $ mkTcOcc "PresburgerSyntax"
+  syntaxCls <- tcLookupClass syntaxClsName
+  vocabTyCon <- tcLookupTyCon =<< lookupName vocabM (mkTcOcc "Operator")
+  argOf <- tcLookupDataCon =<< lookupName vocabM (mkDataOcc "ArgOf")
+  tySyn <- tcLookupDataCon =<< lookupName vocabM (mkDataOcc "TySyn")
+  let dics = classInstances ienvs syntaxCls
+      vocabs = tyConDataCons vocabTyCon
+  tcPluginTrace "syntaxCls: " $ ppr syntaxCls
+  tcPluginTrace "Presburger Syntax: " $ text $ show 
+    $ map (parseSyntaxTrans argOf tySyn . is_tys) dics
   packs <- preloadedUnitsM
   let eqThere = fromMaybe False $
         listToMaybe $ do
