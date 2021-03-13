@@ -20,7 +20,7 @@ maintainer: konn.jinro _at_ gmail.com
 copyright: 2015 (c) Hiromi ISHII
 license: BSD3
 github: konn/ghc-typelits-presburger
-tested-with: GHC==8.4.3 GHC==8.6.3 GHC==8.8.3 GHC==8.10.3 GHC==9.0.1
+tested-with: GHC==8.6.5 GHC==8.8.4 GHC==8.10.4 GHC==9.0.1
 ghc-options:
   - -Wall
   - -Wno-dodgy-imports

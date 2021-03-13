@@ -1,5 +1,6 @@
 Changelog
 ==========
+
 ## 0.4.0.0
 * Fixes constraint solving (fixes #9); this may change the previous (unsound) behaviour, and hence it is breaking change.
 
