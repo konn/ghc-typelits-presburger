@@ -169,12 +169,13 @@ import PrelNames as GHC.TypeLits.Presburger.Compat (eqTyConName)
 #if MIN_VERSION_ghc(8,10,1)
 import Predicate as GHC.TypeLits.Presburger.Compat (EqRel (..), Pred(..))
 import Predicate as GHC.TypeLits.Presburger.Compat (isEqPred)
-
+import GHC (NoExtField(..))
 import qualified Predicate as Old (classifyPredType)
 import Predicate as GHC.TypeLits.Presburger.Compat  (mkPrimEqPredRole)
 import Constraint as GHC.TypeLits.Presburger.Compat 
     (Ct, ctEvidence, ctEvPred, isWanted)
 #else
+import GHC (NoExt(..))
 import GhcPlugins as GHC.TypeLits.Presburger.Compat (EqRel (..), PredTree (..))
 import GhcPlugins as GHC.TypeLits.Presburger.Compat (isEqPred)
 import qualified GhcPlugins as Old (classifyPredType)
@@ -384,7 +385,7 @@ noExtField = NoExt
 #if MIN_VERSION_ghc(9,0,1)
 type HsModule' = HsModule
 #else
-type HsModule' = HsModule GhcPs
+type HsModule' = GHC.HsModule GHC.GhcPs
 #endif
 
 #if !MIN_VERSION_ghc(9,0,1)
