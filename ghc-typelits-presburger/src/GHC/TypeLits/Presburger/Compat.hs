@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP, FlexibleInstances, PatternGuards, PatternSynonyms #-}
 {-# LANGUAGE TypeSynonymInstances, ViewPatterns                     #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 module GHC.TypeLits.Presburger.Compat (module GHC.TypeLits.Presburger.Compat) where
 import Data.Function       (on)
@@ -10,6 +11,9 @@ import Data.Generics.Twins
 #if MIN_VERSION_ghc(9,0,0)
 import GHC.Builtin.Names as GHC.TypeLits.Presburger.Compat (gHC_TYPENATS, dATA_TYPE_EQUALITY)
 import qualified GHC.Builtin.Names as Old
+import GHC.Hs as GHC.TypeLits.Presburger.Compat (HsModule(..), NoExtField(..))
+import GHC.Hs.ImpExp as GHC.TypeLits.Presburger.Compat (ImportDecl(..), ImportDeclQualifiedStyle(..))
+import GHC.Hs.Extension as GHC.TypeLits.Presburger.Compat (GhcPs)
 import GHC.Builtin.Types as GHC.TypeLits.Presburger.Compat
   ( boolTyCon,
     eqTyConName,
@@ -34,7 +38,9 @@ import GHC.Driver.Types as GHC.TypeLits.Presburger.Compat (HscEnv (hsc_dflags))
 import GHC.Driver.Session (unitState)
 import GHC.Plugins (InScopeSet, Outputable, emptyUFM, moduleUnit, Unit)
 import GHC.Plugins as GHC.TypeLits.Presburger.Compat
-  ( PackageName (..),
+  ( PackageName (..),isStrLitTy, isNumLitTy,
+    nilDataCon, consDataCon,
+    Hsc, HsParsedModule(..),
     Plugin (..),
     TCvSubst (..),
     TvSubstEnv,
@@ -59,8 +65,12 @@ import GHC.Plugins as GHC.TypeLits.Presburger.Compat
     unionTCvSubst,
   )
 import GHC.Tc.Plugin (lookupOrig)
+import GHC.Core.InstEnv as GHC.TypeLits.Presburger.Compat (classInstances)
+import GHC.Driver.Types as GHC.TypeLits.Presburger.Compat (IsBootInterface(..))
 import GHC.Tc.Plugin as GHC.TypeLits.Presburger.Compat
   ( TcPluginM,
+    getInstEnvs,
+    newFlexiTyVar,
     getTopEnv,
     lookupOrig,
     newFlexiTyVar,
@@ -159,12 +169,13 @@ import PrelNames as GHC.TypeLits.Presburger.Compat (eqTyConName)
 #if MIN_VERSION_ghc(8,10,1)
 import Predicate as GHC.TypeLits.Presburger.Compat (EqRel (..), Pred(..))
 import Predicate as GHC.TypeLits.Presburger.Compat (isEqPred)
-
+import GHC (NoExtField(..))
 import qualified Predicate as Old (classifyPredType)
 import Predicate as GHC.TypeLits.Presburger.Compat  (mkPrimEqPredRole)
 import Constraint as GHC.TypeLits.Presburger.Compat 
     (Ct, ctEvidence, ctEvPred, isWanted)
 #else
+import GHC (NoExt(..))
 import GhcPlugins as GHC.TypeLits.Presburger.Compat (EqRel (..), PredTree (..))
 import GhcPlugins as GHC.TypeLits.Presburger.Compat (isEqPred)
 import qualified GhcPlugins as Old (classifyPredType)
@@ -359,3 +370,32 @@ type ModuleUnit = UnitId
 moduleUnit' :: Module -> ModuleUnit
 moduleUnit' = GHC.moduleUnitId
 #endif
+
+#if !MIN_VERSION_ghc(8,10,1)
+type NoExtField = NoExt
+#endif
+
+noExtField :: NoExtField
+#if MIN_VERSION_ghc(8,10,1)
+noExtField = NoExtField
+#else
+noExtField = NoExt
+#endif
+
+#if MIN_VERSION_ghc(9,0,1)
+type HsModule' = HsModule
+#else
+type HsModule' = GHC.HsModule GHC.GhcPs
+#endif
+
+#if !MIN_VERSION_ghc(9,0,1)
+type IsBootInterface = Bool
+pattern NotBoot :: IsBootInterface
+pattern NotBoot = False
+
+pattern IsBoot :: IsBootInterface
+pattern IsBoot = True
+
+{-# COMPLETE NotBoot, IsBoot #-}
+#endif
+

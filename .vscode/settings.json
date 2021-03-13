@@ -11,4 +11,6 @@
     ".github/workflows/haskell.yml"
   ],
   "github-actions.workflows.pinned.refresh.enabled": true,
+  "editor.defaultFormatter": "haskell.haskell",
+  "haskell.formattingProvider": "fourmolu",
 }
