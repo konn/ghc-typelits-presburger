@@ -126,7 +126,7 @@ addVocabModule pm@HsParsedModule {hpm_module = L loc mdl} =
   pure $
     pm {hpm_module = L loc $ addVocabModuleImport mdl}
 
-addVocabModuleImport :: HsModule GhcPs -> HsModule GhcPs
+addVocabModuleImport :: HsModule' -> HsModule'
 addVocabModuleImport hsMod@HsModule {..}
   | any
       ( (== mkModuleName "GHC.TypeLits.Presburger.Syntax")
@@ -147,7 +147,7 @@ addVocabModuleImport hsMod@HsModule {..}
                     , ideclSourceSrc = NoSourceText
                     , ideclName = L noSrcSpan $ mkModuleName "GHC.TypeLits.Presburger.Syntax"
                     , ideclPkgQual = Nothing
-                    , ideclSource = False
+                    , ideclSource = NotBoot
                     , ideclSafe = False
 #if __GLASGOW_HASKELL__ >= 810
                     , ideclQualified = NotQualified
