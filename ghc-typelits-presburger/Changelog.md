@@ -1,9 +1,6 @@
 Changelog
 ==========
 
-## 0.6.0.0
-* Now `ghc-typelits-presburger` won't drop (non-trivial) redundant constraints in simplification phase.
-
 ## 0.4.0.0
 * Fixes constraint solving (fixes #9); this may change the previous (unsound) behaviour, and hence it is breaking change.
 
