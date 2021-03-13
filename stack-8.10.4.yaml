@@ -1,0 +1,7 @@
+resolver: lts-17.3
+compiler: ghc-8.10.4
+
+flags: {}
+packages:
+  - "ghc-typelits-presburger"
+  - "singletons-presburger"
