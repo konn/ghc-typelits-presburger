@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP, FlexibleInstances, PatternGuards, PatternSynonyms #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeSynonymInstances, ViewPatterns                     #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
@@ -40,7 +41,7 @@ import GHC.Driver.Env.Types as GHC.TypeLits.Presburger.Compat (HscEnv (hsc_dflag
 import GHC.Driver.Types as GHC.TypeLits.Presburger.Compat (HscEnv (hsc_dflags))
 import GHC.Driver.Session (unitState)
 #endif
-import GHC.Plugins (InScopeSet, Outputable, emptyUFM, moduleUnit, Unit)
+import GHC.Plugins (InScopeSet, Outputable, emptyUFM, moduleUnit, Unit, Name)
 #if MIN_VERSION_ghc(9,2,0)
 import GHC.Hs as GHC.TypeLits.Presburger.Compat (HsParsedModule(..))
 import GHC.Types.TyThing as GHC.TypeLits.Presburger.Compat (lookupTyCon)
@@ -339,7 +340,7 @@ subsType =
 mkSubstitution :: [Ct] -> Substitution
 mkSubstitution =
 #if MIN_VERSION_ghc(8,4,1)
-  fst . unzip . Extra.mkSubst'
+  map fst . Extra.mkSubst'
 #else
   foldr (unionTvSubst . genSubst) emptyTvSubst
 #endif
@@ -441,5 +442,35 @@ mtypeNatLeqTyCon :: Maybe TyCon
 mtypeNatLeqTyCon = Nothing
 #else
 mtypeNatLeqTyCon = Just typeNatLeqTyCon
+#endif
+
+lookupTyNatPredLeq :: TcPluginM Name
+#if MIN_VERSION_ghc(9,2,0)
+lookupTyNatPredLeq = do
+  tyOrd <- lookupModule (mkModuleName "Data.Type.Ord") "base"
+  lookupOrig tyOrd (mkTcOcc "<=")
+#else
+lookupTyNatPredLeq = 
+  lookupOrig gHC_TYPENATS (mkTcOcc "<=")
+#endif
+
+lookupTyNatBoolLeq :: TcPluginM TyCon
+#if MIN_VERSION_ghc(9,2,0)
+lookupTyNatBoolLeq = do
+  tyOrd <- lookupModule (mkModuleName "Data.Type.Ord") "base"
+  tcLookupTyCon =<< lookupOrig tyOrd (mkTcOcc "<=?")
+#else
+lookupTyNatBoolLeq = 
+  pure typeNatLeqTyCon
+#endif
+
+
+mOrdCondTyCon :: TcPluginM (Maybe TyCon)
+#if MIN_VERSION_ghc(9,2,0)
+mOrdCondTyCon = Just <$> do
+  tyOrd <- lookupModule (mkModuleName "Data.Type.Ord") "base"
+  tcLookupTyCon =<< lookupOrig tyOrd (mkTcOcc "OrdCond")
+#else
+mOrdCondTyCon = pure Nothing
 #endif
 
