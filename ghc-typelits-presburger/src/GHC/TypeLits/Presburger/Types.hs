@@ -12,6 +12,9 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DerivingVia #-}
 -- | Since 0.3.0.0
 module GHC.TypeLits.Presburger.Types
   ( pluginWith,
@@ -24,7 +27,7 @@ module GHC.TypeLits.Presburger.Types
 where
 
 import Control.Applicative ((<|>))
-import Control.Arrow (second)
+import Control.Arrow (second, (***))
 import Control.Monad (forM_, guard, mzero, unless)
 import Control.Monad.State.Class
 import Control.Monad.Trans.Class
@@ -311,6 +314,7 @@ decidePresburger mode genTrans _ gs _ds ws = do
           | ct <- solved
           , EqPred NomEq t1 t2 <- return (classifyPredType $ deconsPred ct)
           ]
+    tcPluginTrace "binPropDic keys: " (ppr $ map (ppr *** text . show . (\f -> f (K 0) (K 1))) binPropDic)
     tcPluginTrace "pres: final premises" (text $ show prems0)
     tcPluginTrace "pres: final goals" (text $ show $ map snd wants)
     case testIf prems (foldr ((:&&) . snd) PTrue wants) of
@@ -363,34 +367,37 @@ defaultTranslation = do
   mTyGtP <- lookupTyNatPredGt
   mTyGtB <- lookupTyNatBoolGt
   mOrdCond <- mOrdCondTyCon
-  return
-    mempty
-      { isEmpty = isEmpties
-      , tyEq = [eqTyCon_]
-      , ordCond = F.toList mOrdCond
-      , tyEqWitness = [eqWitCon_]
-      , tyEqBool = [eqBoolTyCon]
-      , isTrue = isTrues
-      , voids = [voidTyCon]
-      , natMinus = [typeNatSubTyCon]
-      , natPlus = [typeNatAddTyCon]
-      , natTimes = [typeNatMulTyCon]
-      , natExp = [typeNatExpTyCon]
-      , falseData = [promotedFalseDataCon]
-      , trueData = [promotedTrueDataCon]
-      , natLeqBool = [tyLeqB]
-      , natLeq = [nLeq]
-      , natGeqBool = F.toList mTyGeqB
-      , natGeq = F.toList mTyGeqP
-      , natGtBool = F.toList mTyGtB
-      , natGt = F.toList mTyGtP
-      , natLtBool = F.toList mTyLtB
-      , natLt = F.toList mTyLtP
-      , natCompare = [typeNatCmpTyCon]
-      , orderingEQ = [promotedEQDataCon]
-      , orderingLT = [promotedLTDataCon]
-      , orderingGT = [promotedGTDataCon]
-      }
+  mtyGenericCompare <- lookupTyGenericCompare
+  let trans =
+        mempty
+          { isEmpty = isEmpties
+          , tyEq = [eqTyCon_]
+          , ordCond = F.toList mOrdCond
+          , tyEqWitness = [eqWitCon_]
+          , tyEqBool = [eqBoolTyCon]
+          , isTrue = isTrues
+          , voids = [voidTyCon]
+          , natMinus = [typeNatSubTyCon]
+          , natPlus = [typeNatAddTyCon]
+          , natTimes = [typeNatMulTyCon]
+          , natExp = [typeNatExpTyCon]
+          , falseData = [promotedFalseDataCon]
+          , trueData = [promotedTrueDataCon]
+          , natLeqBool = [tyLeqB]
+          , natLeq = [nLeq]
+          , natGeqBool = F.toList mTyGeqB
+          , natGeq = F.toList mTyGeqP
+          , natGtBool = F.toList mTyGtB
+          , natGt = F.toList mTyGtP
+          , natLtBool = F.toList mTyLtB
+          , natLt = F.toList mTyLtP
+          , natCompare = typeNatCmpTyCon : F.toList mtyGenericCompare
+          , orderingEQ = [promotedEQDataCon]
+          , orderingLT = [promotedLTDataCon]
+          , orderingGT = [promotedGTDataCon]
+          }
+  tcPluginTrace "Final translation: " (ppr mTyGeqB)
+  pure trans
 
 (<=>) :: Prop -> Prop -> Prop
 p <=> q = (p :&& q) :|| (Not p :&& Not q)
@@ -411,7 +418,7 @@ deconsPred :: Ct -> Type
 deconsPred = ctEvPred . ctEvidence
 
 toPresburgerPred :: Given Translation => Type -> Machine Prop
-toPresburgerPred (TyConApp con [t1, t2])
+toPresburgerPred (TyConApp con (lastN 2 -> [t1, t2]))
   | con `elem` (natLeq given ++ natLeqBool given) =
     (:<=) <$> toPresburgerExp t1 <*> toPresburgerExp t2
 toPresburgerPred ty
@@ -424,7 +431,7 @@ toPresburgerPred ty
   | cls@(EqPred NomEq _ _) <- classifyPredType ty =
     toPresburgerPredTree cls
   | isEqPred ty = toPresburgerPredTree $ classifyPredType ty
-  | Just (con, [l, r]) <- splitTyConApp_maybe ty -- l ~ r
+  | Just (con, [l, r]) <- splitTyConAppLastBin ty -- l ~ r
     , con `elem` (tyEq given ++ tyEqBool given) =
     toPresburgerPredTree $ EqPred NomEq l r
   | Just (con, [_k, l, r]) <- splitTyConApp_maybe ty -- l (:~: {k}) r
@@ -436,14 +443,11 @@ toPresburgerPred ty
   | Just (con, [l]) <- splitTyConApp_maybe ty -- IsTrue l =>
     , con `elem` isTrue given =
     toPresburgerPred l
-  | Just (con, ts) <- splitTyConApp_maybe ty
-    , let n = length ts
-    , n >= 2
-    , [t1, t2] <- drop (n - 2) ts
+  | Just (con, [t1, t2]) <- splitTyConAppLastBin ty
     , typeKind t1 `eqType` typeNatKind
-    , typeKind t2 `eqType` typeNatKind =
-    let p = lookup con binPropDic
-     in MaybeT (return p) <*> toPresburgerExp t1 <*> toPresburgerExp t2
+    , typeKind t2 `eqType` typeNatKind 
+    , Just p <- lookup con binPropDic =
+      p <$> toPresburgerExp t1 <*> toPresburgerExp t2
   | Just DataCond{..} <- parseOrdCond ty = do -- OrdCond
       fromCondCases condCases
           <$> toPresburgerExp lhs
@@ -465,7 +469,7 @@ data CondCases = CondCases { ltCase, eqCase, gtCase :: Bool }
 fromCondCases :: CondCases -> Expr -> Expr -> Prop
 fromCondCases (CondCases True False False) = (:<)
 fromCondCases (CondCases False True False) = (:==)
-fromCondCases (CondCases False False True ) = (:>)
+fromCondCases (CondCases False False True) = (:>)
 fromCondCases (CondCases True True False) = (:<=)
 fromCondCases (CondCases True False True) = (:/=)
 fromCondCases (CondCases True True True) = const $ const PTrue
@@ -490,19 +494,43 @@ decodeTyBool ty = do
   (True <$ guard (con == promotedTrueDataCon))
     <|> (False <$ guard (con == promotedFalseDataCon))
 
+
 toPresburgerPredTree :: Given Translation => PredTree -> Machine Prop
 toPresburgerPredTree (EqPred NomEq p false) -- P ~ 'False <=> Not P ~ 'True
   | maybe False (`elem` falseData given) $ tyConAppTyCon_maybe false =
-    Not <$> toPresburgerPredTree (EqPred NomEq p (mkTyConTy promotedTrueDataCon))
-toPresburgerPredTree (EqPred NomEq p b) -- (n :<=? m) ~ 'True
-  | maybe False (`elem` trueData given) $ tyConAppTyCon_maybe b
+    Not <$> toPresburgerPred p
+toPresburgerPredTree (EqPred NomEq p b) -- (n :<=? m) ~ 'b
+  | Just isTrue <- decodeTyBool b
     , Just (con, [t1, t2]) <- splitTyConAppLastBin p
     , con `elem` natLeqBool given =
-    (:<=) <$> toPresburgerExp t1 <*> toPresburgerExp t2
-toPresburgerPredTree (EqPred NomEq p b) -- (n :<=? m) ~ 'True
+    if isTrue 
+      then (:<=) <$> toPresburgerExp t1 <*> toPresburgerExp t2
+       else (:>) <$> toPresburgerExp t1 <*> toPresburgerExp t2
+toPresburgerPredTree (EqPred NomEq p b) -- (n :<? m) ~ b
+  | Just isTrue <- decodeTyBool b
+    , Just (con, [t1, t2]) <- splitTyConAppLastBin p
+    , con `elem` natLtBool given =
+    if isTrue 
+      then (:<) <$> toPresburgerExp t1 <*> toPresburgerExp t2
+       else (:>=) <$> toPresburgerExp t1 <*> toPresburgerExp t2
+toPresburgerPredTree (EqPred NomEq p b) -- (n :>? m) ~ b
+  | Just isTrue <- decodeTyBool b
+    , Just (con, [t1, t2]) <- splitTyConAppLastBin p
+    , con `elem` natGtBool given =
+    if isTrue 
+      then (:>) <$> toPresburgerExp t1 <*> toPresburgerExp t2
+       else (:<=) <$> toPresburgerExp t1 <*> toPresburgerExp t2
+toPresburgerPredTree (EqPred NomEq p b) -- (n :>=? m) ~ b
+  | Just isTrue <- decodeTyBool b
+    , Just (con, [t1, t2]) <- splitTyConAppLastBin p
+    , con `elem` natGeqBool given =
+    if isTrue 
+      then (:>=) <$> toPresburgerExp t1 <*> toPresburgerExp t2
+       else (:<) <$> toPresburgerExp t1 <*> toPresburgerExp t2
+toPresburgerPredTree (EqPred NomEq p b) 
   | maybe False (`elem` trueData given) $ tyConAppTyCon_maybe b =
     toPresburgerPred p
-toPresburgerPredTree (EqPred NomEq b p) -- 'True ~ (n :<=? m)
+toPresburgerPredTree (EqPred NomEq b p) 
   | maybe False (`elem` trueData given) $ tyConAppTyCon_maybe b =
     toPresburgerPred p
 toPresburgerPredTree (EqPred NomEq p q) -- (p :: Bool) ~ (q :: Bool)
@@ -549,14 +577,12 @@ toPresburgerPredTree (EqPred NomEq cond p)
     body <- fromCondCases condCases
           <$> toPresburgerExp lhs
           <*> toPresburgerExp rhs
-    maybe ((body <=>) <$> toPresburgerPred p) 
+    maybe ((body <=>) <$> toPresburgerPred cond) 
       (\q -> if q then pure body else pure $ Not body)
       $ decodeTyBool cond
 toPresburgerPredTree (ClassPred con ts)
   -- (n :: Nat) (<=| < | > | >= | == | /=) (m :: Nat)
-  | let n = length ts
-    , n >= 2
-    , [t1, t2] <- drop (n - 2) ts
+  | [t1, t2] <- lastN 2 ts
     , typeKind t1 `eqType` typeNatKind
     , typeKind t2 `eqType` typeNatKind =
     let p = lookup (classTyCon con) binPropDic

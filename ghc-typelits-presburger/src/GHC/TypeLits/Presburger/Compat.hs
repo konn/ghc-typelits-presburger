@@ -465,7 +465,9 @@ lookupTyNatBoolLeq =
 #endif
 
 lookupTyNatPredLt :: TcPluginM (Maybe TyCon)
-#if MIN_VERSION_ghc(9,2,0)
+-- Note:  base library shipepd with 9.2.1 has a wrong implementation;
+-- hence we MUST NOT desugar it with <= 9.2.1
+#if MIN_VERSION_ghc(9,2,2)
 lookupTyNatPredLt = Just <$> do
   tyOrd <- lookupModule (mkModuleName "Data.Type.Ord") "base"
   tcLookupTyCon =<< lookupOrig tyOrd (mkTcOcc "<")
@@ -525,4 +527,13 @@ mOrdCondTyCon = Just <$> do
   tcLookupTyCon =<< lookupOrig tyOrd (mkTcOcc "OrdCond")
 #else
 mOrdCondTyCon = pure Nothing
+#endif
+
+lookupTyGenericCompare :: TcPluginM (Maybe TyCon)
+#if MIN_VERSION_ghc(9,2,0)
+lookupTyGenericCompare = Just <$> do
+  tyOrd <- lookupModule (mkModuleName "Data.Type.Ord") "base"
+  tcLookupTyCon =<< lookupOrig tyOrd (mkTcOcc "Compare")
+#else
+lookupTyGenericCompare = pure Nothing
 #endif
