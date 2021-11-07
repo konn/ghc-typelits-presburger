@@ -475,7 +475,7 @@ lookupTyNatPredLt = pure Nothing
 
 lookupTyNatBoolLt :: TcPluginM (Maybe TyCon)
 #if MIN_VERSION_ghc(9,2,0)
-lookupTyNatBoolLt = do
+lookupTyNatBoolLt = Just <$> do
   tyOrd <- lookupModule (mkModuleName "Data.Type.Ord") "base"
   tcLookupTyCon =<< lookupOrig tyOrd (mkTcOcc "<?")
 #else
@@ -493,7 +493,7 @@ lookupTyNatPredGt = pure Nothing
 
 lookupTyNatBoolGt :: TcPluginM (Maybe TyCon)
 #if MIN_VERSION_ghc(9,2,0)
-lookupTyNatBoolGt = do
+lookupTyNatBoolGt = Just <$> do
   tyOrd <- lookupModule (mkModuleName "Data.Type.Ord") "base"
   tcLookupTyCon =<< lookupOrig tyOrd (mkTcOcc ">?")
 #else
