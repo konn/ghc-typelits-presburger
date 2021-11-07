@@ -12,7 +12,6 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# OPTIONS_GHC -fmax-pmcheck-models=100 #-}
 -- | Since 0.3.0.0
 module GHC.TypeLits.Presburger.Types
   ( pluginWith,
