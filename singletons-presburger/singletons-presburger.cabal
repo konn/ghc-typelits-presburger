@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: bb439928e71456fa954e07e40d7b62c2ef5b5349f76cc41075b3b4b1a7b01aa4
+-- hash: 7c819c65945b20693fd8ec236686efb63525a531888046776d078d702094cd2b
 
 name:           singletons-presburger
 version:        0.6.0.0
@@ -25,7 +25,7 @@ copyright:      2015 (c) Hiromi ISHII
 license:        BSD3
 license-file:   LICENSE
 tested-with:
-    GHC==8.6.5 GHC==8.8.4 GHC==8.10.7 GHC==9.0.1
+    GHC==8.6.5 GHC==8.8.4 GHC==8.10.7 GHC==9.0.1 GHC==9.2.1
 build-type:     Simple
 
 source-repository head
