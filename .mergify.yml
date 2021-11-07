@@ -5,8 +5,9 @@ pull_request_rules:
       - "label=merge me"
       - status-success=Haskell GHC 8.6.5 Test
       - status-success=Haskell GHC 8.8.4 Test
-      - status-success=Haskell GHC 8.10.4 Test
+      - status-success=Haskell GHC 8.10.7 Test
       - status-success=Haskell GHC 9.0.1 Test
+      - status-success=Haskell GHC 9.2.1 Test
     actions:
       merge:
         strict: smart+fasttrack
