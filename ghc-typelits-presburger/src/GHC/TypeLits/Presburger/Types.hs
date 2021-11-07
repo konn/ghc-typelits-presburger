@@ -25,7 +25,7 @@ where
 
 import Control.Applicative ((<|>))
 import Control.Arrow (second)
-import Control.Monad (forM, forM_, guard, mzero, unless)
+import Control.Monad (forM_, guard, mzero, unless)
 import Control.Monad.State.Class
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Maybe (MaybeT (..))
