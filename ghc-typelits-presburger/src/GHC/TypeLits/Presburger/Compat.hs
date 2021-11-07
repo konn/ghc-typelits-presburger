@@ -106,6 +106,7 @@ import GHC.Tc.Plugin as GHC.TypeLits.Presburger.Compat
 import GHC.Tc.Types as GHC.TypeLits.Presburger.Compat (TcPlugin (..), TcPluginResult (..))
 import GHC.Tc.Types.Constraint as GHC.TypeLits.Presburger.Compat
   ( Ct,
+    CtEvidence,
     ctEvPred,
     ctEvidence,
     isWanted,
@@ -195,7 +196,7 @@ import GHC (NoExtField(..))
 import qualified Predicate as Old (classifyPredType)
 import Predicate as GHC.TypeLits.Presburger.Compat  (mkPrimEqPredRole)
 import Constraint as GHC.TypeLits.Presburger.Compat 
-    (Ct, ctEvidence, ctEvPred, isWanted)
+    (Ct, ctEvidence, CtEvidence, ctEvPred, isWanted)
 #else
 import GHC (NoExt(..))
 import GhcPlugins as GHC.TypeLits.Presburger.Compat (EqRel (..), PredTree (..))
