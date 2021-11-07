@@ -68,7 +68,7 @@ natLeqZero' _ = Refl
 leqSucc :: proxy n -> proxy m -> IsTrue ((n + 1) <= m) -> CmpNat n m :~: 'LT
 leqSucc _ _ Witness = Refl
 
-leqEquiv :: (n <= m) ~ 'True => Sing n -> Sing m -> IsTrue (n <=? m)
+leqEquiv :: (n <= m) ~ 'True => Sing (n :: Nat) -> Sing m -> IsTrue (n <=? m)
 leqEquiv _ _ = Witness
 
 data NatView (n :: Nat) where
@@ -87,7 +87,7 @@ plusLeq _ _ = Refl
 minusLeq :: (n <= m) ~ 'True => proxy (n :: Nat) -> proxy m -> IsTrue ((m - n) + n <= m)
 minusLeq _ _ = Witness
 
-(%:<=?) :: Sing n -> Sing m -> Sing (n <=? m)
+(%:<=?) :: Sing (n :: Nat) -> Sing m -> Sing (n <=? m)
 n %:<=? m = case sCompare n m of
   SLT -> STrue
   SEQ -> STrue
