@@ -133,7 +133,7 @@ handleSubtraction DisallowNegatives p0 =
     loop (Not q) = Not <$> loop q
     loop (l :<= r) = (:<=) <$> loopExp l <*> loopExp r
     loop (l :< r) = (:<) <$> loopExp l <*> loopExp r
-    loop (l :>= r) = (:<=) <$> loopExp l <*> loopExp r
+    loop (l :>= r) = (:>=) <$> loopExp l <*> loopExp r
     loop (l :> r) = (:>) <$> loopExp l <*> loopExp r
     loop (l :== r) = (:==) <$> loopExp l <*> loopExp r
     loop (l :/= r) = (:/=) <$> loopExp l <*> loopExp r
