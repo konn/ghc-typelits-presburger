@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.33.0.
+-- This file has been generated from package.yaml by hpack version 0.34.4.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: f5d043e0588502295fbbf222a24c404b5415e14c21786d9e5e7bacc06e2088af
+-- hash: c6b69e69c7219ce6338457762a61074bea932e6c15a01a84f27c0833dce29949
 
 name:           ghc-typelits-presburger
 version:        0.6.0.0
@@ -29,7 +29,8 @@ maintainer:     konn.jinro _at_ gmail.com
 copyright:      2015 (c) Hiromi ISHII
 license:        BSD3
 license-file:   LICENSE
-tested-with:    GHC==8.6.5 GHC==8.8.4 GHC==8.10.4 GHC==9.0.1
+tested-with:
+    GHC==8.6.5 GHC==8.8.4 GHC==8.10.4 GHC==9.0.1
 build-type:     Simple
 
 source-repository head
