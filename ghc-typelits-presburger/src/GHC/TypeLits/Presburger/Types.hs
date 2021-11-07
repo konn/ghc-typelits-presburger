@@ -48,6 +48,7 @@ import Data.Maybe
 import Data.Reflection (Given, give, given)
 import qualified Data.Set as Set
 import GHC.TypeLits.Presburger.Compat
+import qualified Data.Foldable as F
 
 assert' :: Prop -> PropSet -> PropSet
 assert' p ps = foldr assert ps (p : varPos)
@@ -363,7 +364,7 @@ defaultTranslation = do
       , natExp = [typeNatExpTyCon]
       , falseData = [promotedFalseDataCon]
       , trueData = [promotedTrueDataCon]
-      , natLeqBool = [typeNatLeqTyCon]
+      , natLeqBool = F.toList mtypeNatLeqTyCon
       , natLeq = [nLeq]
       , natCompare = [typeNatCmpTyCon]
       , orderingEQ = [promotedEQDataCon]

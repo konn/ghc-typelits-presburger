@@ -436,3 +436,10 @@ typeNatKind :: TcType
 typeNatKind = naturalTy
 #endif
 
+mtypeNatLeqTyCon :: Maybe TyCon
+#if MIN_VERSION_ghc(9,2,0)
+mtypeNatLeqTyCon = Nothing
+#else
+mtypeNatLeqTyCon = Just typeNatLeqTyCon
+#endif
+
