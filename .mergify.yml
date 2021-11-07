@@ -1,3 +1,13 @@
+
+queue_rules:
+- name: default
+  conditions:
+  - status-success=Haskell GHC 8.6.5 Test
+  - status-success=Haskell GHC 8.8.4 Test
+  - status-success=Haskell GHC 8.10.7 Test
+  - status-success=Haskell GHC 9.0.1 Test
+  - status-success=Haskell GHC 9.2.1 Test
+
 pull_request_rules:
   - name: Automatic merge on approval
     conditions:
@@ -9,6 +19,6 @@ pull_request_rules:
       - status-success=Haskell GHC 9.0.1 Test
       - status-success=Haskell GHC 9.2.1 Test
     actions:
-      merge:
-        strict: smart+fasttrack
+      queue:
         method: squash
+        name: default
