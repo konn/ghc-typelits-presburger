@@ -34,13 +34,29 @@ import GHC.Core.Unify as Old (tcUnifyTy)
 import GHC.Unit.Types (Module, UnitId, toUnitId)
 import GHC.Unit.Types as GHC.TypeLits.Presburger.Compat (mkModule)
 import GHC.Data.FastString as GHC.TypeLits.Presburger.Compat (FastString, fsLit, unpackFS)
+#if MIN_VERSION_ghc(9,2,0)
+import GHC.Driver.Env.Types as GHC.TypeLits.Presburger.Compat (HscEnv (hsc_dflags))
+#else
 import GHC.Driver.Types as GHC.TypeLits.Presburger.Compat (HscEnv (hsc_dflags))
 import GHC.Driver.Session (unitState)
+#endif
 import GHC.Plugins (InScopeSet, Outputable, emptyUFM, moduleUnit, Unit)
+#if MIN_VERSION_ghc(9,2,0)
+import GHC.Hs as GHC.TypeLits.Presburger.Compat (HsParsedModule(..))
+import GHC.Types.TyThing as GHC.TypeLits.Presburger.Compat (lookupTyCon)
+import GHC.Builtin.Types (naturalTy)
+#else
+import GHC.Plugins as GHC.TypeLits.Presburger.Compat 
+  ( HsParsedModule(..),
+    lookupTyCon,
+    typeNatKind
+  )
+#endif
+
 import GHC.Plugins as GHC.TypeLits.Presburger.Compat
   ( PackageName (..),isStrLitTy, isNumLitTy,
     nilDataCon, consDataCon,
-    Hsc, HsParsedModule(..),
+    Hsc,
     Plugin (..),
     TCvSubst (..),
     TvSubstEnv,
@@ -48,7 +64,6 @@ import GHC.Plugins as GHC.TypeLits.Presburger.Compat
     defaultPlugin,
     emptyTCvSubst,
     eqType,
-    lookupTyCon,
     mkTcOcc,
     mkTyConTy,
     mkTyVarTy,
@@ -61,12 +76,19 @@ import GHC.Plugins as GHC.TypeLits.Presburger.Compat
     text,
     tyConAppTyCon_maybe,
     typeKind,
-    typeNatKind,
     unionTCvSubst,
   )
 import GHC.Tc.Plugin (lookupOrig)
 import GHC.Core.InstEnv as GHC.TypeLits.Presburger.Compat (classInstances)
+#if MIN_VERSION_ghc(9,2,0)
+import GHC.Tc.Plugin (unsafeTcPluginTcM)
+import GHC.Utils.Logger (getLogger)
+import Data.Functor ((<&>))
+import GHC.Unit.Types as GHC.TypeLits.Presburger.Compat (IsBootInterface(..))
+#else
 import GHC.Driver.Types as GHC.TypeLits.Presburger.Compat (IsBootInterface(..))
+#endif
+
 import GHC.Tc.Plugin as GHC.TypeLits.Presburger.Compat
   ( TcPluginM,
     getInstEnvs,
@@ -344,7 +366,16 @@ fsToUnitId = toUnitId . fsToUnit
 
 type RawUnitId = FastString
 preloadedUnitsM :: TcPluginM [FastString] 
-#if MIN_VERSION_ghc(9,0,0)
+#if MIN_VERSION_ghc(9,2,0)
+preloadedUnitsM = do
+  logger <- unsafeTcPluginTcM getLogger
+  dflags <- hsc_dflags <$> getTopEnv
+  packs <- tcPluginIO $ initUnits logger dflags Nothing <&> 
+    \(_, us, _, _ ) -> preloadUnits us
+  let packNames = map (\(UnitId p) -> p) packs
+  tcPluginTrace "pres: packs" $ ppr packNames
+  pure packNames
+#elif MIN_VERSION_ghc(9,0,0)
 preloadedUnitsM = do
   dflags <- hsc_dflags <$> getTopEnv
   packs <- tcPluginIO $ preloadUnits . unitState <$> initUnits dflags
@@ -397,5 +428,10 @@ pattern IsBoot :: IsBootInterface
 pattern IsBoot = True
 
 {-# COMPLETE NotBoot, IsBoot #-}
+
+#endif
+#if MIN_VERSION_ghc(9,2,0)
+typeNatKind :: TcType
+typeNatKind = naturalTy
 #endif
 

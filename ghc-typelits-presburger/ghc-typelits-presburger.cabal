@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 3fe60043238aebd8257e1ef49ad7cc604c5f20f6a8dffa862c4173b83ce5879a
+-- hash: 38e78a5bab9f9903cdbedcd717417e4b6ce8ec83c9281c2576a213fb2991a7ef
 
 name:           ghc-typelits-presburger
 version:        0.6.0.0
@@ -56,7 +56,7 @@ library
   build-depends:
       base >=4.7 && <5
     , containers
-    , ghc <9.1
+    , ghc <9.3
     , ghc-tcplugins-extra >=0.2 && <0.5
     , mtl
     , pretty
