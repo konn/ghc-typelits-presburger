@@ -27,7 +27,7 @@ module GHC.TypeLits.Presburger.Types
 where
 
 import Control.Applicative ((<|>))
-import Control.Arrow (second, (***))
+import Control.Arrow (second)
 import Control.Monad (forM_, guard, mzero, unless)
 import Control.Monad.State.Class
 import Control.Monad.Trans.Class
@@ -314,7 +314,6 @@ decidePresburger mode genTrans _ gs _ds ws = do
           | ct <- solved
           , EqPred NomEq t1 t2 <- return (classifyPredType $ deconsPred ct)
           ]
-    tcPluginTrace "binPropDic keys: " (ppr $ map (ppr *** text . show . (\f -> f (K 0) (K 1))) binPropDic)
     tcPluginTrace "pres: final premises" (text $ show prems0)
     tcPluginTrace "pres: final goals" (text $ show $ map snd wants)
     case testIf prems (foldr ((:&&) . snd) PTrue wants) of
