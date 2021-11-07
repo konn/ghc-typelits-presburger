@@ -23,6 +23,12 @@ import Data.Proxy
 import Data.Type.Equality
 import GHC.TypeLits
 import Proof.Propositional (Empty (..), IsTrue (Witness), withEmpty)
+#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 902
+import qualified Data.Type.Ord as DTO
+#endif
+
+main :: IO ()
+main = putStrLn "finished"
 
 type n <=! m = IsTrue (n <=? m)
 
@@ -86,9 +92,6 @@ succCompare _ _ = Refl
 eqToRefl :: pxy n -> pxy m -> CmpNat n m :~: 'EQ -> n :~: m
 eqToRefl _n _m Refl = Refl
 
-main :: IO ()
-main = putStrLn "finished"
-
 rangeEql ::
   ((n == 0) ~ 'False) =>
   pxy n ->
@@ -100,3 +103,25 @@ rangeEqlLeq ::
   pxy n ->
   (n <=? 2) :~: 'True
 rangeEqlLeq _ = Refl
+
+-- GHC >= 9.2 only Tests
+#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 902
+data NProxy (n :: Nat) = NProxy
+
+ghc92NLeqToGt :: (n DTO.<=? m) ~ 'False 
+  => NProxy n -> NProxy m -> (n DTO.>? m) :~: 'True
+ghc92NLeqToGt _ _ = Refl
+
+ghc92GtToGeq :: (n DTO.> m)
+  => NProxy n -> NProxy m -> (n DTO.>=? m) :~: 'True
+ghc92GtToGeq _ _ = Refl
+
+ghc92GeqEquivNLt :: NProxy n -> NProxy m -> (n DTO.>=? m) :~: ((n DTO.<? m) == 'False)
+ghc92GeqEquivNLt _ _ = Refl
+
+-- N.B. We can't replace with predicate style with GHC 9.2.1
+-- by the bug in base-4.16.0.0
+ghc92NLtToGeq :: (n DTO.<? m) ~ 'True
+  => NProxy n -> NProxy m -> (n DTO.>=? m) :~: 'False
+ghc92NLtToGeq _ _ = Refl
+#endif

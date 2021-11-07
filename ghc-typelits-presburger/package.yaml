@@ -20,7 +20,7 @@ maintainer: konn.jinro _at_ gmail.com
 copyright: 2015 (c) Hiromi ISHII
 license: BSD3
 github: konn/ghc-typelits-presburger
-tested-with: GHC==8.6.5 GHC==8.8.4 GHC==8.10.7 GHC==9.0.1
+tested-with: GHC==8.6.5 GHC==8.8.4 GHC==8.10.7 GHC==9.0.1 GHC==9.2.1
 ghc-options:
   - -Wall
   - -Wno-dodgy-imports
@@ -44,7 +44,7 @@ library:
     - reflection
     - syb
     - transformers
-    - ghc < 9.1
+    - ghc < 9.3
 executables:
   simple-arith-core:
     main: simple-arith-core.hs

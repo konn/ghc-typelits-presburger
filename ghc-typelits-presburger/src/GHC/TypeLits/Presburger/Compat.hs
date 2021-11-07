@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP, FlexibleInstances, PatternGuards, PatternSynonyms #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeSynonymInstances, ViewPatterns                     #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
@@ -34,13 +35,29 @@ import GHC.Core.Unify as Old (tcUnifyTy)
 import GHC.Unit.Types (Module, UnitId, toUnitId)
 import GHC.Unit.Types as GHC.TypeLits.Presburger.Compat (mkModule)
 import GHC.Data.FastString as GHC.TypeLits.Presburger.Compat (FastString, fsLit, unpackFS)
+#if MIN_VERSION_ghc(9,2,0)
+import GHC.Driver.Env.Types as GHC.TypeLits.Presburger.Compat (HscEnv (hsc_dflags))
+#else
 import GHC.Driver.Types as GHC.TypeLits.Presburger.Compat (HscEnv (hsc_dflags))
 import GHC.Driver.Session (unitState)
-import GHC.Plugins (InScopeSet, Outputable, emptyUFM, moduleUnit, Unit)
+#endif
+import GHC.Plugins (InScopeSet, Outputable, emptyUFM, moduleUnit, Unit, Name)
+#if MIN_VERSION_ghc(9,2,0)
+import GHC.Hs as GHC.TypeLits.Presburger.Compat (HsParsedModule(..))
+import GHC.Types.TyThing as GHC.TypeLits.Presburger.Compat (lookupTyCon)
+import GHC.Builtin.Types (naturalTy)
+#else
+import GHC.Plugins as GHC.TypeLits.Presburger.Compat 
+  ( HsParsedModule(..),
+    lookupTyCon,
+    typeNatKind
+  )
+#endif
+
 import GHC.Plugins as GHC.TypeLits.Presburger.Compat
   ( PackageName (..),isStrLitTy, isNumLitTy,
     nilDataCon, consDataCon,
-    Hsc, HsParsedModule(..),
+    Hsc,
     Plugin (..),
     TCvSubst (..),
     TvSubstEnv,
@@ -48,7 +65,6 @@ import GHC.Plugins as GHC.TypeLits.Presburger.Compat
     defaultPlugin,
     emptyTCvSubst,
     eqType,
-    lookupTyCon,
     mkTcOcc,
     mkTyConTy,
     mkTyVarTy,
@@ -61,12 +77,19 @@ import GHC.Plugins as GHC.TypeLits.Presburger.Compat
     text,
     tyConAppTyCon_maybe,
     typeKind,
-    typeNatKind,
     unionTCvSubst,
   )
 import GHC.Tc.Plugin (lookupOrig)
 import GHC.Core.InstEnv as GHC.TypeLits.Presburger.Compat (classInstances)
+#if MIN_VERSION_ghc(9,2,0)
+import GHC.Tc.Plugin (unsafeTcPluginTcM)
+import GHC.Utils.Logger (getLogger)
+import Data.Functor ((<&>))
+import GHC.Unit.Types as GHC.TypeLits.Presburger.Compat (IsBootInterface(..))
+#else
 import GHC.Driver.Types as GHC.TypeLits.Presburger.Compat (IsBootInterface(..))
+#endif
+
 import GHC.Tc.Plugin as GHC.TypeLits.Presburger.Compat
   ( TcPluginM,
     getInstEnvs,
@@ -84,6 +107,7 @@ import GHC.Tc.Plugin as GHC.TypeLits.Presburger.Compat
 import GHC.Tc.Types as GHC.TypeLits.Presburger.Compat (TcPlugin (..), TcPluginResult (..))
 import GHC.Tc.Types.Constraint as GHC.TypeLits.Presburger.Compat
   ( Ct,
+    CtEvidence,
     ctEvPred,
     ctEvidence,
     isWanted,
@@ -103,7 +127,7 @@ import GHC.Utils.Outputable as GHC.TypeLits.Presburger.Compat (showSDocUnsafe)
 #else
 import Class as GHC.TypeLits.Presburger.Compat (classTyCon, className)
 import FastString as GHC.TypeLits.Presburger.Compat (FastString, fsLit, unpackFS)
-import GhcPlugins (InScopeSet, Outputable, emptyUFM, InstalledUnitId(..), initPackages)
+import GhcPlugins (InScopeSet, Outputable, emptyUFM, InstalledUnitId(..), initPackages, Name)
 import GhcPlugins as GHC.TypeLits.Presburger.Compat (PackageName (..), fsToUnitId, lookupPackageName, lookupTyCon, mkTcOcc, mkTyConTy, ppr, promotedFalseDataCon, promotedTrueDataCon, text, tyConAppTyCon_maybe, typeKind, typeNatKind)
 import HscTypes as GHC.TypeLits.Presburger.Compat (HscEnv (hsc_dflags))
 import Module as GHC.TypeLits.Presburger.Compat (ModuleName, mkModuleName, mkModule)
@@ -173,7 +197,7 @@ import GHC (NoExtField(..))
 import qualified Predicate as Old (classifyPredType)
 import Predicate as GHC.TypeLits.Presburger.Compat  (mkPrimEqPredRole)
 import Constraint as GHC.TypeLits.Presburger.Compat 
-    (Ct, ctEvidence, ctEvPred, isWanted)
+    (Ct, ctEvidence, CtEvidence, ctEvPred, isWanted)
 #else
 import GHC (NoExt(..))
 import GhcPlugins as GHC.TypeLits.Presburger.Compat (EqRel (..), PredTree (..))
@@ -316,7 +340,7 @@ subsType =
 mkSubstitution :: [Ct] -> Substitution
 mkSubstitution =
 #if MIN_VERSION_ghc(8,4,1)
-  fst . unzip . Extra.mkSubst'
+  map fst . Extra.mkSubst'
 #else
   foldr (unionTvSubst . genSubst) emptyTvSubst
 #endif
@@ -344,7 +368,16 @@ fsToUnitId = toUnitId . fsToUnit
 
 type RawUnitId = FastString
 preloadedUnitsM :: TcPluginM [FastString] 
-#if MIN_VERSION_ghc(9,0,0)
+#if MIN_VERSION_ghc(9,2,0)
+preloadedUnitsM = do
+  logger <- unsafeTcPluginTcM getLogger
+  dflags <- hsc_dflags <$> getTopEnv
+  packs <- tcPluginIO $ initUnits logger dflags Nothing <&> 
+    \(_, us, _, _ ) -> preloadUnits us
+  let packNames = map (\(UnitId p) -> p) packs
+  tcPluginTrace "pres: packs" $ ppr packNames
+  pure packNames
+#elif MIN_VERSION_ghc(9,0,0)
 preloadedUnitsM = do
   dflags <- hsc_dflags <$> getTopEnv
   packs <- tcPluginIO $ preloadUnits . unitState <$> initUnits dflags
@@ -397,5 +430,110 @@ pattern IsBoot :: IsBootInterface
 pattern IsBoot = True
 
 {-# COMPLETE NotBoot, IsBoot #-}
+
+#endif
+#if MIN_VERSION_ghc(9,2,0)
+typeNatKind :: TcType
+typeNatKind = naturalTy
 #endif
 
+mtypeNatLeqTyCon :: Maybe TyCon
+#if MIN_VERSION_ghc(9,2,0)
+mtypeNatLeqTyCon = Nothing
+#else
+mtypeNatLeqTyCon = Just typeNatLeqTyCon
+#endif
+
+lookupTyNatPredLeq :: TcPluginM Name
+#if MIN_VERSION_ghc(9,2,0)
+lookupTyNatPredLeq = do
+  tyOrd <- lookupModule (mkModuleName "Data.Type.Ord") "base"
+  lookupOrig tyOrd (mkTcOcc "<=")
+#else
+lookupTyNatPredLeq = 
+  lookupOrig gHC_TYPENATS (mkTcOcc "<=")
+#endif
+
+lookupTyNatBoolLeq :: TcPluginM TyCon
+#if MIN_VERSION_ghc(9,2,0)
+lookupTyNatBoolLeq = do
+  tyOrd <- lookupModule (mkModuleName "Data.Type.Ord") "base"
+  tcLookupTyCon =<< lookupOrig tyOrd (mkTcOcc "<=?")
+#else
+lookupTyNatBoolLeq = 
+  pure typeNatLeqTyCon
+#endif
+
+lookupTyNatPredLt :: TcPluginM (Maybe TyCon)
+-- Note:  base library shipepd with 9.2.1 has a wrong implementation;
+-- hence we MUST NOT desugar it with <= 9.2.1
+#if MIN_VERSION_ghc(9,2,2)
+lookupTyNatPredLt = Just <$> do
+  tyOrd <- lookupModule (mkModuleName "Data.Type.Ord") "base"
+  tcLookupTyCon =<< lookupOrig tyOrd (mkTcOcc "<")
+#else
+lookupTyNatPredLt = pure Nothing
+#endif
+
+lookupTyNatBoolLt :: TcPluginM (Maybe TyCon)
+#if MIN_VERSION_ghc(9,2,0)
+lookupTyNatBoolLt = Just <$> do
+  tyOrd <- lookupModule (mkModuleName "Data.Type.Ord") "base"
+  tcLookupTyCon =<< lookupOrig tyOrd (mkTcOcc "<?")
+#else
+lookupTyNatBoolLt = pure Nothing
+#endif
+
+lookupTyNatPredGt :: TcPluginM (Maybe TyCon)
+#if MIN_VERSION_ghc(9,2,0)
+lookupTyNatPredGt = Just <$> do
+  tyOrd <- lookupModule (mkModuleName "Data.Type.Ord") "base"
+  tcLookupTyCon =<< lookupOrig tyOrd (mkTcOcc ">")
+#else
+lookupTyNatPredGt = pure Nothing
+#endif
+
+lookupTyNatBoolGt :: TcPluginM (Maybe TyCon)
+#if MIN_VERSION_ghc(9,2,0)
+lookupTyNatBoolGt = Just <$> do
+  tyOrd <- lookupModule (mkModuleName "Data.Type.Ord") "base"
+  tcLookupTyCon =<< lookupOrig tyOrd (mkTcOcc ">?")
+#else
+lookupTyNatBoolGt = pure Nothing
+#endif
+
+lookupTyNatPredGeq :: TcPluginM (Maybe TyCon)
+#if MIN_VERSION_ghc(9,2,0)
+lookupTyNatPredGeq = Just <$> do
+  tyOrd <- lookupModule (mkModuleName "Data.Type.Ord") "base"
+  tcLookupTyCon =<< lookupOrig tyOrd (mkTcOcc ">=")
+#else
+lookupTyNatPredGeq = pure Nothing
+#endif
+
+lookupTyNatBoolGeq :: TcPluginM (Maybe TyCon)
+#if MIN_VERSION_ghc(9,2,0)
+lookupTyNatBoolGeq = Just <$> do
+  tyOrd <- lookupModule (mkModuleName "Data.Type.Ord") "base"
+  tcLookupTyCon =<< lookupOrig tyOrd (mkTcOcc ">=?")
+#else
+lookupTyNatBoolGeq = pure Nothing
+#endif
+
+mOrdCondTyCon :: TcPluginM (Maybe TyCon)
+#if MIN_VERSION_ghc(9,2,0)
+mOrdCondTyCon = Just <$> do
+  tyOrd <- lookupModule (mkModuleName "Data.Type.Ord") "base"
+  tcLookupTyCon =<< lookupOrig tyOrd (mkTcOcc "OrdCond")
+#else
+mOrdCondTyCon = pure Nothing
+#endif
+
+lookupTyGenericCompare :: TcPluginM (Maybe TyCon)
+#if MIN_VERSION_ghc(9,2,0)
+lookupTyGenericCompare = Just <$> do
+  tyOrd <- lookupModule (mkModuleName "Data.Type.Ord") "base"
+  tcLookupTyCon =<< lookupOrig tyOrd (mkTcOcc "Compare")
+#else
+lookupTyGenericCompare = pure Nothing
+#endif
