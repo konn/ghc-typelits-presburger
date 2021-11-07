@@ -356,6 +356,12 @@ defaultTranslation = do
   voidTyCon <- tcLookupTyCon =<< lookupOrig vmd (mkTcOcc "Void")
   nLeq <- tcLookupTyCon =<< lookupTyNatPredLeq
   tyLeqB <- lookupTyNatBoolLeq
+  mTyLtP <- lookupTyNatPredLt
+  mTyLtB <- lookupTyNatBoolLt
+  mTyGeqP <- lookupTyNatPredGeq
+  mTyGeqB <- lookupTyNatBoolGeq
+  mTyGtP <- lookupTyNatPredGt
+  mTyGtB <- lookupTyNatBoolGt
   mOrdCond <- mOrdCondTyCon
   return
     mempty
@@ -374,6 +380,12 @@ defaultTranslation = do
       , trueData = [promotedTrueDataCon]
       , natLeqBool = [tyLeqB]
       , natLeq = [nLeq]
+      , natGeqBool = F.toList mTyGeqB
+      , natGeq = F.toList mTyGeqP
+      , natGtBool = F.toList mTyGtB
+      , natGt = F.toList mTyGtP
+      , natLtBool = F.toList mTyLtB
+      , natLt = F.toList mTyLtP
       , natCompare = [typeNatCmpTyCon]
       , orderingEQ = [promotedEQDataCon]
       , orderingLT = [promotedLTDataCon]
