@@ -157,6 +157,8 @@ handleSubtraction DisallowNegatives p0 =
     loopExp (Min l r) = Min <$> loopExp l <*> loopExp r
     loopExp (Max l r) = Max <$> loopExp l <*> loopExp r
     loopExp (If p l r) = If <$> loop p <*> loopExp l <*> loopExp r
+    loopExp (Mod l n) = Mod <$> loopExp l <*> pure n
+    loopExp (Div l n) = Div <$> loopExp l <*> pure n
     loopExp e@(K _) = return e
 
 data Translation = Translation
