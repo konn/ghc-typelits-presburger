@@ -127,7 +127,7 @@ import GHC.Utils.Outputable as GHC.TypeLits.Presburger.Compat (showSDocUnsafe)
 #else
 import Class as GHC.TypeLits.Presburger.Compat (classTyCon, className)
 import FastString as GHC.TypeLits.Presburger.Compat (FastString, fsLit, unpackFS)
-import GhcPlugins (InScopeSet, Outputable, emptyUFM, InstalledUnitId(..), initPackages)
+import GhcPlugins (InScopeSet, Outputable, emptyUFM, InstalledUnitId(..), initPackages, Name)
 import GhcPlugins as GHC.TypeLits.Presburger.Compat (PackageName (..), fsToUnitId, lookupPackageName, lookupTyCon, mkTcOcc, mkTyConTy, ppr, promotedFalseDataCon, promotedTrueDataCon, text, tyConAppTyCon_maybe, typeKind, typeNatKind)
 import HscTypes as GHC.TypeLits.Presburger.Compat (HscEnv (hsc_dflags))
 import Module as GHC.TypeLits.Presburger.Compat (ModuleName, mkModuleName, mkModule)
@@ -464,6 +464,59 @@ lookupTyNatBoolLeq =
   pure typeNatLeqTyCon
 #endif
 
+lookupTyNatPredLt :: TcPluginM (Maybe TyCon)
+#if MIN_VERSION_ghc(9,2,0)
+lookupTyNatPredLt = Just <$> do
+  tyOrd <- lookupModule (mkModuleName "Data.Type.Ord") "base"
+  tcLookupTyCon =<< lookupOrig tyOrd (mkTcOcc "<")
+#else
+lookupTyNatPredLt = pure Nothing
+#endif
+
+lookupTyNatBoolLt :: TcPluginM (Maybe TyCon)
+#if MIN_VERSION_ghc(9,2,0)
+lookupTyNatBoolLt = do
+  tyOrd <- lookupModule (mkModuleName "Data.Type.Ord") "base"
+  tcLookupTyCon =<< lookupOrig tyOrd (mkTcOcc "<?")
+#else
+lookupTyNatBoolLt = pure Nothing
+#endif
+
+lookupTyNatPredGt :: TcPluginM (Maybe TyCon)
+#if MIN_VERSION_ghc(9,2,0)
+lookupTyNatPredGt = Just <$> do
+  tyOrd <- lookupModule (mkModuleName "Data.Type.Ord") "base"
+  tcLookupTyCon =<< lookupOrig tyOrd (mkTcOcc ">")
+#else
+lookupTyNatPredGt = pure Nothing
+#endif
+
+lookupTyNatBoolGt :: TcPluginM (Maybe TyCon)
+#if MIN_VERSION_ghc(9,2,0)
+lookupTyNatBoolGt = do
+  tyOrd <- lookupModule (mkModuleName "Data.Type.Ord") "base"
+  tcLookupTyCon =<< lookupOrig tyOrd (mkTcOcc ">?")
+#else
+lookupTyNatBoolGt = pure Nothing
+#endif
+
+lookupTyNatPredGeq :: TcPluginM (Maybe TyCon)
+#if MIN_VERSION_ghc(9,2,0)
+lookupTyNatPredGeq = Just <$> do
+  tyOrd <- lookupModule (mkModuleName "Data.Type.Ord") "base"
+  tcLookupTyCon =<< lookupOrig tyOrd (mkTcOcc ">=")
+#else
+lookupTyNatPredGeq = pure Nothing
+#endif
+
+lookupTyNatBoolGeq :: TcPluginM (Maybe TyCon)
+#if MIN_VERSION_ghc(9,2,0)
+lookupTyNatBoolGeq = Just <$> do
+  tyOrd <- lookupModule (mkModuleName "Data.Type.Ord") "base"
+  tcLookupTyCon =<< lookupOrig tyOrd (mkTcOcc ">=?")
+#else
+lookupTyNatBoolGeq = pure Nothing
+#endif
 
 mOrdCondTyCon :: TcPluginM (Maybe TyCon)
 #if MIN_VERSION_ghc(9,2,0)
@@ -473,4 +526,3 @@ mOrdCondTyCon = Just <$> do
 #else
 mOrdCondTyCon = pure Nothing
 #endif
-
