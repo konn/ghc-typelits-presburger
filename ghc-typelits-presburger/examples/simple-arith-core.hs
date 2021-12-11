@@ -10,6 +10,7 @@
 {-# LANGUAGE TypeInType #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE NoStarIsType #-}
 {-# OPTIONS_GHC -dcore-lint #-}
 {-# OPTIONS_GHC -fplugin GHC.TypeLits.Presburger #-}
 
@@ -61,7 +62,7 @@ minusLeq :: (n <= m) => proxy (n :: Nat) -> proxy m -> IsTrue ((m - n) + n <=? m
 minusLeq _ _ = Witness
 
 absurdTrueFalse :: ( 'True :~: 'False) -> a
-absurdTrueFalse = \case
+absurdTrueFalse = \case {}
 
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ > 802
 hoge :: proxy n -> IsTrue (n + 1 <=? n) -> a
@@ -124,4 +125,10 @@ ghc92GeqEquivNLt _ _ = Refl
 ghc92NLtToGeq :: (n DTO.<? m) ~ 'True
   => NProxy n -> NProxy m -> (n DTO.>=? m) :~: 'False
 ghc92NLtToGeq _ _ = Refl
+
+minLeq :: n <= m => NProxy n -> NProxy m -> DTO.Min n m :~: n
+minLeq _ _ = Refl
+
+maxLeq :: n <= m => NProxy n -> NProxy m -> DTO.Max n m :~: m
+maxLeq _ _ = Refl
 #endif

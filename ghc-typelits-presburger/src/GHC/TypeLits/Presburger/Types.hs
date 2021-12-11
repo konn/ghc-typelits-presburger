@@ -601,6 +601,12 @@ binPropDic =
 toPresburgerExp :: Given Translation => Type -> Machine Expr
 toPresburgerExp ty = case ty of
   TyVarTy t -> return $ Var $ toName $ getKey $ getUnique t
+  TyConApp tc (lastN 4 -> [cmpNM, l, e, g])
+    | tc `elem` ordCond given
+    , TyConApp cmp (lastN 2 -> [n, m]) <- cmpNM
+    , cmp `elem` natCompare given
+    , all ((`elem` [TypeEq n, TypeEq m]) . TypeEq) [l,e,g]
+    -> decodeMinMax n m l e g
   t@(TyConApp tc ts) ->
     parseExpr given toPresburgerExp ty
       <|> body tc ts
@@ -638,6 +644,18 @@ toPresburgerExp ty = case ty of
                   ++ [ step con Max
                      | con <- natMin given
                      ]
+
+decodeMinMax :: Given Translation => Type -> Type -> Type -> Type -> Type -> Machine Expr
+decodeMinMax n m lt eq gt 
+  | lt `eqType`  n && eq `eqType`  n && gt `eqType` m = 
+    Min <$> toPresburgerExp n <*> toPresburgerExp m
+  | lt `eqType`  n && eq `eqType`  m && gt `eqType` m = 
+    Min <$> toPresburgerExp n <*> toPresburgerExp m
+  | lt `eqType` m && eq `eqType`  m && gt `eqType` n = 
+    Max <$> toPresburgerExp n <*> toPresburgerExp m
+  | lt `eqType` m && eq `eqType`  n && gt `eqType` n = 
+    Max <$> toPresburgerExp n <*> toPresburgerExp m
+  | otherwise = mzero
 
 -- simplTypeCmp :: Type -> Type
 
