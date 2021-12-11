@@ -1,5 +1,9 @@
 Changelog
 ==========
+## 0.6.2.0
+* Support GHC 9.2.1
+* Decoding in Min/Max expression in terms of OrdCond
+
 ## 0.6.0.0
 * Stop discharging redundant constraints
 * Support GHC 9.0.1
