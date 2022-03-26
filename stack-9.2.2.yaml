@@ -1,0 +1,7 @@
+resolver: nightly-2022-03-26
+system-ghc: true
+
+flags: {}
+packages:
+- "ghc-typelits-presburger"
+- "singletons-presburger"
