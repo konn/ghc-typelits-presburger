@@ -1,4 +1,4 @@
-resolver: nightly-2022-03-26
+resolver: nightly-2022-08-15
 system-ghc: true
 
 flags: {}

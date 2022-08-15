@@ -17,9 +17,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ghc: ['8.6.5', '8.8.4', '8.10.7', '9.0.2', '9.2.2']
+        ghc: ['8.6.5', '8.8.4', '8.10.7', '9.0.2', '9.2.4']
         HEAD: [false]
-
+        include:
+        - ghc: '9.4.1'
+          HEAD: true
     runs-on: ubuntu-latest
     name: Haskell GHC ${{ matrix.ghc }} Build
     env:

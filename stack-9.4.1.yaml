@@ -1,0 +1,8 @@
+resolver: nightly-2022-08-15
+system-ghc: true
+compiler: ghc-9.4.1
+
+flags: {}
+packages:
+- "ghc-typelits-presburger"
+- "singletons-presburger"
