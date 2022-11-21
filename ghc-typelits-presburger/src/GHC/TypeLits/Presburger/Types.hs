@@ -183,6 +183,10 @@ data Translation = Translation
   , tyEq :: [TyCon]
   , tyEqBool :: [TyCon]
   , tyEqWitness :: [TyCon]
+  , tyNot :: [TyCon]
+  , tyAnd :: [TyCon]
+  , tyOr :: [TyCon]
+  , tyIf :: [TyCon]
   , tyNeqBool :: [TyCon]
   , natPlus :: [TyCon]
   , natMinus :: [TyCon]
@@ -214,6 +218,10 @@ instance Semigroup Translation where
       , assertTy = assertTy l <> assertTy r
       , voids = voids l <> voids r
       , tyEq = tyEq l <> tyEq r
+      , tyNot = tyNot l <> tyNot r
+      , tyAnd = tyAnd l <> tyAnd r
+      , tyOr = tyOr l <> tyOr r
+      , tyIf = tyIf l <> tyIf r
       , tyEqBool = tyEqBool l <> tyEqBool r
       , tyEqWitness = tyEqWitness l <> tyEqWitness r
       , tyNeqBool = tyNeqBool l <> tyNeqBool r
@@ -252,6 +260,10 @@ instance Monoid Translation where
       , tyEqBool = mempty
       , tyEqWitness = mempty
       , tyNeqBool = mempty
+      , tyNot = mempty
+      , tyAnd = mempty
+      , tyOr = mempty
+      , tyIf = mempty
       , voids = mempty
       , natPlus = mempty
       , natMinus = mempty
@@ -378,11 +390,19 @@ defaultTranslation = do
   mTyGtB <- lookupTyNatBoolGt
   mOrdCond <- mOrdCondTyCon
   mtyGenericCompare <- lookupTyGenericCompare
+  tyNot <- maybeToList <$> lookupTyNot
+  tyAnd <- maybeToList <$> lookupTyAnd
+  tyOr <- maybeToList <$> lookupTyOr
+  tyIf <- maybeToList <$> lookupTyIf
   let trans =
         mempty
           { isEmpty = isEmpties
           , assertTy = maybeToList assertTy
           , tyEq = [eqTyCon_]
+          , tyNot
+          , tyAnd
+          , tyOr
+          , tyIf
           , ordCond = F.toList mOrdCond
           , tyEqWitness = [eqWitCon_]
           , tyEqBool = [eqBoolTyCon]
@@ -412,12 +432,6 @@ defaultTranslation = do
 
 (<=>) :: Prop -> Prop -> Prop
 p <=> q = (p :&& q) :|| (Not p :&& Not q)
-
-withEv :: Ct -> (EvTerm, Ct)
-withEv ct =
-  case classifyPredType (deconsPred ct) of
-    EqPred _ t1 t2 -> (evByFiat "ghc-typelits-presburger" t1 t2, ct)
-    _ -> error $ "UnknownPredEv: " <> showSDocUnsafe (ppr ct)
 
 orderingDic :: Given Translation => [(TyCon, Expr -> Expr -> Prop)]
 orderingDic =
@@ -456,6 +470,15 @@ toPresburgerPred ty
   | Just (con, [l]) <- splitTyConApp_maybe ty -- IsTrue l =>
     , con `elem` isTrue given =
     toPresburgerPred l
+  | Just (con, [l]) <- splitTyConApp_maybe ty -- Not p (from Data.Type.Bool)
+    , con `elem` tyNot given =
+    Not <$> toPresburgerPred l
+  | Just (con, [l, r]) <- splitTyConApp_maybe ty -- p && q (from Data.Type.Bool)
+    , con `elem` tyAnd given =
+    (:&&) <$> toPresburgerPred l <*> toPresburgerPred r
+  | Just (con, [l, r]) <- splitTyConApp_maybe ty -- p || q (from Data.Type.Bool)
+    , con `elem` tyOr given =
+    (:||) <$> toPresburgerPred l <*> toPresburgerPred r
   | Just (con, [t1, t2]) <- splitTyConAppLastBin ty
     , typeKind t1 `eqType` typeNatKind
     , typeKind t2 `eqType` typeNatKind 
