@@ -479,6 +479,12 @@ toPresburgerPred ty
   | Just (con, [l, r]) <- splitTyConApp_maybe ty -- p || q (from Data.Type.Bool)
     , con `elem` tyOr given =
     (:||) <$> toPresburgerPred l <*> toPresburgerPred r
+  | Just (con, lastN 3 -> [p, t, f]) <- splitTyConApp_maybe ty -- If p t f (from Data.Type.Bool)
+    , con `elem` tyIf given = do
+    p' <- toPresburgerPred p
+    (:||) 
+      <$> ((p' :&&) <$> toPresburgerPred t) 
+      <*> ((Not p':&&) <$> toPresburgerPred f)
   | Just (con, [t1, t2]) <- splitTyConAppLastBin ty
     , typeKind t1 `eqType` typeNatKind
     , typeKind t2 `eqType` typeNatKind 
@@ -638,6 +644,9 @@ binPropDic =
 toPresburgerExp :: Given Translation => Type -> Machine Expr
 toPresburgerExp ty = case ty of
   TyVarTy t -> return $ Var $ toName $ getKey $ getUnique t
+  TyConApp tc (lastN 3 -> [p, t, f])
+    | tc `elem` tyIf given ->
+      If <$> toPresburgerPred p <*> toPresburgerExp t <*> toPresburgerExp f 
   TyConApp tc (lastN 4 -> [cmpNM, l, e, g])
     | tc `elem` ordCond given
     , TyConApp cmp (lastN 2 -> [n, m]) <- cmpNM
