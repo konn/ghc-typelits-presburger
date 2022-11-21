@@ -15,6 +15,7 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE NamedFieldPuns #-}
 -- | Since 0.3.0.0
 module GHC.TypeLits.Presburger.Types
   ( pluginWith,
