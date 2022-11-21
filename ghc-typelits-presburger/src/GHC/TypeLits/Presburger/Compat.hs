@@ -575,13 +575,11 @@ lookupTyGenericCompare = Just <$> do
 lookupTyGenericCompare = pure Nothing
 #endif
 
-dATA_TYPE_BOOL :: Module
-dATA_TYPE_BOOL = mkBaseModule "Data.Type.Bool"
 
 #if MIN_VERSION_base(4,7,0)
 lookupBool47 :: String -> TcPluginM (Maybe TyCon)
 lookupBool47 nam = Just <$> do
-  tcLookupTyCon =<< lookupOrig dATA_TYPE_BOOL (mkTcOcc nam)
+  tcLookupTyCon =<< lookupOrig (mkBaseModule "Data.Type.Bool") (mkTcOcc nam)
 #else
 lookupBool47 = pure Nothing
 #endif
