@@ -13,6 +13,7 @@ import Data.Generics.Twins
 import GHC.Builtin.Names as GHC.TypeLits.Presburger.Compat (gHC_TYPENATS)
 #if MIN_VERSION_ghc(9,4,1)
 import GHC.Builtin.Names as GHC.TypeLits.Presburger.Compat (mkBaseModule, gHC_TYPEERROR)
+import GHC.Core.Reduction (reductionReducedType)
 #else
 import GHC.Builtin.Names as GHC.TypeLits.Presburger.Compat (dATA_TYPE_EQUALITY)
 import qualified GHC.Builtin.Names as Old
@@ -589,3 +590,11 @@ lookupTyNot = lookupBool47 "Not"
 lookupTyIf = lookupBool47 "If"
 lookupTyAnd = lookupBool47 "&&"
 lookupTyOr = lookupBool47 "||"
+
+
+matchFam' :: TyCon -> [Type] -> TcPluginM (Maybe  Type)
+#if MIN_VERSION_ghc(9,4,1)
+matchFam' con args = fmap reductionReducedType <$> matchFam con args
+#else
+matchFam' = fmap snd <$> matchFam
+#endif

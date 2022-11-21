@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: ed415f6edf7e682ac34b7d1809c87dd53abc57a1a6db1ac4e7e761b3a35ea144
+-- hash: 21ebd588fccec73739b199a724bf3a593cad417a4fea531c95719abc83858203
 
 name:           singletons-presburger
 version:        0.6.1.0
@@ -47,6 +47,7 @@ library
   ghc-options: -Wall -Wno-dodgy-imports
   build-depends:
       base >=4.7 && <5
+    , ghc
     , ghc-typelits-presburger >=0.4
     , mtl
     , reflection

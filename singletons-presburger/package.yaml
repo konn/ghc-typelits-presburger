@@ -42,6 +42,7 @@ library:
     - ghc-typelits-presburger >= 0.4
     - mtl
     - reflection
+    - ghc
 executables:
   simple-arith:
     main: simple-arith.hs
