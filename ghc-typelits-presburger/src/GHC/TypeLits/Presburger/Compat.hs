@@ -596,5 +596,5 @@ matchFam' :: TyCon -> [Type] -> TcPluginM (Maybe  Type)
 #if MIN_VERSION_ghc(9,4,1)
 matchFam' con args = fmap reductionReducedType <$> matchFam con args
 #else
-matchFam' = fmap snd <$> matchFam
+matchFam' con args = fmap snd <$> matchFam con args 
 #endif
