@@ -12,6 +12,11 @@ import Data.Generics.Twins
 #if MIN_VERSION_ghc(9,0,0)
 import GHC.Builtin.Names as GHC.TypeLits.Presburger.Compat (gHC_TYPENATS)
 #if MIN_VERSION_ghc(9,4,1)
+import GHC.Tc.Types as GHC.TypeLits.Presburger.Compat (TcPlugin (..), TcPluginSolveResult (..))
+#else
+import GHC.Tc.Types as GHC.TypeLits.Presburger.Compat (TcPlugin (..), TcPluginResult (..))
+#endif
+#if MIN_VERSION_ghc(9,4,1)
 import GHC.Builtin.Names as GHC.TypeLits.Presburger.Compat (mkBaseModule, gHC_TYPEERROR)
 import GHC.Core.Reduction (reductionReducedType)
 #else
@@ -157,7 +162,7 @@ import TcPluginM as GHC.TypeLits.Presburger.Compat
     tcPluginIO,
     tcPluginTrace,
   )
-import TcRnMonad as GHC.TypeLits.Presburger.Compat (TcPluginSolveResult (..))
+import TcRnMonad as GHC.TypeLits.Presburger.Compat (TcPluginResult (..))
 import TcRnTypes as GHC.TypeLits.Presburger.Compat (TcPlugin (..))
 import TcType as GHC.TypeLits.Presburger.Compat (tcTyFamInsts)
 import TcTypeNats as GHC.TypeLits.Presburger.Compat
@@ -213,11 +218,6 @@ import TcRnMonad as GHC.TypeLits.Presburger.Compat (Ct, isWanted)
 import Type      as GHC.TypeLits.Presburger.Compat (mkPrimEqPredRole)
 import TcRnTypes as GHC.TypeLits.Presburger.Compat (ctEvPred, ctEvidence)
 #endif
-#endif
-#if MIN_VERSION_ghc(9,4,1)
-import GHC.Tc.Types as GHC.TypeLits.Presburger.Compat (TcPlugin (..), TcPluginSolveResult (..))
-#else
-import GHC.Tc.Types as GHC.TypeLits.Presburger.Compat (TcPlugin (..), TcPluginResult (..))
 #endif
 
 #if !MIN_VERSION_ghc(9,4,1)
