@@ -582,7 +582,7 @@ lookupBool47 :: String -> TcPluginM (Maybe TyCon)
 lookupBool47 nam = Just <$> do
   tcLookupTyCon =<< lookupOrig (mkBaseModule "Data.Type.Bool") (mkTcOcc nam)
 #else
-lookupBool47 = pure Nothing
+lookupBool47 = const $ pure Nothing
 #endif
 
 lookupTyNot, lookupTyIf, lookupTyAnd, lookupTyOr :: TcPluginM (Maybe TyCon)
