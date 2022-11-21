@@ -27,6 +27,10 @@ import Proof.Propositional (Empty (..), IsTrue (Witness), withEmpty)
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 902
 import qualified Data.Type.Ord as DTO
 #endif
+#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 904
+import Data.Type.Bool
+#endif
+
 
 main :: IO ()
 main = putStrLn "finished"
@@ -131,4 +135,24 @@ minLeq _ _ = Refl
 
 maxLeq :: n <= m => NProxy n -> NProxy m -> DTO.Max n m :~: m
 maxLeq _ _ = Refl
+#endif
+
+#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 904
+leqGeqToEq :: NProxy n -> NProxy m -> IsTrue (n <=? m && m <=? n) -> n :~: m
+leqGeqToEq _ _ Witness = Refl
+
+leqTotal :: NProxy n -> NProxy m -> IsTrue (n <=? m || m <=? n)
+leqTotal _ _ = Witness
+
+zeroMinimal :: NProxy n -> (n DTO.<? 0) :~: 'False
+zeroMinimal _ = Refl
+
+zeroMinimal' :: NProxy n -> IsTrue (Not (n DTO.<? 0))
+zeroMinimal' _ = Witness
+
+caseZero :: NProxy n -> IsTrue (If (n DTO.<=? 0) (n == 0) (n DTO.>? 0))
+caseZero _ = Witness
+
+succGtZero :: NProxy n -> IsTrue (0 DTO.<? If (n == 0) (n + 1) n)
+succGtZero _ = Witness
 #endif

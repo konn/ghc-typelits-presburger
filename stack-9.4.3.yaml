@@ -1,0 +1,10 @@
+resolver: nightly-2022-11-20
+
+flags: {}
+packages:
+- "ghc-typelits-presburger"
+- "singletons-presburger"
+
+extra-deps:
+- equational-reasoning-0.7.0.1@rev:2
+

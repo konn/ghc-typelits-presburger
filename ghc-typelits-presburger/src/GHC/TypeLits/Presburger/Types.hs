@@ -15,6 +15,7 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE NamedFieldPuns #-}
 -- | Since 0.3.0.0
 module GHC.TypeLits.Presburger.Types
   ( pluginWith,
@@ -114,8 +115,16 @@ presburgerPlugin trans mode =
     "typelits-presburger"
     TcPlugin
       { tcPluginInit = return ()
-      , tcPluginSolve = decidePresburger mode trans
       , tcPluginStop = const $ return ()
+#if MIN_VERSION_ghc(9,4,1)
+      , tcPluginSolve = const $ \_ gs ws -> decidePresburger mode trans () gs [] ws
+#else
+      , tcPluginSolve = decidePresburger mode trans
+#endif
+
+#if MIN_VERSION_ghc(9,4,1)
+      , tcPluginRewrite = mempty
+#endif
       }
 
 testIf :: PropSet -> Prop -> Proof
@@ -167,6 +176,7 @@ handleSubtraction DisallowNegatives p0 =
 data Translation = Translation
   { isEmpty :: [TyCon]
   , ordCond :: [TyCon]
+  , assertTy :: [TyCon]
   , isTrue :: [TyCon]
   , trueData :: [TyCon]
   , falseData :: [TyCon]
@@ -174,6 +184,10 @@ data Translation = Translation
   , tyEq :: [TyCon]
   , tyEqBool :: [TyCon]
   , tyEqWitness :: [TyCon]
+  , tyNot :: [TyCon]
+  , tyAnd :: [TyCon]
+  , tyOr :: [TyCon]
+  , tyIf :: [TyCon]
   , tyNeqBool :: [TyCon]
   , natPlus :: [TyCon]
   , natMinus :: [TyCon]
@@ -202,8 +216,13 @@ instance Semigroup Translation where
     Translation
       { isEmpty = isEmpty l <> isEmpty r
       , isTrue = isTrue l <> isTrue r
+      , assertTy = assertTy l <> assertTy r
       , voids = voids l <> voids r
       , tyEq = tyEq l <> tyEq r
+      , tyNot = tyNot l <> tyNot r
+      , tyAnd = tyAnd l <> tyAnd r
+      , tyOr = tyOr l <> tyOr r
+      , tyIf = tyIf l <> tyIf r
       , tyEqBool = tyEqBool l <> tyEqBool r
       , tyEqWitness = tyEqWitness l <> tyEqWitness r
       , tyNeqBool = tyNeqBool l <> tyNeqBool r
@@ -237,10 +256,15 @@ instance Monoid Translation where
     Translation
       { isEmpty = mempty
       , isTrue = mempty
+      , assertTy = mempty
       , tyEq = mempty
       , tyEqBool = mempty
       , tyEqWitness = mempty
       , tyNeqBool = mempty
+      , tyNot = mempty
+      , tyAnd = mempty
+      , tyOr = mempty
+      , tyIf = mempty
       , voids = mempty
       , natPlus = mempty
       , natMinus = mempty
@@ -267,7 +291,7 @@ instance Monoid Translation where
       , ordCond = mempty
       }
 
-decidePresburger :: PluginMode -> TcPluginM Translation -> () -> [Ct] -> [Ct] -> [Ct] -> TcPluginM TcPluginResult
+decidePresburger :: PluginMode -> TcPluginM Translation -> () -> [Ct] -> [Ct] -> [Ct] -> TcPluginM TcPluginSolveResult
 decidePresburger _ genTrans _ gs [] [] = do
   tcPluginTrace "pres: Started givens with: " (ppr $ map (ctEvPred . ctEvidence) gs)
   trans <- genTrans
@@ -287,7 +311,6 @@ decidePresburger mode genTrans _ gs _ds ws = do
     tcPluginTrace "pres: Current subst" (ppr subst)
     tcPluginTrace "pres: wanteds" $ ppr $ map (subsType subst . deconsPred . subsCt subst) ws
     tcPluginTrace "pres: givens" $ ppr $ map (subsType subst . deconsPred) gs
-    tcPluginTrace "pres: deriveds" $ ppr $ map deconsPred _ds
     (prems, wants, prems0) <- do
       wants <-
         catMaybes
@@ -355,6 +378,7 @@ defaultTranslation = do
   eqTyCon_ <- getEqTyCon
   eqBoolTyCon <- tcLookupTyCon =<< lookupOrig dATA_TYPE_EQUALITY (mkTcOcc "==")
   eqWitCon_ <- getEqWitnessTyCon
+  assertTy <- lookupAssertTyCon
   vmd <- lookupModule (mkModuleName "Data.Void") (fsLit "base")
   voidTyCon <- tcLookupTyCon =<< lookupOrig vmd (mkTcOcc "Void")
   nLeq <- tcLookupTyCon =<< lookupTyNatPredLeq
@@ -367,10 +391,19 @@ defaultTranslation = do
   mTyGtB <- lookupTyNatBoolGt
   mOrdCond <- mOrdCondTyCon
   mtyGenericCompare <- lookupTyGenericCompare
+  tyNot <- maybeToList <$> lookupTyNot
+  tyAnd <- maybeToList <$> lookupTyAnd
+  tyOr <- maybeToList <$> lookupTyOr
+  tyIf <- maybeToList <$> lookupTyIf
   let trans =
         mempty
           { isEmpty = isEmpties
+          , assertTy = maybeToList assertTy
           , tyEq = [eqTyCon_]
+          , tyNot
+          , tyAnd
+          , tyOr
+          , tyIf
           , ordCond = F.toList mOrdCond
           , tyEqWitness = [eqWitCon_]
           , tyEqBool = [eqBoolTyCon]
@@ -401,12 +434,6 @@ defaultTranslation = do
 (<=>) :: Prop -> Prop -> Prop
 p <=> q = (p :&& q) :|| (Not p :&& Not q)
 
-withEv :: Ct -> (EvTerm, Ct)
-withEv ct =
-  case classifyPredType (deconsPred ct) of
-    EqPred _ t1 t2 -> (evByFiat "ghc-typelits-presburger" t1 t2, ct)
-    _ -> error $ "UnknownPredEv: " <> showSDocUnsafe (ppr ct)
-
 orderingDic :: Given Translation => [(TyCon, Expr -> Expr -> Prop)]
 orderingDic =
   [(lt, (:<)) | lt <- orderingLT given]
@@ -420,6 +447,8 @@ toPresburgerPred :: Given Translation => Type -> Machine Prop
 toPresburgerPred (TyConApp con (lastN 2 -> [t1, t2]))
   | con `elem` (natLeq given ++ natLeqBool given) =
     (:<=) <$> toPresburgerExp t1 <*> toPresburgerExp t2
+toPresburgerPred (TyConApp con [t1, _])
+  | con `elem` assertTy given = toPresburgerPred t1
 toPresburgerPred ty
   | Just (con, []) <- splitTyConApp_maybe ty
     , con `elem` trueData given =
@@ -442,6 +471,21 @@ toPresburgerPred ty
   | Just (con, [l]) <- splitTyConApp_maybe ty -- IsTrue l =>
     , con `elem` isTrue given =
     toPresburgerPred l
+  | Just (con, [l]) <- splitTyConApp_maybe ty -- Not p (from Data.Type.Bool)
+    , con `elem` tyNot given =
+    Not <$> toPresburgerPred l
+  | Just (con, [l, r]) <- splitTyConApp_maybe ty -- p && q (from Data.Type.Bool)
+    , con `elem` tyAnd given =
+    (:&&) <$> toPresburgerPred l <*> toPresburgerPred r
+  | Just (con, [l, r]) <- splitTyConApp_maybe ty -- p || q (from Data.Type.Bool)
+    , con `elem` tyOr given =
+    (:||) <$> toPresburgerPred l <*> toPresburgerPred r
+  | Just (con, lastN 3 -> [p, t, f]) <- splitTyConApp_maybe ty -- If p t f (from Data.Type.Bool)
+    , con `elem` tyIf given = do
+    p' <- toPresburgerPred p
+    (:||) 
+      <$> ((p' :&&) <$> toPresburgerPred t) 
+      <*> ((Not p':&&) <$> toPresburgerPred f)
   | Just (con, [t1, t2]) <- splitTyConAppLastBin ty
     , typeKind t1 `eqType` typeNatKind
     , typeKind t2 `eqType` typeNatKind 
@@ -601,6 +645,9 @@ binPropDic =
 toPresburgerExp :: Given Translation => Type -> Machine Expr
 toPresburgerExp ty = case ty of
   TyVarTy t -> return $ Var $ toName $ getKey $ getUnique t
+  TyConApp tc (lastN 3 -> [p, t, f])
+    | tc `elem` tyIf given ->
+      If <$> toPresburgerPred p <*> toPresburgerExp t <*> toPresburgerExp f 
   TyConApp tc (lastN 4 -> [cmpNM, l, e, g])
     | tc `elem` ordCond given
     , TyConApp cmp (lastN 2 -> [n, m]) <- cmpNM

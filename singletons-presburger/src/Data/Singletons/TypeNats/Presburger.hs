@@ -133,11 +133,11 @@ getCaseNameForSingletonBinOp :: TyCon -> TcPluginM TyCon
 getCaseNameForSingletonBinOp con = do
   let vars = [typeNatKind, LitTy (NumTyLit 0), LitTy (NumTyLit 0)]
   tcPluginTrace "matching... for " (ppr con)
-  Just (appTy0, [n, b, bdy, r]) <- fmap (splitTyConApp . snd) <$> matchFam con vars
+  Just (appTy0, [n, b, bdy, r]) <- fmap splitTyConApp <$> matchFam' con vars
   let (appTy, args) = splitTyConApp bdy
-  Just innermost <- fmap snd <$> matchFam appTy args
-  Just (_, dat) <- matchFam appTy0 [n, b, innermost, r]
-  Just dat' <- fmap snd <$> uncurry matchFam (splitTyConApp dat)
+  Just innermost <- matchFam' appTy args
+  Just dat <- matchFam' appTy0 [n, b, innermost, r]
+  Just dat' <- uncurry matchFam' (splitTyConApp dat)
   let Just (con', _) = splitTyConApp_maybe dat'
   return con'
 
@@ -145,11 +145,11 @@ getCaseNameForSingletonBinRel :: TyCon -> TcPluginM TyCon
 getCaseNameForSingletonBinRel con = do
   let vars = [typeNatKind, LitTy (NumTyLit 0), LitTy (NumTyLit 0)]
   tcPluginTrace "matching... for " (ppr con)
-  Just (appTy0, [n, b, bdy, r]) <- fmap (splitTyConApp . snd) <$> matchFam con vars
+  Just (appTy0, [n, b, bdy, r]) <- fmap splitTyConApp <$> matchFam' con vars
   let (appTy, args) = splitTyConApp bdy
-  Just innermost <- fmap snd <$> matchFam appTy args
-  Just (_, dat) <- matchFam appTy0 [n, b, innermost, r]
-  Just dat' <- fmap snd <$> uncurry matchFam (splitTyConApp dat)
+  Just innermost <- matchFam' appTy args
+  Just dat <- matchFam' appTy0 [n, b, innermost, r]
+  Just dat' <- uncurry matchFam' (splitTyConApp dat)
   tcPluginTrace "matched. (orig, inner) = " (ppr (con, fst $ splitTyConApp dat'))
   return $ fst $ splitTyConApp dat'
 

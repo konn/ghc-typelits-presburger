@@ -1,5 +1,5 @@
 name: singletons-presburger
-version: "0.6.1.0"
+version: "0.7.0.0"
 synopsis: Presburger Arithmetic Solver for GHC Type-level natural numbers with Singletons package.
 description: |
   The @singletons-presburger@ plugin augments GHC type-system with Presburger
@@ -15,7 +15,7 @@ maintainer: konn.jinro _at_ gmail.com
 copyright: 2015 (c) Hiromi ISHII
 license: BSD3
 github: konn/ghc-typelits-presburger
-tested-with: GHC==8.6.5 GHC==8.8.4 GHC==8.10.7 GHC==9.0.1 GHC==9.2.1
+tested-with: GHC==8.6.5 GHC==8.8.4 GHC==8.10.7 GHC==9.0.2 GHC==9.2.4 GHC==9.4.3
 ghc-options:
   - -Wall
   - -Wno-dodgy-imports
@@ -42,6 +42,7 @@ library:
     - ghc-typelits-presburger >= 0.4
     - mtl
     - reflection
+    - ghc
 executables:
   simple-arith:
     main: simple-arith.hs
