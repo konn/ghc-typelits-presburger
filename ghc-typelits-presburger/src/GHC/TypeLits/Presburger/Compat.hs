@@ -494,7 +494,7 @@ lookupTyNatBoolLeq =
 #endif
 
 lookupAssertTyCon :: TcPluginM (Maybe TyCon)
-#if MIN_VERSION_base(4,16,0)
+#if MIN_VERSION_base(4,17,0)
 lookupAssertTyCon = 
   fmap Just . tcLookupTyCon =<< lookupOrig gHC_TYPEERROR (mkTcOcc "Assert")
 #else

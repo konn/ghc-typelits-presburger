@@ -1,9 +1,4 @@
 {
-  "spellright.ignoreFiles": [
-    "**/.gitignore",
-    "**/.spellignore",
-    "**/*.dump*"
-  ],
   "files.exclude": {
     "**/.stack-work": true
   },
@@ -13,4 +8,10 @@
   "github-actions.workflows.pinned.refresh.enabled": true,
   "editor.defaultFormatter": "haskell.haskell",
   "haskell.formattingProvider": "fourmolu",
+  "haskell.toolchain": {
+    "hls": "1.8.0.0-85-g0d067865",
+    "ghc": "9.4.3",
+    "cabal": "3.8.1.0",
+    "stack": "2.9.1"
+  }
 }
