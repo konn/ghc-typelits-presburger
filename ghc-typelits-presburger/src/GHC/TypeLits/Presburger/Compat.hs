@@ -12,7 +12,7 @@ import Data.Generics.Twins
 #if MIN_VERSION_ghc(9,0,0)
 import GHC.Builtin.Names as GHC.TypeLits.Presburger.Compat (gHC_TYPENATS)
 #if MIN_VERSION_ghc(9,4,1)
-import GHC.Builtin.Names as GHC.TypeLits.Presburger.Compat (mkBaseModule)
+import GHC.Builtin.Names as GHC.TypeLits.Presburger.Compat (mkBaseModule, gHC_TYPEERROR)
 #else
 import GHC.Builtin.Names as GHC.TypeLits.Presburger.Compat (dATA_TYPE_EQUALITY)
 import qualified GHC.Builtin.Names as Old
@@ -491,6 +491,15 @@ lookupTyNatBoolLeq = do
 lookupTyNatBoolLeq = 
   pure typeNatLeqTyCon
 #endif
+
+lookupAssertTyCon :: TcPluginM (Maybe TyCon)
+#if MIN_VERSION_base(4,16,0)
+lookupAssertTyCon = 
+  fmap Just . tcLookupTyCon =<< lookupOrig gHC_TYPEERROR (mkTcOcc "Assert")
+#else
+lookupAssertTyCon = pure Nothing
+#endif
+
 
 lookupTyNatPredLt :: TcPluginM (Maybe TyCon)
 -- Note:  base library shipepd with 9.2.1 has a wrong implementation;

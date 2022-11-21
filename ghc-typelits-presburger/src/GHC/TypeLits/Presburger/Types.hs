@@ -175,6 +175,7 @@ handleSubtraction DisallowNegatives p0 =
 data Translation = Translation
   { isEmpty :: [TyCon]
   , ordCond :: [TyCon]
+  , assertTy :: [TyCon]
   , isTrue :: [TyCon]
   , trueData :: [TyCon]
   , falseData :: [TyCon]
@@ -210,6 +211,7 @@ instance Semigroup Translation where
     Translation
       { isEmpty = isEmpty l <> isEmpty r
       , isTrue = isTrue l <> isTrue r
+      , assertTy = assertTy l <> assertTy r
       , voids = voids l <> voids r
       , tyEq = tyEq l <> tyEq r
       , tyEqBool = tyEqBool l <> tyEqBool r
@@ -245,6 +247,7 @@ instance Monoid Translation where
     Translation
       { isEmpty = mempty
       , isTrue = mempty
+      , assertTy = mempty
       , tyEq = mempty
       , tyEqBool = mempty
       , tyEqWitness = mempty
@@ -362,6 +365,7 @@ defaultTranslation = do
   eqTyCon_ <- getEqTyCon
   eqBoolTyCon <- tcLookupTyCon =<< lookupOrig dATA_TYPE_EQUALITY (mkTcOcc "==")
   eqWitCon_ <- getEqWitnessTyCon
+  assertTy <- lookupAssertTyCon
   vmd <- lookupModule (mkModuleName "Data.Void") (fsLit "base")
   voidTyCon <- tcLookupTyCon =<< lookupOrig vmd (mkTcOcc "Void")
   nLeq <- tcLookupTyCon =<< lookupTyNatPredLeq
@@ -377,6 +381,7 @@ defaultTranslation = do
   let trans =
         mempty
           { isEmpty = isEmpties
+          , assertTy = maybeToList assertTy
           , tyEq = [eqTyCon_]
           , ordCond = F.toList mOrdCond
           , tyEqWitness = [eqWitCon_]
@@ -427,6 +432,8 @@ toPresburgerPred :: Given Translation => Type -> Machine Prop
 toPresburgerPred (TyConApp con (lastN 2 -> [t1, t2]))
   | con `elem` (natLeq given ++ natLeqBool given) =
     (:<=) <$> toPresburgerExp t1 <*> toPresburgerExp t2
+toPresburgerPred (TyConApp con [t1, _])
+  | con `elem` assertTy given = toPresburgerPred t1
 toPresburgerPred ty
   | Just (con, []) <- splitTyConApp_maybe ty
     , con `elem` trueData given =
