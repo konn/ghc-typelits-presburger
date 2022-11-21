@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.4.
+-- This file has been generated from package.yaml by hpack version 0.35.0.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 086ee70967f896732e0ffccb7b264fa3ec9795f18714c281193aeb7259f86cb5
+-- hash: ed415f6edf7e682ac34b7d1809c87dd53abc57a1a6db1ac4e7e761b3a35ea144
 
 name:           singletons-presburger
 version:        0.6.1.0
@@ -50,6 +50,7 @@ library
     , ghc-typelits-presburger >=0.4
     , mtl
     , reflection
+  default-language: Haskell2010
   if impl(ghc >= 9)
     cpp-options: -DSINGLETONS_BASE
     build-depends:
@@ -58,7 +59,6 @@ library
   else
     build-depends:
         singletons
-  default-language: Haskell2010
 
 executable simple-arith
   main-is: simple-arith.hs
@@ -71,6 +71,7 @@ executable simple-arith
       base
     , equational-reasoning
     , singletons-presburger
+  default-language: Haskell2010
   if impl(ghc >= 9)
     cpp-options: -DSINGLETONS_BASE
     build-depends:
@@ -89,4 +90,3 @@ executable simple-arith
         singletons
   if !(flag(examples))
     buildable: False
-  default-language: Haskell2010

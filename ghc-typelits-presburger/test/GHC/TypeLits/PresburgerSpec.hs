@@ -21,6 +21,9 @@ test_recursiveContradiction =
         case eith of
           Left (TypeError msg)
             | "Could not deduce: (n GHC.TypeNats.+ 1) ~ n"
+                `T.isInfixOf` T.pack msg 
+              || 
+              "Could not deduce ((n GHC.TypeNats.+ 1) ~ n)"
                 `T.isInfixOf` T.pack msg ->
               pure ()
           _ -> assertFailure $ "TypeError with mismatch expected, but got: " <> show eith
@@ -29,6 +32,8 @@ test_recursiveContradiction =
         case eith of
           Left (TypeError msg)
             | "Could not deduce: (n GHC.TypeNats.+ 1) ~ n"
+                `T.isInfixOf` T.pack msg 
+              || "Could not deduce ((n GHC.TypeNats.+ 1) ~ n)"
                 `T.isInfixOf` T.pack msg ->
               pure ()
           _ -> assertFailure $ "TypeError with mismatch expected, but got: " <> show eith
@@ -43,7 +48,10 @@ test_nonrecursiveContradiction =
         case eith of
           Left (TypeError msg)
             | "Could not deduce: n1 ~ n"
-                `T.isInfixOf` T.pack msg ->
+                `T.isInfixOf` T.pack msg 
+              || "Could not deduce (n1 ~ n)"
+                `T.isInfixOf` T.pack msg 
+              ->
               pure ()
           _ -> assertFailure $ "TypeError with mismatch expected, but got: " <> show eith
     , testCase "With plugin" $ do
@@ -51,6 +59,9 @@ test_nonrecursiveContradiction =
         case eith of
           Left (TypeError msg)
             | "Could not deduce: n1 ~ n"
+                `T.isInfixOf` T.pack msg 
+              || 
+              "Could not deduce (n1 ~ n)"
                 `T.isInfixOf` T.pack msg ->
               pure ()
           _ -> assertFailure $ "TypeError with mismatch expected, but got: " <> show eith

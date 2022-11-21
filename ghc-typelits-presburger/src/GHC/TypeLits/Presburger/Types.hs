@@ -114,8 +114,16 @@ presburgerPlugin trans mode =
     "typelits-presburger"
     TcPlugin
       { tcPluginInit = return ()
-      , tcPluginSolve = decidePresburger mode trans
       , tcPluginStop = const $ return ()
+#if MIN_VERSION_ghc(9,4,1)
+      , tcPluginSolve = const $ \_ gs ws -> decidePresburger mode trans () gs [] ws
+#else
+      , tcPluginSolve = decidePresburger mode trans
+#endif
+
+#if MIN_VERSION_ghc(9,4,1)
+      , tcPluginRewrite = mempty
+#endif
       }
 
 testIf :: PropSet -> Prop -> Proof
@@ -267,7 +275,7 @@ instance Monoid Translation where
       , ordCond = mempty
       }
 
-decidePresburger :: PluginMode -> TcPluginM Translation -> () -> [Ct] -> [Ct] -> [Ct] -> TcPluginM TcPluginResult
+decidePresburger :: PluginMode -> TcPluginM Translation -> () -> [Ct] -> [Ct] -> [Ct] -> TcPluginM TcPluginSolveResult
 decidePresburger _ genTrans _ gs [] [] = do
   tcPluginTrace "pres: Started givens with: " (ppr $ map (ctEvPred . ctEvidence) gs)
   trans <- genTrans
@@ -287,7 +295,6 @@ decidePresburger mode genTrans _ gs _ds ws = do
     tcPluginTrace "pres: Current subst" (ppr subst)
     tcPluginTrace "pres: wanteds" $ ppr $ map (subsType subst . deconsPred . subsCt subst) ws
     tcPluginTrace "pres: givens" $ ppr $ map (subsType subst . deconsPred) gs
-    tcPluginTrace "pres: deriveds" $ ppr $ map deconsPred _ds
     (prems, wants, prems0) <- do
       wants <-
         catMaybes

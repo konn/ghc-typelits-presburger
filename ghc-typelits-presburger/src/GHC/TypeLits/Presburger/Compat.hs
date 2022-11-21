@@ -10,8 +10,13 @@ import GHC.TcPluginM.Extra as GHC.TypeLits.Presburger.Compat (evByFiat, lookupMo
 import Data.Generics.Twins
 
 #if MIN_VERSION_ghc(9,0,0)
-import GHC.Builtin.Names as GHC.TypeLits.Presburger.Compat (gHC_TYPENATS, dATA_TYPE_EQUALITY)
+import GHC.Builtin.Names as GHC.TypeLits.Presburger.Compat (gHC_TYPENATS)
+#if MIN_VERSION_ghc(9,4,1)
+import GHC.Builtin.Names as GHC.TypeLits.Presburger.Compat (mkBaseModule)
+#else
+import GHC.Builtin.Names as GHC.TypeLits.Presburger.Compat (dATA_TYPE_EQUALITY)
 import qualified GHC.Builtin.Names as Old
+#endif
 import GHC.Hs as GHC.TypeLits.Presburger.Compat (HsModule(..), NoExtField(..))
 import GHC.Hs.ImpExp as GHC.TypeLits.Presburger.Compat (ImportDecl(..), ImportDeclQualifiedStyle(..))
 import GHC.Hs.Extension as GHC.TypeLits.Presburger.Compat (GhcPs)
@@ -104,7 +109,7 @@ import GHC.Tc.Plugin as GHC.TypeLits.Presburger.Compat
     tcPluginIO,
     tcPluginTrace,
   )
-import GHC.Tc.Types as GHC.TypeLits.Presburger.Compat (TcPlugin (..), TcPluginResult (..))
+import GHC.Tc.Types as GHC.TypeLits.Presburger.Compat (TcPlugin (..))
 import GHC.Tc.Types.Constraint as GHC.TypeLits.Presburger.Compat
   ( Ct,
     CtEvidence,
@@ -151,7 +156,7 @@ import TcPluginM as GHC.TypeLits.Presburger.Compat
     tcPluginIO,
     tcPluginTrace,
   )
-import TcRnMonad as GHC.TypeLits.Presburger.Compat (TcPluginResult (..))
+import TcRnMonad as GHC.TypeLits.Presburger.Compat (TcPluginSolveResult (..))
 import TcRnTypes as GHC.TypeLits.Presburger.Compat (TcPlugin (..))
 import TcType as GHC.TypeLits.Presburger.Compat (tcTyFamInsts)
 import TcTypeNats as GHC.TypeLits.Presburger.Compat
@@ -207,6 +212,20 @@ import TcRnMonad as GHC.TypeLits.Presburger.Compat (Ct, isWanted)
 import Type      as GHC.TypeLits.Presburger.Compat (mkPrimEqPredRole)
 import TcRnTypes as GHC.TypeLits.Presburger.Compat (ctEvPred, ctEvidence)
 #endif
+#endif
+#if MIN_VERSION_ghc(9,4,1)
+import GHC.Tc.Types as GHC.TypeLits.Presburger.Compat (TcPlugin (..), TcPluginSolveResult (..))
+#else
+import GHC.Tc.Types as GHC.TypeLits.Presburger.Compat (TcPlugin (..), TcPluginResult (..))
+#endif
+
+#if !MIN_VERSION_ghc(9,4,1)
+type TcPluginSolveResult = TcPluginResult
+#endif
+
+#if MIN_VERSION_ghc(9,4,1)
+dATA_TYPE_EQUALITY :: Module
+dATA_TYPE_EQUALITY = mkBaseModule "Data.Type.Equality"
 #endif
 
 #if MIN_VERSION_ghc(8,10,1)
@@ -368,7 +387,16 @@ fsToUnitId = toUnitId . fsToUnit
 
 type RawUnitId = FastString
 preloadedUnitsM :: TcPluginM [FastString] 
-#if MIN_VERSION_ghc(9,2,0)
+#if MIN_VERSION_ghc(9,4,0)
+preloadedUnitsM = do
+  logger <- unsafeTcPluginTcM getLogger
+  dflags <- hsc_dflags <$> getTopEnv
+  packs <- tcPluginIO $ initUnits logger dflags Nothing mempty <&> 
+    \(_, us, _, _ ) -> preloadUnits us
+  let packNames = map (\(UnitId p) -> p) packs
+  tcPluginTrace "pres: packs" $ ppr packNames
+  pure packNames
+#elif MIN_VERSION_ghc(9,2,0)
 preloadedUnitsM = do
   logger <- unsafeTcPluginTcM getLogger
   dflags <- hsc_dflags <$> getTopEnv
