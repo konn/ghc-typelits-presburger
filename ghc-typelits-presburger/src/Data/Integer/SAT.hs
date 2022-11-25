@@ -746,8 +746,6 @@ toList a = go a []
     go None xs = xs
 
 instance Monad Answer where
-  return a = One a
-
 #if !MIN_VERSION_ghc(8,8,1)
   fail _             = None
 #endif
@@ -771,13 +769,12 @@ instance Functor Answer where
   fmap f (Choice x1 x2) = Choice (fmap f x1) (fmap f x2)
 
 instance Applicative Answer where
-  pure = return
+  pure = One
   (<*>) = ap
 
 newtype S a = S (RW -> Answer (a, RW))
 
 instance Monad S where
-  return a = S $ \s -> return (a, s)
   S m >>= k = S $ \s -> do
     (a, s1) <- m s
     let S m1 = k a
@@ -795,7 +792,7 @@ instance Functor S where
   fmap = liftM
 
 instance Applicative S where
-  pure = return
+  pure a = S $ \s -> pure (a, s)
   (<*>) = ap
 
 updS :: (RW -> (a, RW)) -> S a

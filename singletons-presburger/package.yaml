@@ -1,5 +1,5 @@
 name: singletons-presburger
-version: "0.7.0.0"
+version: "0.7.1.0"
 synopsis: Presburger Arithmetic Solver for GHC Type-level natural numbers with Singletons package.
 description: |
   The @singletons-presburger@ plugin augments GHC type-system with Presburger

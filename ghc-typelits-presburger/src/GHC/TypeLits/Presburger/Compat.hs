@@ -13,6 +13,11 @@ import Data.Generics.Twins
 import GHC.Builtin.Names as GHC.TypeLits.Presburger.Compat (gHC_TYPENATS)
 #if MIN_VERSION_ghc(9,4,1)
 import GHC.Tc.Types as GHC.TypeLits.Presburger.Compat (TcPlugin (..), TcPluginSolveResult (..))
+import GHC.Builtin.Types as GHC.TypeLits.Presburger.Compat (cTupleTyCon, cTupleDataCon)
+import GHC.Tc.Types.Evidence as GHC.TypeLits.Presburger.Compat (evCast)
+import GHC.Plugins as GHC.TypeLits.Presburger.Compat (mkUnivCo)
+import GHC.Core.TyCo.Rep as GHC.TypeLits.Presburger.Compat (UnivCoProvenance(..))
+import GHC.Core.DataCon as GHC.TypeLits.Presburger.Compat (dataConWrapId)
 #else
 import GHC.Tc.Types as GHC.TypeLits.Presburger.Compat (TcPlugin (..), TcPluginResult (..))
 #endif
