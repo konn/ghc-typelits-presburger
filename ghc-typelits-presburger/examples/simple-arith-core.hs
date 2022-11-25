@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -140,6 +141,12 @@ minLeq _ _ = Refl
 
 maxLeq :: n <= m => NProxy n -> NProxy m -> DTO.Max n m :~: m
 maxLeq _ _ = Refl
+
+mkOrd :: forall n m. (n DTO.< m) => NProxy n -> NProxy m
+mkOrd _ = NProxy
+
+maxOrd :: forall n. (0 DTO.< n) => NProxy n
+maxOrd = mkOrd (NProxy @(n - 1))
 #endif
 
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 904
