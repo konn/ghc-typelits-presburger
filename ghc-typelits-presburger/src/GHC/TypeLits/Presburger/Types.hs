@@ -16,6 +16,8 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE PartialTypeSignatures #-}
+{-# OPTIONS_GHC -Wno-partial-type-signatures #-}
 -- | Since 0.3.0.0
 module GHC.TypeLits.Presburger.Types
   ( pluginWith,
@@ -40,6 +42,9 @@ import Data.Foldable (asum)
 import Data.Integer.SAT (Expr (..), Prop (..), PropSet, assert, checkSat, noProps, toName)
 import qualified Data.Integer.SAT as SAT
 import Data.List (nub)
+#if MIN_VERSION_ghc(9,4,0)
+import qualified GHC.Core as GHC (Expr(..))
+#endif
 import qualified Data.List as L
 import qualified Data.Map.Strict as M
 import Data.Maybe
@@ -51,7 +56,7 @@ import Data.Maybe
   )
 import Data.Reflection (Given, give, given)
 import qualified Data.Set as Set
-import GHC.TypeLits.Presburger.Compat
+import GHC.TypeLits.Presburger.Compat as Compat
 import qualified Data.Foldable as F
 
 assert' :: Prop -> PropSet -> PropSet
@@ -333,9 +338,9 @@ decidePresburger mode genTrans _ gs _ds ws = do
       return (prems, map (second $ handleSubtraction mode) wants, catMaybes resls)
     let solved = map fst $ filter (isProved . testIf prems . snd) wants
         coerced =
-          [ (evByFiat "ghc-typelits-presburger" t1 t2, ct)
+          [ (evProof, ct)
           | ct <- solved
-          , EqPred NomEq t1 t2 <- return (classifyPredType $ deconsPred ct)
+          , Just evProof <- pure $ extractProof $ classifyPredType $ deconsPred ct
           ]
     tcPluginTrace "pres: final premises" (text $ show prems0)
     tcPluginTrace "pres: final goals" (text $ show $ map snd wants)
@@ -347,6 +352,23 @@ decidePresburger mode genTrans _ gs _ds ws = do
       Disproved wit -> do
         tcPluginTrace "pres: Failed! " (text $ show wit)
         return $ TcPluginContradiction $ map fst wants
+
+
+extractProof :: Given Translation => PredTree -> Maybe EvTerm
+extractProof (EqPred NomEq t1 t2) = 
+    Just $ evByFiat "ghc-typelits-presburger" t1 t2
+#if MIN_VERSION_base(4,17,0)
+extractProof (IrredPred prd)
+  | Just (con, lastN 2 -> [_, _]) <- splitTyConApp_maybe prd
+  , con `elem` assertTy given = 
+    Just $ GHC.Var (dataConWrapId $ cTupleDataCon 0) `evCast`
+      mkUnivCo
+      (PluginProv $ "ghc-typelits-presburger: extractProof")
+      Representational
+      (mkTyConTy (cTupleTyCon 0))
+      prd
+#endif
+extractProof _ = Nothing
 
 eqReasoning :: FastString
 eqReasoning = fsLit "equational-reasoning"
@@ -721,7 +743,7 @@ simpleExp (FunTy f t1 t2) = FunTy f (simpleExp t1) (simpleExp t2)
 #else
 simpleExp (FunTy t1 t2) = FunTy (simpleExp t1) (simpleExp t2)
 #endif
-#endif
+#endif 
 simpleExp (ForAllTy t1 t2) = ForAllTy t1 (simpleExp t2)
 simpleExp (TyConApp tc (lastTwo -> ts)) =
   fromMaybe (TyConApp tc (map simpleExp ts)) $
