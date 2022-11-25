@@ -1,5 +1,5 @@
 name: ghc-typelits-presburger
-version: "0.7.0.0"
+version: "0.7.1.0"
 synopsis: Presburger Arithmetic Solver for GHC Type-level natural numbers.
 description: |
   @ghc-typelits-presburger@ augments GHC type-system with Presburger
@@ -53,7 +53,7 @@ executables:
       - -Wno-unused-imports
     dependencies:
       - base
-      - ghc-typelits-presburger
+      - ghc-typelits-presburger >= 0.7.1.0
       - equational-reasoning
     when:
       - condition: ! "!(flag(examples))"
