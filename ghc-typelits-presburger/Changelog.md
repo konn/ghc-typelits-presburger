@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.1.0
+
+* Proper Support of GHC 9.4 (Now can solve `Assert` properly)
+
 ## 0.7.0.0
 
 * Support GHC 9.4
