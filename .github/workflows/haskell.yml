@@ -85,7 +85,7 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: binaries
-        path: artifacts
+        path: artifacts.tar.zst
 
   test:
     needs:

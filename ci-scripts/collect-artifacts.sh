@@ -49,3 +49,5 @@ ${CABAL_PLAN} list-bins | grep presburger | while read -r TARG; do
   echo "Copying to ${COPY_DEST}"
   cp "${BIN}" "${COPY_DEST}/"
 done
+
+tar --use-compress-program="zstdmt -8" -caf "${DEST}.tar.zst" "${DEST}"
