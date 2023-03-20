@@ -110,7 +110,8 @@ jobs:
       run: |
         set -euxo pipefail
         DL_PATH=${{steps.download.outputs.download-path}}
-        tar xvf "${DL_PATH}/artifacts.tar.zst"
+        unzstd "${DL_PATH}/artifacts.tar.zst"
+        tar xvf "${DL_PATH}/artifacts.tar"
         set +x
         find artifacts/tests -type f | while read -r TEST; do
           echo "Executing: ${TEST}"
