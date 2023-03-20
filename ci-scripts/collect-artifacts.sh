@@ -19,7 +19,7 @@ else
   set -x
   wget https://github.com/haskell-hvr/cabal-plan/releases/download/v0.6.2.0/cabal-plan-0.6.2.0-x86_64-linux.xz -O cabal-plan.xz
 
-  xz <./cabal-plan.xz >cabal-plan
+  xz -d <./cabal-plan.xz >cabal-plan
   chmod +x cabal-plan
   set +x
   CABAL_PLAN="$(pwd)/cabal-plan"
