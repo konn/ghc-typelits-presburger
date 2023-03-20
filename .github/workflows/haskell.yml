@@ -73,6 +73,7 @@ jobs:
         --enable-tests --enable-benchmarks
         --constraint "singletons-presburger +examples"
         --constraint "ghc-typelits-presburger +examples"
+        --allow-newer='ghc-typelits-presburger,singletons-presbruger'
 
         ${CABAL} v2-update
     - name: Build
