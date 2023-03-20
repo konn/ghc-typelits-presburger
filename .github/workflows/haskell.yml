@@ -86,6 +86,7 @@ jobs:
       with:
         name: binaries-${{matrix.ghc}}-${{matrix.os}}
         path: artifacts.tar.zst
+        retention-days: 3
 
   test:
     needs:
