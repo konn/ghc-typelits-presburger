@@ -8,6 +8,7 @@ import Data.Function       (on)
 import GHC.TcPluginM.Extra as GHC.TypeLits.Presburger.Compat (evByFiat, lookupModule, lookupName,
                                           tracePlugin)
 import Data.Generics.Twins
+import Data.Coerce (coerce)
 
 #if MIN_VERSION_ghc(9,0,0)
 import Data.Functor ((<&>))
@@ -156,7 +157,6 @@ import GHC.Unit.State as GHC.TypeLits.Presburger.Compat (lookupPackageName)
 import GHC.Unit.State (initUnits, UnitState (preloadUnits))
 import GHC.Unit.Types (UnitId(..), fsToUnit, toUnitId)
 import GHC.Utils.Outputable as GHC.TypeLits.Presburger.Compat (showSDocUnsafe)
-import Data.Coerce (coerce)
 -- GHC 9 Ends HERE
 #else
 import UniqSet
