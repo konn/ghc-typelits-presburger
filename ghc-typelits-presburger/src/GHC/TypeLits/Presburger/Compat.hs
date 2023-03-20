@@ -96,6 +96,10 @@ import GHC.Plugins as GHC.TypeLits.Presburger.Compat
     TyVar,
     defaultPlugin,
     mkTcOcc,
+    UnitDatabase(..),
+    GenericUnitInfo(..),
+    elementOfUniqSet,
+    mkUniqSet,
     mkTyConTy,
     mkTyVarTy,
     ppr,
@@ -152,6 +156,7 @@ import GHC.Unit.State as GHC.TypeLits.Presburger.Compat (lookupPackageName)
 import GHC.Unit.State (initUnits, UnitState (preloadUnits))
 import GHC.Unit.Types (UnitId(..), fsToUnit, toUnitId)
 import GHC.Utils.Outputable as GHC.TypeLits.Presburger.Compat (showSDocUnsafe)
+import Data.Coerce (coerce)
 -- GHC 9 Ends HERE
 #else
 import Class as GHC.TypeLits.Presburger.Compat (classTyCon, className)
@@ -437,11 +442,13 @@ preloadedUnitsM :: TcPluginM [FastString]
 preloadedUnitsM = do
   logger <- unsafeTcPluginTcM getLogger
   dflags <- hsc_dflags <$> getTopEnv
-  packs <- tcPluginIO $ initUnits logger dflags Nothing mempty <&> 
-    \(_, us, _, _ ) -> preloadUnits us
-  let packNames = map (\(UnitId p) -> p) packs
+  packNames <- tcPluginIO $ initUnits logger dflags Nothing mempty <&> 
+    \(unitDb, us, _, _ ) -> 
+      let preloads = mkUniqSet $ map (\(UnitId p) -> p) $ preloadUnits us
+          ents = filter ((`elementOfUniqSet` preloads) . unitIdFS . unitId) $ concatMap unitDatabaseUnits unitDb
+      in map unitPackageName ents
   tcPluginTrace "pres: packs" $ ppr packNames
-  pure packNames
+  pure $ coerce packNames
 #elif MIN_VERSION_ghc(9,2,0)
 preloadedUnitsM = do
   logger <- unsafeTcPluginTcM getLogger

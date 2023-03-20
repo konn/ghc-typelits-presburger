@@ -377,13 +377,7 @@ eqReasoning = fsLit "equational-reasoning"
 defaultTranslation :: TcPluginM Translation
 defaultTranslation = do
   packs <- preloadedUnitsM
-  let eqThere = fromMaybe False $
-        listToMaybe $ do
-          pname <- packs
-          rest <-
-            maybeToList $
-              L.stripPrefix "equational-reasoning-" $ unpackFS pname
-          pure $ null rest || isDigit (head rest)
+  let eqThere = elem eqReasoning packs
   (isEmpties, isTrues) <-
     if eqThere
       then do
