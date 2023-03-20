@@ -119,7 +119,7 @@ jobs:
           "${TEST}"
         done
         
-        find artifacts/exe -type f | while read -r TEST; do
+        find artifacts/exes -type f | while read -r TEST; do
           echo "Executing: ${TEST}"
           "${TEST}"
         done
