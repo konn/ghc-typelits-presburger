@@ -70,17 +70,31 @@ import GHC.Plugins as GHC.TypeLits.Presburger.Compat
   )
 #endif
 
+#if MIN_VERSION_ghc(9,6,1)
+import GHC.Plugins as GHC.TypeLits.Presburger.Compat
+  ( Subst (..),
+    emptySubst,
+    unionSubst,
+  )
+import GHC.Core.TyCo.Compare as GHC.TypeLits.Presburger.Compat
+  (eqType)
+#else
+import GHC.Plugins as GHC.TypeLits.Presburger.Compat
+  ( TCvSubst (..),
+    emptyTCvSubst,
+    eqType,
+    unionTCvSubst,
+  )
+#endif
+
 import GHC.Plugins as GHC.TypeLits.Presburger.Compat
   ( PackageName (..),isStrLitTy, isNumLitTy,
     nilDataCon, consDataCon,
     Hsc,
     Plugin (..),
-    TCvSubst (..),
     TvSubstEnv,
     TyVar,
     defaultPlugin,
-    emptyTCvSubst,
-    eqType,
     mkTcOcc,
     mkTyConTy,
     mkTyVarTy,
@@ -93,7 +107,6 @@ import GHC.Plugins as GHC.TypeLits.Presburger.Compat
     text,
     tyConAppTyCon_maybe,
     typeKind,
-    unionTCvSubst,
   )
 import GHC.Tc.Plugin (lookupOrig)
 import GHC.Core.InstEnv as GHC.TypeLits.Presburger.Compat (classInstances)
@@ -242,15 +255,36 @@ type PredTree = Pred
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 800
 data TvSubst = TvSubst InScopeSet TvSubstEnv
 
+#if MIN_VERSION_ghc(9,6,1)
+type TCvSubst = Subst
+unionTCvSubst :: TCvSubst -> TCvSubst -> TCvSubst
+unionTCvSubst = unionSubst
+
+emptyTCvSubst :: Subst
+emptyTCvSubst = emptySubst
+#endif
+
+
 instance Outputable  TvSubst where
   ppr = ppr . toTCv
 
 emptyTvSubst :: TvSubst
+#if MIN_VERSION_ghc(9,6,1)
+emptyTvSubst = case emptyTCvSubst of
+  Subst set _ tvsenv _ -> TvSubst set tvsenv
+#else
 emptyTvSubst = case emptyTCvSubst of
   TCvSubst set tvsenv _ -> TvSubst set tvsenv
+#endif
+
 
 toTCv :: TvSubst -> TCvSubst
+#if MIN_VERSION_ghc(9,6,1)
+toTCv (TvSubst set tvenv) = Subst set emptyUFM tvenv emptyUFM
+#else
 toTCv (TvSubst set tvenv) = TCvSubst set tvenv emptyUFM
+#endif
+
 
 substTy :: TvSubst -> Type -> Type
 substTy tvs = Old.substTy (toTCv tvs)
@@ -258,8 +292,14 @@ substTy tvs = Old.substTy (toTCv tvs)
 unionTvSubst :: TvSubst -> TvSubst -> TvSubst
 unionTvSubst s1 s2 =
   fromTCv $ unionTCvSubst (toTCv s1) (toTCv s2)
+
 fromTCv :: TCvSubst -> TvSubst
+#if MIN_VERSION_ghc(9,6,1)
+fromTCv (Subst set _ tvsenv _) = TvSubst set tvsenv
+#else
 fromTCv (TCvSubst set tvsenv _) = TvSubst set tvsenv
+#endif
+
 
 promotedBoolTyCon :: TyCon
 promotedBoolTyCon = boolTyCon
