@@ -436,33 +436,43 @@ fsToUnitId :: FastString -> UnitId
 fsToUnitId = toUnitId . fsToUnit
 #endif
 
-type RawUnitId = FastString
-preloadedUnitsM :: TcPluginM [FastString] 
+#if MIN_VERSION_ghc(9,0,0)
+loadedPackageNames ::
+  [UnitDatabase UnitId] ->
+  UnitState ->
+  [RawPackageName]
+loadedPackageNames unitDb us =
+  let preloads = mkUniqSet $ map (\(UnitId p) -> p) $ preloadUnits us
+      ents = filter ((`elementOfUniqSet` preloads) . unitIdFS . unitId) $ concatMap unitDatabaseUnits unitDb
+   in map (coerce . unitPackageName) ents
+#endif
+
+
+type RawPackageName = FastString
+preloadedUnitsM :: TcPluginM [RawPackageName] 
 #if MIN_VERSION_ghc(9,4,0)
 preloadedUnitsM = do
   logger <- unsafeTcPluginTcM getLogger
   dflags <- hsc_dflags <$> getTopEnv
   packNames <- tcPluginIO $ initUnits logger dflags Nothing mempty <&> 
-    \(unitDb, us, _, _ ) -> 
-      let preloads = mkUniqSet $ map (\(UnitId p) -> p) $ preloadUnits us
-          ents = filter ((`elementOfUniqSet` preloads) . unitIdFS . unitId) $ concatMap unitDatabaseUnits unitDb
-      in map unitPackageName ents
+    \(unitDb, us, _, _ ) -> loadedPackageNames unitDb us
   tcPluginTrace "pres: packs" $ ppr packNames
   pure $ coerce packNames
 #elif MIN_VERSION_ghc(9,2,0)
 preloadedUnitsM = do
   logger <- unsafeTcPluginTcM getLogger
   dflags <- hsc_dflags <$> getTopEnv
-  packs <- tcPluginIO $ initUnits logger dflags Nothing <&> 
-    \(_, us, _, _ ) -> preloadUnits us
-  let packNames = map (\(UnitId p) -> p) packs
+  packNames <- tcPluginIO $ initUnits logger dflags Nothing <&> 
+    \(unitDb, us, _, _ ) -> loadedPackageNames unitDb us
   tcPluginTrace "pres: packs" $ ppr packNames
   pure packNames
 #elif MIN_VERSION_ghc(9,0,0)
 preloadedUnitsM = do
   dflags <- hsc_dflags <$> getTopEnv
-  packs <- tcPluginIO $ preloadUnits . unitState <$> initUnits dflags
-  let packNames = map (\(UnitId p) -> p) packs
+  packNames <- tcPluginIO $ initUnits dflags <&> \dfs' ->
+    let st = unitState dfs'
+        db = maybe [] id $ unitDatabases dfs'
+     in loadedPackageNames db st
   tcPluginTrace "pres: packs" $ ppr packNames
   pure packNames
 #else
