@@ -112,9 +112,11 @@ jobs:
       run: |
         set -euxo pipefail
         DL_PATH=${{steps.download.outputs.download-path}}/binaries-${{matrix.ghc}}
+        echo "${{steps.download.outputs.download-path}}"
+        ls -R "${{steps.download.outputs.download-path}}"
         tar xaf "${DL_PATH}/artifacts.tar.zst"
+        set +x
         find artifacts/tests -type f | while read -r TEST; do
-          set +x
           echo "Executing: ${TEST}"
           "${TEST}"
         done
