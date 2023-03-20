@@ -159,6 +159,8 @@ import GHC.Utils.Outputable as GHC.TypeLits.Presburger.Compat (showSDocUnsafe)
 import Data.Coerce (coerce)
 -- GHC 9 Ends HERE
 #else
+import UniqSet
+import PackageConfig
 import Class as GHC.TypeLits.Presburger.Compat (classTyCon, className)
 import FastString as GHC.TypeLits.Presburger.Compat (FastString, fsLit, unpackFS)
 import GhcPlugins (InScopeSet, Outputable, emptyUFM, InstalledUnitId(..), initPackages, Name)
@@ -478,8 +480,11 @@ preloadedUnitsM = do
 #else
 preloadedUnitsM = do
   dflags <- hsc_dflags <$> getTopEnv
-  (_, packs) <- tcPluginIO $ initPackages dflags
-  let packNames = map (\(InstalledUnitId p) -> p) packs
+  (dfs', packs) <- tcPluginIO $ initPackages dflags
+  let db = listPackageConfigMap dfs'
+      loadeds = mkUniqSet $ map (\(InstalledUnitId p) -> p) packs
+      packNames = map packageName $
+        filter ((`elementOfUniqSet` loadeds) . unitId)
   tcPluginTrace "pres: packs" $ ppr packNames
   pure packNames
 #endif
