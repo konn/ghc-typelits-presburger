@@ -20,22 +20,22 @@ test_recursiveContradiction =
         eith <- try $ void (evaluate $ NoPlugin.zipMVec (True :- Nil) (() :- Nil))
         case eith of
           Left (TypeError msg)
-            | "Could not deduce: (n GHC.TypeNats.+ 1) ~ n"
-                `T.isInfixOf` T.pack msg 
-              || 
-              "Could not deduce ((n GHC.TypeNats.+ 1) ~ n)"
-                `T.isInfixOf` T.pack msg ->
-              pure ()
+            | any (`T.isInfixOf` T.pack msg)
+              [ "Could not deduce: (n GHC.TypeNats.+ 1) ~ n"
+              , "Could not deduce ((n GHC.TypeNats.+ 1) ~ n)"
+              , "Could not deduce ‘(n GHC.TypeNats.+ 1) ~ n’"
+              ]
+              -> pure ()
           _ -> assertFailure $ "TypeError with mismatch expected, but got: " <> show eith
     , testCase "With plugin" $ do
         eith <- try $ void (evaluate $ Plugin.zipMVec (True :- Nil) (() :- Nil))
         case eith of
           Left (TypeError msg)
-            | "Could not deduce: (n GHC.TypeNats.+ 1) ~ n"
-                `T.isInfixOf` T.pack msg 
-              || "Could not deduce ((n GHC.TypeNats.+ 1) ~ n)"
-                `T.isInfixOf` T.pack msg ->
-              pure ()
+            | any (`T.isInfixOf` T.pack msg)
+              [ "Could not deduce: (n GHC.TypeNats.+ 1) ~ n"
+              , "Could not deduce ((n GHC.TypeNats.+ 1) ~ n)"
+              , "Could not deduce ‘(n GHC.TypeNats.+ 1) ~ n’"
+              ] -> pure ()
           _ -> assertFailure $ "TypeError with mismatch expected, but got: " <> show eith
     ]
 
@@ -47,22 +47,22 @@ test_nonrecursiveContradiction =
         eith <- try $ void (evaluate $ NoPlugin.unSpin (True :- Nil))
         case eith of
           Left (TypeError msg)
-            | "Could not deduce: n1 ~ n"
-                `T.isInfixOf` T.pack msg 
-              || "Could not deduce (n1 ~ n)"
-                `T.isInfixOf` T.pack msg 
-              ->
-              pure ()
+            | any (`T.isInfixOf` T.pack msg )
+              [ "Could not deduce: n1 ~ n"
+              , "Could not deduce (n1 ~ n)"
+              , "Could not deduce ‘n1 ~ n’"
+              ]
+              -> pure ()
           _ -> assertFailure $ "TypeError with mismatch expected, but got: " <> show eith
     , testCase "With plugin" $ do
         eith <- try $ void (evaluate $ Plugin.unSpin (True :- Nil))
         case eith of
           Left (TypeError msg)
-            | "Could not deduce: n1 ~ n"
-                `T.isInfixOf` T.pack msg 
-              || 
-              "Could not deduce (n1 ~ n)"
-                `T.isInfixOf` T.pack msg ->
-              pure ()
+            | any (`T.isInfixOf` T.pack msg )
+              [ "Could not deduce: n1 ~ n"
+              , "Could not deduce (n1 ~ n)"
+              , "Could not deduce ‘n1 ~ n’"
+              ]
+              -> pure ()
           _ -> assertFailure $ "TypeError with mismatch expected, but got: " <> show eith
     ]
