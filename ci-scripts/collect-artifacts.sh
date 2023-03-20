@@ -37,8 +37,8 @@ fi
 echo "[*] Places artifacts into the correct place"
 
 ${CABAL_PLAN} list-bins | grep presburger | while read -r TARG; do
-  COMPONENT=$(echo "${TARG}" | gawk '{ print $1 }')
-  BIN=$(echo "${TARG}" | gawk '{ print $2 }')
+  COMPONENT=$(echo "${TARG}" | awk '{ print $1 }')
+  BIN=$(echo "${TARG}" | awk '{ print $2 }')
   TYPE=$(echo "${COMPONENT}" | cut -d':' -f2)
   echo "---"
   echo "- Comp: ${COMPONENT}"
