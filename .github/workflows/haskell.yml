@@ -39,7 +39,7 @@ jobs:
       CABAL: cabal --project-file=${{matrix.plan}}
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - uses: haskell/actions/setup@v2
       with:
         ghc-version: ${{ matrix.ghc }}
@@ -47,7 +47,7 @@ jobs:
         enable-stack: false
 
     - name: Cache ~/.cabal/store
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       env:
         cache-name: cache-cabal-store
       with:
@@ -57,7 +57,7 @@ jobs:
           build-${{ runner.os }}-${{env.cache-name}}-${{matrix.ghc}}-
 
     - name: Cache dist-newstyle
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       env:
         cache-name: cache-dist-newstyle
       with:
@@ -103,7 +103,7 @@ jobs:
       STACK_YAML: stack-${{matrix.ghc}}.yaml
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - uses: actions/download-artifact@v3
       id: download
       with:
