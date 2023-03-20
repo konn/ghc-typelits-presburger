@@ -17,7 +17,16 @@ if command -v cabal-plan; then
 else
   echo "No cabal-plan found."
   set -x
-  wget https://github.com/haskell-hvr/cabal-plan/releases/download/v0.6.2.0/cabal-plan-0.6.2.0-x86_64-linux.xz -O cabal-plan.xz
+  case "$(uname)" in
+    Darwin) 
+      CABAL_PLAN_URL=https://github.com/konn/cabal-plan/releases/download/v0.7.2.3/cabal-plan-0.7.2.3-macOS-x86_64.xz
+    ;;
+    *) 
+      CABAL_PLAN_URL=https://github.com/haskell-hvr/cabal-plan/releases/download/v0.6.2.0/cabal-plan-0.6.2.0-x86_64-linux.xz
+    ;;
+  esac
+  
+  wget "${CABAL_PLAN_URL}" -O cabal-plan.xz
 
   xz -d <./cabal-plan.xz >cabal-plan
   chmod +x cabal-plan
