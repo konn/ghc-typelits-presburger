@@ -163,7 +163,7 @@ import UniqSet
 import PackageConfig
 import Class as GHC.TypeLits.Presburger.Compat (classTyCon, className)
 import FastString as GHC.TypeLits.Presburger.Compat (FastString, fsLit, unpackFS)
-import GhcPlugins (InScopeSet, Outputable, emptyUFM, InstalledUnitId(..), initPackages, Name)
+import GhcPlugins (InScopeSet, Outputable, emptyUFM, InstalledUnitId(..), initPackages, Name, listPackageConfigMap)
 import GhcPlugins as GHC.TypeLits.Presburger.Compat (PackageName (..), fsToUnitId, lookupPackageName, lookupTyCon, mkTcOcc, mkTyConTy, ppr, promotedFalseDataCon, promotedTrueDataCon, text, tyConAppTyCon_maybe, typeKind, typeNatKind)
 import HscTypes as GHC.TypeLits.Presburger.Compat (HscEnv (hsc_dflags))
 import Module as GHC.TypeLits.Presburger.Compat (ModuleName, mkModuleName, mkModule)
