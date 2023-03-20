@@ -10,6 +10,7 @@ import GHC.TcPluginM.Extra as GHC.TypeLits.Presburger.Compat (evByFiat, lookupMo
 import Data.Generics.Twins
 
 #if MIN_VERSION_ghc(9,0,0)
+import Data.Functor ((<&>))
 import GHC.Builtin.Names as GHC.TypeLits.Presburger.Compat (gHC_TYPENATS)
 #if MIN_VERSION_ghc(9,4,1)
 import GHC.Tc.Types as GHC.TypeLits.Presburger.Compat (TcPlugin (..), TcPluginSolveResult (..))
@@ -117,7 +118,6 @@ import GHC.Core.InstEnv as GHC.TypeLits.Presburger.Compat (classInstances)
 #if MIN_VERSION_ghc(9,2,0)
 import GHC.Tc.Plugin (unsafeTcPluginTcM)
 import GHC.Utils.Logger (getLogger)
-import Data.Functor ((<&>))
 import GHC.Unit.Types as GHC.TypeLits.Presburger.Compat (IsBootInterface(..))
 #else
 import GHC.Driver.Types as GHC.TypeLits.Presburger.Compat (IsBootInterface(..))
