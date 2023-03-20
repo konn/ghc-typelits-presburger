@@ -108,7 +108,10 @@ jobs:
       id: download
     - run: |
         set -euxo pipefail
-        DL_PATH=${{steps.download.outputs.download-path}}
-        echo "${DL_PATH}"
-        ls -R "${DL_PATH}"
-        exit 1
+        DL_PATH=${{steps.download.outputs.download-path}}/binaries
+        tar xaf "${DL_PATH}/artifacts.tar.zst"
+        find artifacts/tests -type f; while read -r TEST; do
+          echo "Executing: ${TEST}"
+          "${TEST}"
+        done
+        
