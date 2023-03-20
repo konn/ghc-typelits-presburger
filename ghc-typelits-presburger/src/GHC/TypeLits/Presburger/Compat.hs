@@ -484,7 +484,7 @@ preloadedUnitsM = do
   let db = listPackageConfigMap dfs'
       loadeds = mkUniqSet $ map (\(InstalledUnitId p) -> p) packs
       packNames = map (coerce . packageName) $
-        filter ((`elementOfUniqSet` loadeds) . unitId) db
+        filter ((`elementOfUniqSet` loadeds) . coerce . unitId) db
   tcPluginTrace "pres: packs" $ ppr packNames
   pure packNames
 #endif
