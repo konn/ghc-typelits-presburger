@@ -22,8 +22,8 @@ jobs:
       id: enumerate
       run: |
         set -euxo pipefail
-        find ci-configs/ -type f -name 'ghc-*.config' \
-          | sort -h | jq -ncR '[inputs | {ghc:  match("ghc-(.+)\\.config$", .) | .captures[0].string | select(.), plan: .}]' | tee configs.json
+        find ci-configs -type f -name 'ghc-*.config' \
+          | sort -h | jq -ncR '[inputs | {ghc:  match("ghc-(.+)\\.config$", .) | .captures[0].string | select(.), plan: .}] | map([.os="ubuntu", .os="macOS"]) | flatten' | tee configs.json
         echo "configs=$(cat configs.json)" >> "${GITHUB_OUTPUT}"
 
   build:
@@ -34,7 +34,7 @@ jobs:
       matrix:
         include: ${{fromJSON(needs.enumerate.outputs.configs)}}
     runs-on: ubuntu-latest
-    name: Haskell GHC ${{ matrix.ghc }} Build
+    name: Haskell GHC ${{ matrix.ghc }} Build (${{matrix.os}})
     env:
       CABAL: cabal --project-file=${{matrix.plan}}
 
@@ -84,7 +84,7 @@ jobs:
     - name: Upload Artifacts
       uses: actions/upload-artifact@v3
       with:
-        name: binaries-${{matrix.ghc}}
+        name: binaries-${{matrix.ghc}}-${{matrix.os}}
         path: artifacts.tar.zst
 
   test:
@@ -97,17 +97,15 @@ jobs:
       matrix:
         include: ${{fromJSON(needs.enumerate.outputs.configs)}}
 
-    runs-on: ubuntu-latest
-    name: Haskell GHC ${{ matrix.ghc }} Test
-    env:
-      STACK_YAML: stack-${{matrix.ghc}}.yaml
+    runs-on: ${{matrix.os}}-latest
+    name: Haskell GHC ${{ matrix.ghc }} Test (${{matrix.os}})
 
     steps:
     - uses: actions/checkout@v3
     - uses: actions/download-artifact@v3
       id: download
       with:
-        name: binaries-${{matrix.ghc}}
+        name: binaries-${{matrix.ghc}}-${{matrix.os}}
     - name: Extract and Run All Tests
       run: |
         set -euxo pipefail
