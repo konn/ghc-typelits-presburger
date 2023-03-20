@@ -10,130 +10,116 @@ on:
     - master
     - release
 
-
 jobs:
+  enumerate:
+    name: Generate Build Matrix Dynamically
+    runs-on: ubuntu-latest
+    outputs:
+      configs: ${{ steps.enumerate.outputs.configs }}
+    steps:
+    - uses: actions/checkout@v3
+    - name: Enumerate Configs
+      id: enumerate
+      run: |
+        set -euxo pipefail
+        find ci-configs -type f -name 'ghc-*.config' \
+          | sort -h | jq -ncR '[inputs | {ghc:  match("ghc-(.+)\\.config$", .) | .captures[0].string | select(.), plan: .}] | map([.os="ubuntu", .os="macOS"]) | flatten' | tee configs.json
+        echo "configs=$(cat configs.json)" >> "${GITHUB_OUTPUT}"
+
   build:
-    continue-on-error: ${{ matrix.HEAD }}
+    needs: [enumerate]
+    continue-on-error: false
     strategy:
       fail-fast: false
       matrix:
-        ghc: ['8.6.5', '8.8.4', '8.10.7', '9.0.2', '9.2.4', '9.4.3']
-        HEAD: [false]
-    runs-on: ubuntu-latest
-    name: Haskell GHC ${{ matrix.ghc }} Build
+        include: ${{fromJSON(needs.enumerate.outputs.configs)}}
+    runs-on: ${{matrix.os}}-latest
+    name: Haskell GHC ${{ matrix.ghc }} Build (${{matrix.os}})
     env:
-      STACK_YAML: stack-${{matrix.ghc}}.yaml
+      CABAL: cabal --project-file=${{matrix.plan}}
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - uses: haskell/actions/setup@v2
       with:
-        enable-stack: true
-        stack-version: "2.9.1"
+        ghc-version: ${{ matrix.ghc }}
+        cabal-version: 3.10.1.0
+        enable-stack: false
 
-    - name: Cache
-      uses: actions/cache@v2
+    - name: Cache ~/.cabal/store
+      uses: actions/cache@v3
       env:
-        cache-name: cache-stack-lock-${{matrix.ghc}}
+        cache-name: cache-cabal-store
       with:
-        path: ./stack-${{matrix.ghc}}.yaml.lock
-        key:  ${{ runner.os }}-${{env.cache-name}}-${{ hashFiles('${{env.STACK_YAML}}') }}-${{ hashFiles('**/package.yaml') }}
+        path: ~/.cabal/store
+        key: build-${{ runner.os }}-${{env.cache-name}}-${{matrix.ghc}}-${{ hashFiles('**/*.cabal', '${{matrix.plan}}') }}
         restore-keys: |
-          ${{ runner.os }}-${{env.cache-name}}-${{ hashFiles('${{env.STACK_YAML}}') }}-
-          ${{ runner.os }}-${{env.cache-name}}-
+          build-${{ runner.os }}-${{env.cache-name}}-${{matrix.ghc}}-
 
-    - name: Cache
-      uses: actions/cache@v2
+    - name: Cache dist-newstyle
+      uses: actions/cache@v3
       env:
-        cache-name: stack-global-cache-${{matrix.ghc}}
+        cache-name: cache-dist-newstyle
       with:
-        path: ~/.stack
-        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('${{env.STACK_YAML}}') }}-${{ hashFiles('**/package.yaml') }}-${{hashFiles('**/*.hs')}}-${{github.sha}}
+        path: dist-newstyle
+        key: build-${{ runner.os }}-${{ env.cache-name }}-${{matrix.ghc}}-${{ hashFiles('**/*.cabal', '${{matrix.plan}}') }}-${{ hashFiles('**/*.hs') }}
         restore-keys: |
-          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('${{env.STACK_YAML}}') }}-${{ hashFiles('**/package.yaml') }}-${{hashFiles('**/*.hs')}}-
-          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('${{env.STACK_YAML}}') }}-${{ hashFiles('**/package.yaml') }}-
-          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('${{env.STACK_YAML}}') }}-
-          ${{ runner.os }}-build-${{ env.cache-name }}-
+          build-${{ runner.os }}-${{ env.cache-name }}-${{matrix.ghc}}-${{ hashFiles('**/*.cabal', '${{matrix.plan}}') }}-
+          build-${{ runner.os }}-${{ env.cache-name }}-${{matrix.ghc}}-
 
-    - name: Cache
-      uses: actions/cache@v2
-      env:
-        cache-name: stack-work-cache-${{matrix.ghc}}
-      with:
-        path: "**/.stack-work"
-        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('${{env.STACK_YAML}}') }}-${{ hashFiles('**/package.yaml') }}-${{hashFiles('**/*.hs')}}-${{github.sha}}
-        restore-keys: |
-          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('${{env.STACK_YAML}}') }}-${{ hashFiles('**/package.yaml') }}-${{hashFiles('**/*.hs')}}-
-          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('${{env.STACK_YAML}}') }}-${{ hashFiles('**/package.yaml') }}-
-          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('${{env.STACK_YAML}}') }}-
-          ${{ runner.os }}-build-${{ env.cache-name }}-
+    - name: Configure and Update
+      run: >-
+        ${CABAL} v2-configure
+        --enable-tests --enable-benchmarks
+        --constraint "singletons-presburger +examples"
+        --constraint "ghc-typelits-presburger +examples"
+        --allow-newer='ghc-typelits-presburger,singletons-presbruger'
 
-    - name: Install dependencies
-      run: |
-        stack build --only-dependencies --test --bench --no-run-tests --no-run-benchmarks
+        ${CABAL} v2-update
     - name: Build
-      run: stack build --flag singletons-presburger:examples --flag ghc-typelits-presburger:examples --test --bench --no-run-tests --no-run-benchmarks
+      run: |
+        ${CABAL} v2-build all
+    - name: Collect binaries
+      run: ./ci-scripts/collect-artifacts.sh artifacts
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: binaries-${{matrix.ghc}}-${{matrix.os}}
+        path: artifacts.tar.zst
+        retention-days: 3
 
   test:
-    continue-on-error: ${{ matrix.HEAD }}
+    needs:
+    - enumerate
+    - build
+    continue-on-error: false
     strategy:
       fail-fast: false
       matrix:
-        ghc: ['8.6.5', '8.8.4', '8.10.7', '9.0.2', '9.2.4', '9.4.3']
-        HEAD: [false]
+        include: ${{fromJSON(needs.enumerate.outputs.configs)}}
 
-    runs-on: ubuntu-latest
-    needs:
-    - build
-    name: Haskell GHC ${{ matrix.ghc }} Test
-    env:
-      STACK_YAML: stack-${{matrix.ghc}}.yaml
+    runs-on: ${{matrix.os}}-latest
+    name: Haskell GHC ${{ matrix.ghc }} Test (${{matrix.os}})
 
     steps:
-    - uses: actions/checkout@v2
-    - uses: haskell/actions/setup@v1.1.7
+    - uses: actions/checkout@v3
+    - uses: actions/download-artifact@v3
+      id: download
       with:
-        ghc-version: ${{ matrix.ghc }}
-        stack-no-global: true
-        enable-stack: true
-        stack-version: "2.7.3"
-
-    - name: Cache
-      uses: actions/cache@v2
-      env:
-        cache-name: cache-stack-lock-${{matrix.ghc}}
-      with:
-        path: ./stack-${{matrix.ghc}}.yaml.lock
-        key:  ${{ runner.os }}-${{env.cache-name}}-${{ hashFiles('${{env.STACK_YAML}}') }}-${{ hashFiles('**/package.yaml') }}
-        restore-keys: |
-          ${{ runner.os }}-${{env.cache-name}}-${{ hashFiles('${{env.STACK_YAML}}') }}-
-          ${{ runner.os }}-${{env.cache-name}}-
-
-    - name: Cache
-      uses: actions/cache@v2
-      env:
-        cache-name: stack-global-cache-${{matrix.ghc}}
-      with:
-        path: ~/.stack
-        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('${{env.STACK_YAML}}') }}-${{ hashFiles('**/package.yaml') }}-${{hashFiles('**/*.hs')}}-${{github.sha}}
-        restore-keys: |
-          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('${{env.STACK_YAML}}') }}-${{ hashFiles('**/package.yaml') }}-${{hashFiles('**/*.hs')}}-
-          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('${{env.STACK_YAML}}') }}-${{ hashFiles('**/package.yaml') }}-
-          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('${{env.STACK_YAML}}') }}-
-          ${{ runner.os }}-build-${{ env.cache-name }}-
-
-    - name: Cache
-      uses: actions/cache@v2
-      env:
-        cache-name: stack-work-cache-${{matrix.ghc}}
-      with:
-        path: "**/.stack-work"
-        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('${{env.STACK_YAML}}') }}-${{ hashFiles('**/package.yaml') }}-${{hashFiles('**/*.hs')}}-${{github.sha}}
-        restore-keys: |
-          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('${{env.STACK_YAML}}') }}-${{ hashFiles('**/package.yaml') }}-${{hashFiles('**/*.hs')}}-
-          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('${{env.STACK_YAML}}') }}-${{ hashFiles('**/package.yaml') }}-
-          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('${{env.STACK_YAML}}') }}-
-          ${{ runner.os }}-build-${{ env.cache-name }}-
-
-    - name: Run tests
-      run: stack test --flag singletons-presburger:examples --flag ghc-typelits-presburger:examples --test --bench --no-run-benchmarks
+        name: binaries-${{matrix.ghc}}-${{matrix.os}}
+    - name: Extract and Run All Tests
+      run: |
+        set -euxo pipefail
+        DL_PATH=${{steps.download.outputs.download-path}}
+        unzstd "${DL_PATH}/artifacts.tar.zst"
+        tar xvf "${DL_PATH}/artifacts.tar"
+        set +x
+        find artifacts/tests -type f | while read -r TEST; do
+          echo "Executing: ${TEST}"
+          "${TEST}"
+        done
+        
+        find artifacts/exes -type f | while read -r TEST; do
+          echo "Executing: ${TEST}"
+          "${TEST}"
+        done

@@ -14,6 +14,7 @@
 {-# LANGUAGE NoStarIsType #-}
 {-# OPTIONS_GHC -dcore-lint #-}
 {-# OPTIONS_GHC -fplugin GHC.TypeLits.Presburger #-}
+{-# OPTIONS_GHC -ddump-tc-trace -ddump-to-file #-}
 
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 806
 {-# LANGUAGE NoStarIsType #-}
@@ -27,7 +28,7 @@ import Unsafe.Coerce
 import Data.Proxy
 import Numeric.Natural
 import Data.Type.Equality
-import GHC.TypeLits
+import GHC.TypeLits hiding (SNat)
 import Data.Void
 import Proof.Propositional (Empty (..), IsTrue (Witness), withEmpty)
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 902
@@ -43,7 +44,7 @@ main = putStrLn "finished"
 type n <=! m = IsTrue (n <=? m)
 
 infix 4 <=!
-
+{- 
 type family Length (as :: [k]) where
   Length '[] = 0
   Length (x ': xs) = 1 + Length xs
@@ -90,9 +91,12 @@ trans _ _ Witness = Witness
 eqv :: proxy n -> proxy m -> (n <=? m) :~: ((n + 1) <=? (m + 1))
 eqv _ _ = Refl
 
-predSucc :: forall proxy n. Empty (n <=! 0) => proxy n -> IsTrue (n + 1 <=? 2 * n)
-predSucc _ = Witness
-
+predSuccBool :: forall proxy n. (n <=? 0) ~ 'False => proxy n -> IsTrue (n + 1 <=? 2 * n)
+predSuccBool _ = Witness
+ -}
+predSuccProp :: forall proxy n. Empty (n <=! 0) => proxy n -> IsTrue (n + 1 <=? 2 * n)
+predSuccProp _ = Witness
+{- 
 succLEqLTSucc :: pxy m -> CmpNat 0 (m + 1) :~: 'LT
 succLEqLTSucc _ = Refl
 
@@ -207,3 +211,4 @@ boolToPropLeq :: (n <= m) => SNat n -> SNat m -> Leq n m
 boolToPropLeq Zero m = ZeroLeq m
 boolToPropLeq (Succ n) (Succ m) = SuccLeqSucc $ boolToPropLeq n m
 boolToPropLeq (Succ n) Zero = absurd $ succLeqZeroAbsurd n Witness
+ -}

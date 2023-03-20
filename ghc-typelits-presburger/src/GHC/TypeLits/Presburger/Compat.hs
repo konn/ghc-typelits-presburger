@@ -8,8 +8,10 @@ import Data.Function       (on)
 import GHC.TcPluginM.Extra as GHC.TypeLits.Presburger.Compat (evByFiat, lookupModule, lookupName,
                                           tracePlugin)
 import Data.Generics.Twins
+import Data.Coerce (coerce)
 
 #if MIN_VERSION_ghc(9,0,0)
+import Data.Functor ((<&>))
 import GHC.Builtin.Names as GHC.TypeLits.Presburger.Compat (gHC_TYPENATS)
 #if MIN_VERSION_ghc(9,4,1)
 import GHC.Tc.Types as GHC.TypeLits.Presburger.Compat (TcPlugin (..), TcPluginSolveResult (..))
@@ -55,7 +57,7 @@ import GHC.Data.FastString as GHC.TypeLits.Presburger.Compat (FastString, fsLit,
 import GHC.Driver.Env.Types as GHC.TypeLits.Presburger.Compat (HscEnv (hsc_dflags))
 #else
 import GHC.Driver.Types as GHC.TypeLits.Presburger.Compat (HscEnv (hsc_dflags))
-import GHC.Driver.Session (unitState)
+import GHC.Driver.Session (unitState, unitDatabases)
 #endif
 import GHC.Plugins (InScopeSet, Outputable, emptyUFM, moduleUnit, Unit, Name)
 #if MIN_VERSION_ghc(9,2,0)
@@ -70,18 +72,36 @@ import GHC.Plugins as GHC.TypeLits.Presburger.Compat
   )
 #endif
 
+#if MIN_VERSION_ghc(9,6,1)
+import GHC.Plugins as GHC.TypeLits.Presburger.Compat
+  ( Subst (..),
+    emptySubst,
+    unionSubst,
+  )
+import GHC.Core.TyCo.Compare as GHC.TypeLits.Presburger.Compat
+  (eqType)
+#else
+import GHC.Plugins as GHC.TypeLits.Presburger.Compat
+  ( TCvSubst (..),
+    emptyTCvSubst,
+    eqType,
+    unionTCvSubst,
+  )
+#endif
+
 import GHC.Plugins as GHC.TypeLits.Presburger.Compat
   ( PackageName (..),isStrLitTy, isNumLitTy,
     nilDataCon, consDataCon,
     Hsc,
     Plugin (..),
-    TCvSubst (..),
     TvSubstEnv,
     TyVar,
     defaultPlugin,
-    emptyTCvSubst,
-    eqType,
     mkTcOcc,
+    UnitDatabase(..),
+    GenericUnitInfo(..),
+    elementOfUniqSet,
+    mkUniqSet,
     mkTyConTy,
     mkTyVarTy,
     ppr,
@@ -93,14 +113,12 @@ import GHC.Plugins as GHC.TypeLits.Presburger.Compat
     text,
     tyConAppTyCon_maybe,
     typeKind,
-    unionTCvSubst,
   )
 import GHC.Tc.Plugin (lookupOrig)
 import GHC.Core.InstEnv as GHC.TypeLits.Presburger.Compat (classInstances)
 #if MIN_VERSION_ghc(9,2,0)
 import GHC.Tc.Plugin (unsafeTcPluginTcM)
 import GHC.Utils.Logger (getLogger)
-import Data.Functor ((<&>))
 import GHC.Unit.Types as GHC.TypeLits.Presburger.Compat (IsBootInterface(..))
 #else
 import GHC.Driver.Types as GHC.TypeLits.Presburger.Compat (IsBootInterface(..))
@@ -141,9 +159,11 @@ import GHC.Unit.Types (UnitId(..), fsToUnit, toUnitId)
 import GHC.Utils.Outputable as GHC.TypeLits.Presburger.Compat (showSDocUnsafe)
 -- GHC 9 Ends HERE
 #else
+import UniqSet
+import PackageConfig
 import Class as GHC.TypeLits.Presburger.Compat (classTyCon, className)
 import FastString as GHC.TypeLits.Presburger.Compat (FastString, fsLit, unpackFS)
-import GhcPlugins (InScopeSet, Outputable, emptyUFM, InstalledUnitId(..), initPackages, Name)
+import GhcPlugins (InScopeSet, Outputable, emptyUFM, InstalledUnitId(..), initPackages, Name, listPackageConfigMap)
 import GhcPlugins as GHC.TypeLits.Presburger.Compat (PackageName (..), fsToUnitId, lookupPackageName, lookupTyCon, mkTcOcc, mkTyConTy, ppr, promotedFalseDataCon, promotedTrueDataCon, text, tyConAppTyCon_maybe, typeKind, typeNatKind)
 import HscTypes as GHC.TypeLits.Presburger.Compat (HscEnv (hsc_dflags))
 import Module as GHC.TypeLits.Presburger.Compat (ModuleName, mkModuleName, mkModule)
@@ -242,15 +262,36 @@ type PredTree = Pred
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 800
 data TvSubst = TvSubst InScopeSet TvSubstEnv
 
+#if MIN_VERSION_ghc(9,6,1)
+type TCvSubst = Subst
+unionTCvSubst :: TCvSubst -> TCvSubst -> TCvSubst
+unionTCvSubst = unionSubst
+
+emptyTCvSubst :: Subst
+emptyTCvSubst = emptySubst
+#endif
+
+
 instance Outputable  TvSubst where
   ppr = ppr . toTCv
 
 emptyTvSubst :: TvSubst
+#if MIN_VERSION_ghc(9,6,1)
+emptyTvSubst = case emptyTCvSubst of
+  Subst set _ tvsenv _ -> TvSubst set tvsenv
+#else
 emptyTvSubst = case emptyTCvSubst of
   TCvSubst set tvsenv _ -> TvSubst set tvsenv
+#endif
+
 
 toTCv :: TvSubst -> TCvSubst
+#if MIN_VERSION_ghc(9,6,1)
+toTCv (TvSubst set tvenv) = Subst set emptyUFM tvenv emptyUFM
+#else
 toTCv (TvSubst set tvenv) = TCvSubst set tvenv emptyUFM
+#endif
+
 
 substTy :: TvSubst -> Type -> Type
 substTy tvs = Old.substTy (toTCv tvs)
@@ -258,8 +299,14 @@ substTy tvs = Old.substTy (toTCv tvs)
 unionTvSubst :: TvSubst -> TvSubst -> TvSubst
 unionTvSubst s1 s2 =
   fromTCv $ unionTCvSubst (toTCv s1) (toTCv s2)
+
 fromTCv :: TCvSubst -> TvSubst
+#if MIN_VERSION_ghc(9,6,1)
+fromTCv (Subst set _ tvsenv _) = TvSubst set tvsenv
+#else
 fromTCv (TCvSubst set tvsenv _) = TvSubst set tvsenv
+#endif
+
 
 promotedBoolTyCon :: TyCon
 promotedBoolTyCon = boolTyCon
@@ -391,38 +438,53 @@ fsToUnitId :: FastString -> UnitId
 fsToUnitId = toUnitId . fsToUnit
 #endif
 
-type RawUnitId = FastString
-preloadedUnitsM :: TcPluginM [FastString] 
+#if MIN_VERSION_ghc(9,0,0)
+loadedPackageNames ::
+  [UnitDatabase UnitId] ->
+  UnitState ->
+  [RawPackageName]
+loadedPackageNames unitDb us =
+  let preloads = mkUniqSet $ map (\(UnitId p) -> p) $ preloadUnits us
+      ents = filter ((`elementOfUniqSet` preloads) . unitIdFS . unitId) $ concatMap unitDatabaseUnits unitDb
+   in map (coerce . unitPackageName) ents
+#endif
+
+
+type RawPackageName = FastString
+preloadedUnitsM :: TcPluginM [RawPackageName] 
 #if MIN_VERSION_ghc(9,4,0)
 preloadedUnitsM = do
   logger <- unsafeTcPluginTcM getLogger
   dflags <- hsc_dflags <$> getTopEnv
-  packs <- tcPluginIO $ initUnits logger dflags Nothing mempty <&> 
-    \(_, us, _, _ ) -> preloadUnits us
-  let packNames = map (\(UnitId p) -> p) packs
+  packNames <- tcPluginIO $ initUnits logger dflags Nothing mempty <&> 
+    \(unitDb, us, _, _ ) -> loadedPackageNames unitDb us
   tcPluginTrace "pres: packs" $ ppr packNames
-  pure packNames
+  pure $ coerce packNames
 #elif MIN_VERSION_ghc(9,2,0)
 preloadedUnitsM = do
   logger <- unsafeTcPluginTcM getLogger
   dflags <- hsc_dflags <$> getTopEnv
-  packs <- tcPluginIO $ initUnits logger dflags Nothing <&> 
-    \(_, us, _, _ ) -> preloadUnits us
-  let packNames = map (\(UnitId p) -> p) packs
+  packNames <- tcPluginIO $ initUnits logger dflags Nothing <&> 
+    \(unitDb, us, _, _ ) -> loadedPackageNames unitDb us
   tcPluginTrace "pres: packs" $ ppr packNames
   pure packNames
 #elif MIN_VERSION_ghc(9,0,0)
 preloadedUnitsM = do
   dflags <- hsc_dflags <$> getTopEnv
-  packs <- tcPluginIO $ preloadUnits . unitState <$> initUnits dflags
-  let packNames = map (\(UnitId p) -> p) packs
+  packNames <- tcPluginIO $ initUnits dflags <&> \dfs' ->
+    let st = unitState dfs'
+        db = maybe [] id $ unitDatabases dfs'
+     in loadedPackageNames db st
   tcPluginTrace "pres: packs" $ ppr packNames
   pure packNames
 #else
 preloadedUnitsM = do
   dflags <- hsc_dflags <$> getTopEnv
-  (_, packs) <- tcPluginIO $ initPackages dflags
-  let packNames = map (\(InstalledUnitId p) -> p) packs
+  (dfs', packs) <- tcPluginIO $ initPackages dflags
+  let db = listPackageConfigMap dfs'
+      loadeds = mkUniqSet $ map (\(InstalledUnitId p) -> p) packs
+      packNames = map (coerce . packageName) $
+        filter ((`elementOfUniqSet` loadeds) . coerce . unitId) db
   tcPluginTrace "pres: packs" $ ppr packNames
   pure packNames
 #endif

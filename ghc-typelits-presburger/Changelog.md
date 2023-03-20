@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.2.0
+
+* Supports GHC 9.6
+* More robust `equational-reasoning` package detection logic.
+
 ## 0.7.1.0
 
 * Proper Support of GHC 9.4 (Now can solve `Assert` properly)

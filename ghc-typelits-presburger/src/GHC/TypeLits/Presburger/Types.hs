@@ -58,6 +58,7 @@ import Data.Reflection (Given, give, given)
 import qualified Data.Set as Set
 import GHC.TypeLits.Presburger.Compat as Compat
 import qualified Data.Foldable as F
+import GHC.TypeLits.Presburger.Flags
 
 assert' :: Prop -> PropSet -> PropSet
 assert' p ps = foldr assert ps (p : varPos)
@@ -376,13 +377,7 @@ eqReasoning = fsLit "equational-reasoning"
 defaultTranslation :: TcPluginM Translation
 defaultTranslation = do
   packs <- preloadedUnitsM
-  let eqThere = fromMaybe False $
-        listToMaybe $ do
-          pname <- packs
-          rest <-
-            maybeToList $
-              L.stripPrefix "equational-reasoning-" $ unpackFS pname
-          pure $ null rest || isDigit (head rest)
+  let eqThere = elem eqReasoning packs
   (isEmpties, isTrues) <-
     if eqThere
       then do
@@ -401,7 +396,10 @@ defaultTranslation = do
   eqBoolTyCon <- tcLookupTyCon =<< lookupOrig dATA_TYPE_EQUALITY (mkTcOcc "==")
   eqWitCon_ <- getEqWitnessTyCon
   assertTy <- lookupAssertTyCon
-  vmd <- lookupModule (mkModuleName "Data.Void") (fsLit "base")
+  vmd <- 
+    if ghcVer >= GHC906
+    then lookupModule (mkModuleName "GHC.Base") (fsLit "base")
+    else lookupModule (mkModuleName "Data.Void") (fsLit "base")
   voidTyCon <- tcLookupTyCon =<< lookupOrig vmd (mkTcOcc "Void")
   nLeq <- tcLookupTyCon =<< lookupTyNatPredLeq
   tyLeqB <- lookupTyNatBoolLeq

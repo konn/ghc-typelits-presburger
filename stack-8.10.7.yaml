@@ -1,6 +1,0 @@
-resolver: lts-18.15
-
-flags: {}
-packages:
-  - "ghc-typelits-presburger"
-  - "singletons-presburger"

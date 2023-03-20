@@ -4,10 +4,10 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: d6484409d9fcbd50b1fb2f56f79743a1587a1330768401bbaeecaa4e969e8160
+-- hash: 2ebb05ea447eed7781be770b2f83666a338b9bd1aa34f0ac04703288be2f63ba
 
 name:          ghc-typelits-presburger
-version:       0.7.1.0
+version:       0.7.2.0
 synopsis:      Presburger Arithmetic Solver for GHC Type-level natural numbers.
 description:   @ghc-typelits-presburger@ augments GHC type-system with Presburger
                Arithmetic Solver for Type-level natural numbers.
@@ -30,7 +30,7 @@ copyright:     2015 (c) Hiromi ISHII
 license:       BSD3
 license-file:  LICENSE
 tested-with:
-    GHC==8.6.5 GHC==8.8.4 GHC==8.10.7 GHC==9.0.2 GHC==9.2.4 GHC==9.4.3
+    GHC==8.6.5 GHC==8.8.4 GHC==8.10.7 GHC==9.0.2 GHC==9.2.7 GHC==9.4.4 GHC==9.6.1
 build-type:    Simple
 
 source-repository head
@@ -49,6 +49,7 @@ library
       GHC.TypeLits.Presburger.Compat
   other-modules:
       Data.Integer.SAT
+      GHC.TypeLits.Presburger.Flags
       Paths_ghc_typelits_presburger
   hs-source-dirs:
       src
@@ -56,7 +57,7 @@ library
   build-depends:
       base >=4.7 && <5
     , containers
-    , ghc <9.5
+    , ghc <9.7
     , ghc-tcplugins-extra >=0.2 && <0.5
     , mtl
     , pretty
@@ -75,7 +76,7 @@ executable simple-arith-core
   build-depends:
       base
     , equational-reasoning
-    , ghc-typelits-presburger >=0.7.1.0
+    , ghc-typelits-presburger
   default-language: Haskell2010
   if !(flag(examples))
     buildable: False
