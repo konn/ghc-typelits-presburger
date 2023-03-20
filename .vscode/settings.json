@@ -9,7 +9,7 @@
   "editor.defaultFormatter": "haskell.haskell",
   "haskell.formattingProvider": "fourmolu",
   "haskell.toolchain": {
-    "hls": "1.8.0.0-85-g0d067865",
+    "hls": "1.9.0.0-50-gfd517d82",
     "ghc": "9.6.1",
     "cabal": "3.10.1.0",
     "stack": "2.9.3"
