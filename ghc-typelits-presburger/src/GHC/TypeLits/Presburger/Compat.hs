@@ -483,7 +483,7 @@ preloadedUnitsM = do
   (dfs', packs) <- tcPluginIO $ initPackages dflags
   let db = listPackageConfigMap dfs'
       loadeds = mkUniqSet $ map (\(InstalledUnitId p) -> p) packs
-      packNames = map packageName $
+      packNames = map (coerce . packageName) $
         filter ((`elementOfUniqSet` loadeds) . unitId) db
   tcPluginTrace "pres: packs" $ ppr packNames
   pure packNames
