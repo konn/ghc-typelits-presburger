@@ -10,8 +10,22 @@
   "haskell.formattingProvider": "fourmolu",
   "haskell.toolchain": {
     "hls": "1.8.0.0-85-g0d067865",
-    "ghc": "9.4.3",
-    "cabal": "3.8.1.0",
-    "stack": "2.9.1"
+    "ghc": "9.6.1",
+    "cabal": "3.10.1.0",
+    "stack": "2.9.3"
+  },
+  "emeraldwalk.runonsave": {
+    "commands": [
+      {
+        "cmd": "hpack ghc-typelits-presburger",
+        "isAsync": true,
+        "match": "(\\.hs|package.yaml)$"
+      },
+      {
+        "cmd": "hpack singletons-presburger",
+        "isAsync": true,
+        "match": "(\\.hs|package.yaml)$"
+      }
+    ]
   }
 }
