@@ -54,7 +54,7 @@ executables:
       - -Wno-unused-imports
     dependencies:
       - base
-      - ghc-typelits-presburger >= 0.7.1.0
+      - ghc-typelits-presburger
       - equational-reasoning
     when:
       - condition: ! "!(flag(examples))"

@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 18b7aa680c4ad0f9097199bc63fe48b8b3e61a43f821aa181b5e8034f1bec374
+-- hash: 87d96b330052ac2fd006a0a1903fdb487159a8c97ca44646a28f8e3493007071
 
 name:          ghc-typelits-presburger
 version:       0.7.1.0
@@ -76,7 +76,7 @@ executable simple-arith-core
   build-depends:
       base
     , equational-reasoning
-    , ghc-typelits-presburger >=0.7.1.0
+    , ghc-typelits-presburger
   default-language: Haskell2010
   if !(flag(examples))
     buildable: False
