@@ -45,6 +45,7 @@ library:
     - syb
     - transformers
     - ghc < 9.7
+
 executables:
   simple-arith-core:
     main: simple-arith-core.hs

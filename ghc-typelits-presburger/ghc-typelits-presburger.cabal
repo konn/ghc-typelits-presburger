@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 1d8effca5817f0db975b66418d7c468afc7e10d4cacd1f7d6c85d28a27e41292
+-- hash: 18b7aa680c4ad0f9097199bc63fe48b8b3e61a43f821aa181b5e8034f1bec374
 
 name:          ghc-typelits-presburger
 version:       0.7.1.0
@@ -49,6 +49,7 @@ library
       GHC.TypeLits.Presburger.Compat
   other-modules:
       Data.Integer.SAT
+      GHC.TypeLits.Presburger.Flags
       Paths_ghc_typelits_presburger
   hs-source-dirs:
       src

@@ -27,7 +27,7 @@ import Unsafe.Coerce
 import Data.Proxy
 import Numeric.Natural
 import Data.Type.Equality
-import GHC.TypeLits
+import GHC.TypeLits hiding (SNat)
 import Data.Void
 import Proof.Propositional (Empty (..), IsTrue (Witness), withEmpty)
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 902
