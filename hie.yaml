@@ -1,22 +1,2 @@
 cradle:
-  stack:
-    - path: "ghc-typelits-presburger/src"
-      component: "ghc-typelits-presburger:lib"
-
-    - path: "ghc-typelits-presburger/examples/simple-arith-core.hs"
-      component: "ghc-typelits-presburger:exe:simple-arith-core"
-
-    - path: "ghc-typelits-presburger/examples/Paths_ghc_typelits_presburger.hs"
-      component: "ghc-typelits-presburger:exe:simple-arith-core"
-
-    - path: "ghc-typelits-presburger/test"
-      component: "ghc-typelits-presburger:test:test-typeltis-presburger"
-
-    - path: "singletons-presburger/src"
-      component: "singletons-presburger:lib"
-
-    - path: "singletons-presburger/examples/simple-arith.hs"
-      component: "singletons-presburger:exe:simple-arith"
-
-    - path: "singletons-presburger/examples/Paths_singletons_presburger.hs"
-      component: "singletons-presburger:exe:simple-arith"
+  cabal:
