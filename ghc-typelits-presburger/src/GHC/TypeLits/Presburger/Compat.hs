@@ -55,7 +55,7 @@ import GHC.Data.FastString as GHC.TypeLits.Presburger.Compat (FastString, fsLit,
 import GHC.Driver.Env.Types as GHC.TypeLits.Presburger.Compat (HscEnv (hsc_dflags))
 #else
 import GHC.Driver.Types as GHC.TypeLits.Presburger.Compat (HscEnv (hsc_dflags))
-import GHC.Driver.Session (unitState)
+import GHC.Driver.Session (unitState, unitDatabases)
 #endif
 import GHC.Plugins (InScopeSet, Outputable, emptyUFM, moduleUnit, Unit, Name)
 #if MIN_VERSION_ghc(9,2,0)
