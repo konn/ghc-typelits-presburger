@@ -77,7 +77,7 @@ jobs:
         ${CABAL} v2-update
     - name: Build
       run: |
-        ${CABAL} v2-build
+        ${CABAL} v2-build all
     - name: Collect binaries
       run: ./ci-scripts/collect-artifacts.sh artifacts
     - name: Upload Artifacts
