@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 2c840bd79b665d1026256ed1e6e27307b0f3901673ec409c682150194d16b9ed
+-- hash: 006457febbf643168a4942cd9c7ac7170a436a67000d6858814a3dc70a4b7633
 
 name:           singletons-presburger
 version:        0.7.2.0
@@ -72,14 +72,7 @@ executable simple-arith
     , singletons
     , singletons-base >=3.0
     , singletons-presburger
+    , singletons-th
   default-language: Haskell2010
-  if impl(ghc >= 9)
-    cpp-options: -DSINGLETONS_BASE
-    build-depends:
-        singletons-base >=3.0
-      , singletons-th
-  else
-    build-depends:
-        singletons
   if !(flag(examples))
     buildable: False

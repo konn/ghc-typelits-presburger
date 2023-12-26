@@ -12,39 +12,38 @@ arithmetic.  The algorithm is based on the following paper:
   by
   Sergey Berezin, Vijay Ganesh, and David L. Dill
 -}
-module Data.Integer.SAT
-  ( PropSet,
-    noProps,
-    checkSat,
-    assert,
-    Prop (..),
-    Expr (..),
-    BoundType (..),
-    getExprBound,
-    getExprRange,
-    Name,
-    toName,
-    fromName,
+module Data.Integer.SAT (
+  PropSet,
+  noProps,
+  checkSat,
+  assert,
+  Prop (..),
+  Expr (..),
+  BoundType (..),
+  getExprBound,
+  getExprRange,
+  Name,
+  toName,
+  fromName,
 
-    -- * Iterators
-    allSolutions,
-    slnCurrent,
-    slnNextVal,
-    slnNextVar,
-    slnEnumerate,
+  -- * Iterators
+  allSolutions,
+  slnCurrent,
+  slnNextVal,
+  slnNextVar,
+  slnEnumerate,
 
-    -- * Debug
-    dotPropSet,
-    sizePropSet,
-    allInerts,
-    ppInerts,
+  -- * Debug
+  dotPropSet,
+  sizePropSet,
+  allInerts,
+  ppInerts,
 
-    -- * For QuickCheck
-    iPickBounded,
-    Bound (..),
-    tConst,
-  )
-where
+  -- * For QuickCheck
+  iPickBounded,
+  Bound (..),
+  tConst,
+) where
 
 import Control.Applicative (Alternative (..), Applicative (..), (<$>))
 import Control.Monad (MonadPlus (..), ap, guard, liftM)
@@ -281,13 +280,13 @@ toCt Upper x (Bound c t) = ctLt (c |*| tVar x) t
 
 -- | The inert contains the solver state on one possible path.
 data Inerts = Inerts
-  { -- | Known lower and upper bounds for variables.
-    -- Each bound @(c,t)@ in the first list asserts that  @t < c * x@
-    -- Each bound @(c,t)@ in the second list asserts that @c * x < t@
-    bounds :: NameMap ([Bound], [Bound])
-  , -- | Definitions for resolved variables.
-    -- These form an idempotent substitution.
-    solved :: NameMap Term
+  { bounds :: NameMap ([Bound], [Bound])
+  -- ^ Known lower and upper bounds for variables.
+  -- Each bound @(c,t)@ in the first list asserts that  @t < c * x@
+  -- Each bound @(c,t)@ in the second list asserts that @c * x < t@
+  , solved :: NameMap Term
+  -- ^ Definitions for resolved variables.
+  -- These form an idempotent substitution.
   }
   deriving (Show)
 
@@ -295,7 +294,7 @@ ppInerts :: Inerts -> Doc
 ppInerts is =
   vcat $
     [ppLower x b | (x, (ls, _)) <- bnds, b <- ls]
-    ++ [ppUpper x b | (x, (_, us)) <- bnds, b <- us]
+      ++ [ppUpper x b | (x, (_, us)) <- bnds, b <- us]
       ++ [ppEq e | e <- Map.toList (solved is)]
   where
     bnds = Map.toList (bounds is)
@@ -442,10 +441,10 @@ slnEnumerate s0 = go s0 []
         Just s2 -> go s2 k
 
     hor s k =
-      s :
-      case slnNextVal s of
-        Nothing -> k
-        Just s1 -> hor s1 k
+      s
+        : case slnNextVal s of
+          Nothing -> k
+          Just s1 -> hor s1 k
 
 slnNextVal :: Solutions -> Maybe Solutions
 slnNextVal Done = Nothing
@@ -500,7 +499,7 @@ iPickBounded bt bs =
     -- <=> x   <= (t-1) `div` c
     normBound Upper (Bound c t) = do
       k <- isConst t
-      return (div (k -1) c)
+      return (div (k - 1) c)
 
 {- | The largest (resp. least) upper (resp. lower) bound on a term
  that will satisfy the model
@@ -542,7 +541,7 @@ iVarBound bt x is =
       Lower -> fst
 
     scaleBound c b = case bt of
-      Upper -> div (b -1) c
+      Upper -> div (b - 1) c
       Lower -> div b c + 1
 
 iModel :: Inerts -> [(Name, Integer)]
@@ -581,29 +580,30 @@ solveIs0' t
   | Just a <- isConst t = guard (a == 0)
   -- A + B * x = 0
   | Just (a, b, x) <- tIsOneVar t =
-    case divMod (- a) b of
-      (q, 0) -> addDef x (tConst q)
-      _ -> mzero
+      case divMod (-a) b of
+        (q, 0) -> addDef x (tConst q)
+        _ -> mzero
   --  x + S = 0
   -- -x + S = 0
   | Just (xc, x, s) <- tGetSimpleCoeff t =
-    addDef x (if xc > 0 then tNeg s else s)
+      addDef x (if xc > 0 then tNeg s else s)
   -- A * S = 0
   | Just (_, s) <- tFactor t = solveIs0 s
   -- See Section 3.1 of paper for details.
   -- We obtain an equivalent formulation but with smaller coefficients.
   | Just (ak, xk, s) <- tLeastAbsCoeff t =
-    do
-      let m = abs ak + 1
-      v <- newVar
-      let sgn = signum ak
-          soln =
-            (negate sgn * m) |*| tVar v
-              |+| tMapCoeff (\c -> sgn * modulus c m) s
-      addDef xk soln
+      do
+        let m = abs ak + 1
+        v <- newVar
+        let sgn = signum ak
+            soln =
+              (negate sgn * m)
+                |*| tVar v
+                |+| tMapCoeff (\c -> sgn * modulus c m) s
+        addDef xk soln
 
-      let upd i = div (2 * i + m) (2 * m) + modulus i m
-      solveIs0 (negate (abs ak) |*| tVar v |+| tMapCoeff upd s)
+        let upd i = div (2 * i + m) (2 * m) + modulus i m
+        solveIs0 (negate (abs ak) |*| tVar v |+| tMapCoeff upd s)
   | otherwise = error "solveIs0: unreachable"
 
 modulus :: Integer -> Integer -> Integer
@@ -623,40 +623,40 @@ solveIsNeg' t
   | Just (_, s) <- tFactor t = solveIsNeg s
   -- See Section 5.1 of the paper
   | Just (xc, x, s) <- tLeastVar t =
-    do
-      ctrs <-
-        if xc < 0
-          then -- -XC*x + S < 0
-          -- S < XC*x
-          do
-            ubs <- getBounds Upper x
-            let b = negate xc
-                beta = s
-            addBound Lower x (Bound b beta)
-            return [(a, alpha, b, beta) | Bound a alpha <- ubs]
-          else -- XC*x + S < 0
-          -- XC*x < -S
-          do
-            lbs <- getBounds Lower x
-            let a = xc
-                alpha = tNeg s
-            addBound Upper x (Bound a alpha)
-            return [(a, alpha, b, beta) | Bound b beta <- lbs]
-
-      -- See Note [Shadows]
-      mapM_
-        ( \(a, alpha, b, beta) ->
+      do
+        ctrs <-
+          if xc < 0
+            then -- -XC*x + S < 0
+            -- S < XC*x
             do
-              let real = ctLt (a |*| beta) (b |*| alpha)
-                  dark = ctLt (tConst (a * b)) (b |*| alpha |-| a |*| beta)
-                  gray =
-                    [ ctEq (b |*| tVar x) (tConst i |+| beta)
-                    | i <- [1 .. b - 1]
-                    ]
-              solveIsNeg real
-              foldl orElse (solveIsNeg dark) (map solveIs0 gray)
-        )
-        ctrs
+              ubs <- getBounds Upper x
+              let b = negate xc
+                  beta = s
+              addBound Lower x (Bound b beta)
+              return [(a, alpha, b, beta) | Bound a alpha <- ubs]
+            else -- XC*x + S < 0
+            -- XC*x < -S
+            do
+              lbs <- getBounds Lower x
+              let a = xc
+                  alpha = tNeg s
+              addBound Upper x (Bound a alpha)
+              return [(a, alpha, b, beta) | Bound b beta <- lbs]
+
+        -- See Note [Shadows]
+        mapM_
+          ( \(a, alpha, b, beta) ->
+              do
+                let real = ctLt (a |*| beta) (b |*| alpha)
+                    dark = ctLt (tConst (a * b)) (b |*| alpha |-| a |*| beta)
+                    gray =
+                      [ ctEq (b |*| tVar x) (tConst i |+| beta)
+                      | i <- [1 .. b - 1]
+                      ]
+                solveIsNeg real
+                foldl orElse (solveIsNeg dark) (map solveIs0 gray)
+          )
+          ctrs
   | otherwise = error "solveIsNeg: unreachable"
 
 orElse :: S () -> S () -> S ()
@@ -712,7 +712,8 @@ dotAnswer :: (a -> Doc) -> Answer a -> Doc
 dotAnswer pp g0 = vcat [text "digraph {", nest 2 (fst $ go 0 g0), text "}"]
   where
     node x d =
-      integer x <+> brackets (text "label=" <> text (show d))
+      integer x
+        <+> brackets (text "label=" <> text (show d))
         <> semi
     edge x y = integer x <+> text "->" <+> integer y
 
@@ -746,9 +747,6 @@ toList a = go a []
     go None xs = xs
 
 instance Monad Answer where
-#if !MIN_VERSION_ghc(8,8,1)
-  fail _             = None
-#endif
   None >>= _ = None
   One a >>= k = k a
   Choice m1 m2 >>= k = mplus (m1 >>= k) (m2 >>= k)

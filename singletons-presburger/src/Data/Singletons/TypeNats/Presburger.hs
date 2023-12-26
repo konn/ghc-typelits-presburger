@@ -10,11 +10,10 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE ViewPatterns #-}
 
-module Data.Singletons.TypeNats.Presburger
-  ( plugin,
-    singletonTranslation,
-  )
-where
+module Data.Singletons.TypeNats.Presburger (
+  plugin,
+  singletonTranslation,
+) where
 
 import Control.Monad
 import Control.Monad.Trans (MonadTrans (lift))
@@ -74,22 +73,12 @@ toTranslation scs@SingletonCons {..} =
       }
 
 singPackage :: FastString
-#if defined(MIN_VERISION_singletons_base)
 singPackage = "singletons-base"
-#else
-singPackage = "singletons"
-#endif
 
 ordModName, numModName, prelInstName :: ModuleName
-#if defined(SINGLETONS_BASE)
 ordModName = mkModuleName "Data.Ord.Singletons"
 numModName = mkModuleName "GHC.Num.Singletons"
 prelInstName = mkModuleName "Data.Singletons.Base.Instances"
-#else
-ordModName = mkModuleName "Data.Singletons.Prelude.Ord"
-numModName = mkModuleName "Data.Singletons.Prelude.Num"
-prelInstName = mkModuleName "Data.Singletons.Prelude.Instances"
-#endif
 
 genSingletonCons :: TcPluginM SingletonCons
 genSingletonCons = do
@@ -99,7 +88,6 @@ genSingletonCons = do
       singletonsNum = mkModule singUnit numModName
   singTrueSym0 <- tcLookupTyCon =<< lookupOrig prel (mkTcOcc "TrueSym0")
   singFalseSym0 <- tcLookupTyCon =<< lookupOrig prel (mkTcOcc "FalseSym0")
-#if MIN_VERSION_singletons(2,4,1)
   singNatLeq <- tcLookupTyCon =<< lookupOrig singletonOrd (mkTcOcc "<=")
   singNatLt <- tcLookupTyCon =<< lookupOrig singletonOrd (mkTcOcc "<")
   singNatGeq <- tcLookupTyCon =<< lookupOrig singletonOrd (mkTcOcc ">=")
@@ -107,15 +95,6 @@ genSingletonCons = do
   singNatPlus <- tcLookupTyCon =<< lookupOrig singletonsNum (mkTcOcc "+")
   singNatTimes <- tcLookupTyCon =<< lookupOrig singletonsNum (mkTcOcc "*")
   singNatMinus <- tcLookupTyCon =<< lookupOrig singletonsNum (mkTcOcc "-")
-#else
-  singNatLeq <- tcLookupTyCon =<< lookupOrig singletonOrd (mkTcOcc ":<=")
-  singNatLt <- tcLookupTyCon =<< lookupOrig singletonOrd (mkTcOcc ":<")
-  singNatGeq <- tcLookupTyCon =<< lookupOrig singletonOrd (mkTcOcc ":>=")
-  singNatGt <- tcLookupTyCon =<< lookupOrig singletonOrd (mkTcOcc ":>")
-  singNatPlus <- tcLookupTyCon =<< lookupOrig singletonsNum (mkTcOcc ":+")
-  singNatTimes <- tcLookupTyCon =<< lookupOrig singletonsNum (mkTcOcc ":*")
-  singNatMinus <- tcLookupTyCon =<< lookupOrig singletonsNum (mkTcOcc ":-")
-#endif
   singMin <- tcLookupTyCon =<< lookupOrig singletonOrd (mkTcOcc "Min")
   singMax <- tcLookupTyCon =<< lookupOrig singletonOrd (mkTcOcc "Max")
   caseNameForSingLeq <- getCaseNameForSingletonBinRel singNatLeq
@@ -163,14 +142,14 @@ parseSingExpr ::
   Machine Expr
 parseSingExpr toE ty
   | Just (con, [_, l, r, _]) <- splitTyConApp_maybe ty
-    , Just bin <- lookup con minLikeCaseDic = do
-    lift $ lift $ tcPluginTrace "hit!" $ ppr (ty, con)
-    bin <$> toE l <*> toE r
+  , Just bin <- lookup con minLikeCaseDic = do
+      lift $ lift $ tcPluginTrace "hit!" $ ppr (ty, con)
+      bin <$> toE l <*> toE r
   | otherwise = do
-    lift $ lift $ tcPluginTrace "I don't know how to read:" $ ppr (ty, splitTyConApp_maybe ty)
-    mzero
+      lift $ lift $ tcPluginTrace "I don't know how to read:" $ ppr (ty, splitTyConApp_maybe ty)
+      mzero
 
-minLikeCaseDic :: Given SingletonCons => [(TyCon, Expr -> Expr -> Expr)]
+minLikeCaseDic :: (Given SingletonCons) => [(TyCon, Expr -> Expr -> Expr)]
 minLikeCaseDic =
   [ (caseNameForMin given, Min)
   , (caseNameForMax given, Max)
@@ -184,15 +163,15 @@ parseSingPred ::
 parseSingPred toExp ty
   | isEqPred ty = parseSingPredTree toExp $ classifyPredType ty
   | Just (con, [_, _, _, _, cmpTy]) <- splitTyConApp_maybe ty
-    , Just bin <- lookup con compCaseDic
-    , Just (cmp, lastTwo -> [l, r]) <- splitTyConApp_maybe cmpTy
-    , cmp `elem` [singNatCompare given, typeNatCmpTyCon] =
-    bin <$> toExp l <*> toExp r
+  , Just bin <- lookup con compCaseDic
+  , Just (cmp, lastTwo -> [l, r]) <- splitTyConApp_maybe cmpTy
+  , cmp `elem` [singNatCompare given, typeNatCmpTyCon] =
+      bin <$> toExp l <*> toExp r
   | otherwise = do
-    lift $ lift $ tcPluginTrace "pres: Miokuring" (ppr ty)
-    mzero
+      lift $ lift $ tcPluginTrace "pres: Miokuring" (ppr ty)
+      mzero
 
-compCaseDic :: Given SingletonCons => [(TyCon, Expr -> Expr -> Prop)]
+compCaseDic :: (Given SingletonCons) => [(TyCon, Expr -> Expr -> Prop)]
 compCaseDic =
   [ (caseNameForSingLeq given, (:<=))
   , (caseNameForSingLt given, (:<))
@@ -201,21 +180,21 @@ compCaseDic =
   ]
 
 parseSingPredTree ::
-  Given SingletonCons =>
+  (Given SingletonCons) =>
   (Type -> Machine Expr) ->
   PredTree ->
   Machine Prop
 parseSingPredTree toExp (EqPred NomEq p b) -- (n :<=? m) ~ 'True
   | Just promotedTrueDataCon == tyConAppTyCon_maybe b -- Singleton's <=...
-    , Just (con, [_, _, _, _, cmpTy]) <- splitTyConApp_maybe p
-    , Just bin <- lookup con compCaseDic
-    , Just (cmp, lastTwo -> [l, r]) <- splitTyConApp_maybe cmpTy
-    , cmp `elem` [singNatCompare given, typeNatCmpTyCon] =
-    bin <$> toExp l <*> toExp r
+  , Just (con, [_, _, _, _, cmpTy]) <- splitTyConApp_maybe p
+  , Just bin <- lookup con compCaseDic
+  , Just (cmp, lastTwo -> [l, r]) <- splitTyConApp_maybe cmpTy
+  , cmp `elem` [singNatCompare given, typeNatCmpTyCon] =
+      bin <$> toExp l <*> toExp r
   | Just promotedFalseDataCon == tyConAppTyCon_maybe b -- Singleton's <=...
-    , Just (con, [_, _, _, _, cmpTy]) <- splitTyConApp_maybe p
-    , Just bin <- lookup con compCaseDic
-    , Just (cmp, lastTwo -> [l, r]) <- splitTyConApp_maybe cmpTy
-    , cmp `elem` [singNatCompare given, typeNatCmpTyCon] =
-    fmap Not . bin <$> toExp l <*> toExp r
+  , Just (con, [_, _, _, _, cmpTy]) <- splitTyConApp_maybe p
+  , Just bin <- lookup con compCaseDic
+  , Just (cmp, lastTwo -> [l, r]) <- splitTyConApp_maybe cmpTy
+  , cmp `elem` [singNatCompare given, typeNatCmpTyCon] =
+      fmap Not . bin <$> toExp l <*> toExp r
 parseSingPredTree _ _ = mzero

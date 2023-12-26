@@ -8,19 +8,17 @@
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TypeInType #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE NoStarIsType #-}
+{-# LANGUAGE NoStarIsType #-}
+{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE ViewPatterns #-}
 {-# OPTIONS_GHC -dcore-lint #-}
 {-# OPTIONS_GHC -fplugin GHC.TypeLits.Presburger #-}
 {-# OPTIONS_GHC -ddump-tc-trace -ddump-to-file #-}
 
-#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 806
-{-# LANGUAGE NoStarIsType #-}
-{-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE ViewPatterns #-}
-#endif
 
 module Main where
 
@@ -74,10 +72,8 @@ minusLeq _ _ = Witness
 absurdTrueFalse :: ( 'True :~: 'False) -> a
 absurdTrueFalse = \case {}
 
-#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ > 802
 hoge :: proxy n -> IsTrue (n + 1 <=? n) -> a
 hoge _ Witness = absurdTrueFalse Refl
-#endif
 
 bar :: (2 * (n + 1)) ~ (2 * n + 2) => proxy n -> ()
 bar _ = ()

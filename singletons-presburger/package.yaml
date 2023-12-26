@@ -49,17 +49,9 @@ executables:
       - base
       - singletons-presburger
       - equational-reasoning
+      - singletons-base >= 3.0
+      - singletons-th
     when:
-    - condition: impl(ghc >= 9)
-      then:
-        dependencies:
-        - singletons-base >= 3.0
-        - singletons-th
-        cpp-options:
-        - -DSINGLETONS_BASE
-      else:
-        dependencies:
-        - singletons
     - condition: ! "!(flag(examples))"
       buildable: false
 flags:

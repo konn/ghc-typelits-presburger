@@ -732,15 +732,7 @@ lastN n = drop <$> subtract n . length <*> id
 
 simpleExp :: Given Translation => Type -> Type
 simpleExp (AppTy t1 t2) = AppTy (simpleExp t1) (simpleExp t2)
-#if MIN_VERSION_ghc(9,0,0)
 simpleExp (FunTy f m t1 t2) = FunTy f m (simpleExp t1) (simpleExp t2)
-#else
-#if MIN_VERSION_ghc(8,10,1)
-simpleExp (FunTy f t1 t2) = FunTy f (simpleExp t1) (simpleExp t2)
-#else
-simpleExp (FunTy t1 t2) = FunTy (simpleExp t1) (simpleExp t2)
-#endif
-#endif 
 simpleExp (ForAllTy t1 t2) = ForAllTy t1 (simpleExp t2)
 simpleExp (TyConApp tc (lastTwo -> ts)) =
   fromMaybe (TyConApp tc (map simpleExp ts)) $
@@ -774,14 +766,6 @@ runMachine act = do
     loc <- unsafeTcPluginTcM $ getCtLocM (Shouldn'tHappenOrigin "runMachine dummy wanted") Nothing
     newWanted loc $ mkPrimEqPredRole Nominal (mkTyVarTy var) ty
   return ma
-  where
-    noCtLoc env =
-      CtLoc
-        { ctl_t_or_k = Nothing
-        , ctl_depth = initialSubGoalDepth
-        , ctl_origin = Shouldn'tHappenOrigin "runMachine dummy wanted"
-        , ctl_env = env
-        }
 
 toVar :: Type -> Machine TyVar
 toVar ty =
