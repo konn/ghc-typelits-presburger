@@ -770,9 +770,9 @@ type Machine = MaybeT (StateT ParseEnv TcPluginM)
 runMachine :: Machine a -> TcPluginM (Maybe a)
 runMachine act = do
   (ma, dic) <- runStateT (runMaybeT act) M.empty
-  env <- unsafeTcPluginTcM getLclEnv
-  forM_ (M.toList dic) $ \(TypeEq ty, var) ->
-    newWanted (noCtLoc env) $ mkPrimEqPredRole Nominal (mkTyVarTy var) ty
+  forM_ (M.toList dic) $ \(TypeEq ty, var) -> do
+    loc <- unsafeTcPluginTcM $ getCtLocM (Shouldn'tHappenOrigin "runMachine dummy wanted") Nothing
+    newWanted loc $ mkPrimEqPredRole Nominal (mkTyVarTy var) ty
   return ma
   where
     noCtLoc env =

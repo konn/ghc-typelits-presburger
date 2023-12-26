@@ -149,7 +149,8 @@ import GHC.Tc.Types.Constraint as GHC.TypeLits.Presburger.Compat
     isWanted,
   )
 import GHC.Tc.Types.Evidence as GHC.TypeLits.Presburger.Compat (EvTerm)
-import GHC.Tc.Utils.Monad as GHC.TypeLits.Presburger.Compat (getLclEnv, unsafeTcPluginTcM)
+import GHC.Tc.Utils.Monad as GHC.TypeLits.Presburger.Compat (getCtLocM, unsafeTcPluginTcM)
+
 import GHC.Tc.Utils.TcType (TcTyVar, TcType)
 import GHC.Tc.Utils.TcType as GHC.TypeLits.Presburger.Compat (tcTyFamInsts)
 import qualified GHC.TcPluginM.Extra as Extra
