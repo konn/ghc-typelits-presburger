@@ -1,5 +1,5 @@
 name: ghc-typelits-presburger
-version: "0.7.2.0"
+version: "0.7.3.0"
 synopsis: Presburger Arithmetic Solver for GHC Type-level natural numbers.
 description: |
   @ghc-typelits-presburger@ augments GHC type-system with Presburger
