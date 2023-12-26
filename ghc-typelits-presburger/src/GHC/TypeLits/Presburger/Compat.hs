@@ -13,6 +13,8 @@ import Data.Coerce (coerce)
 #if MIN_VERSION_ghc(9,0,0)
 import Data.Functor ((<&>))
 import GHC.Builtin.Names as GHC.TypeLits.Presburger.Compat (gHC_TYPENATS)
+import GHC.Tc.Types.Constraint as GHC.TypeLits.Presburger.Compat (CtLoc(..), initialSubGoalDepth)
+import GHC.Tc.Types.Origin as GHC.TypeLits.Presburger.Compat (CtOrigin(..))
 #if MIN_VERSION_ghc(9,4,1)
 import GHC.Tc.Types as GHC.TypeLits.Presburger.Compat (TcPlugin (..), TcPluginSolveResult (..))
 import GHC.Builtin.Types as GHC.TypeLits.Presburger.Compat (cTupleTyCon, cTupleDataCon)
@@ -147,6 +149,7 @@ import GHC.Tc.Types.Constraint as GHC.TypeLits.Presburger.Compat
     isWanted,
   )
 import GHC.Tc.Types.Evidence as GHC.TypeLits.Presburger.Compat (EvTerm)
+import GHC.Tc.Utils.Monad as GHC.TypeLits.Presburger.Compat (getLclEnv, unsafeTcPluginTcM)
 import GHC.Tc.Utils.TcType (TcTyVar, TcType)
 import GHC.Tc.Utils.TcType as GHC.TypeLits.Presburger.Compat (tcTyFamInsts)
 import qualified GHC.TcPluginM.Extra as Extra

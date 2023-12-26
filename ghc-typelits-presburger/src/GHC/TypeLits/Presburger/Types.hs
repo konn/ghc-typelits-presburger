@@ -18,6 +18,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# OPTIONS_GHC -Wno-partial-type-signatures #-}
+
 -- | Since 0.3.0.0
 module GHC.TypeLits.Presburger.Types
   ( pluginWith,
@@ -106,9 +107,7 @@ pluginWith :: TcPluginM Translation -> Plugin
 pluginWith trans =
   defaultPlugin
     { tcPlugin = Just . presburgerPlugin trans . procOpts
-#if MIN_VERSION_ghc(8,6,0)
     , pluginRecompile = purePlugin
-#endif
     }
   where
     procOpts opts
@@ -767,12 +766,22 @@ type ParseEnv = M.Map TypeEq TyVar
 
 type Machine = MaybeT (StateT ParseEnv TcPluginM)
 
+
 runMachine :: Machine a -> TcPluginM (Maybe a)
 runMachine act = do
   (ma, dic) <- runStateT (runMaybeT act) M.empty
+  env <- unsafeTcPluginTcM getLclEnv
   forM_ (M.toList dic) $ \(TypeEq ty, var) ->
-    newWanted undefined $ mkPrimEqPredRole Nominal (mkTyVarTy var) ty
+    newWanted (noCtLoc env) $ mkPrimEqPredRole Nominal (mkTyVarTy var) ty
   return ma
+  where
+    noCtLoc env =
+      CtLoc
+        { ctl_t_or_k = Nothing
+        , ctl_depth = initialSubGoalDepth
+        , ctl_origin = Shouldn'tHappenOrigin "runMachine dummy wanted"
+        , ctl_env = env
+        }
 
 toVar :: Type -> Machine TyVar
 toVar ty =
