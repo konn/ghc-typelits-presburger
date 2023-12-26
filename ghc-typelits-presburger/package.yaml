@@ -1,5 +1,5 @@
 name: ghc-typelits-presburger
-version: "0.7.2.0"
+version: "0.7.3.0"
 synopsis: Presburger Arithmetic Solver for GHC Type-level natural numbers.
 description: |
   @ghc-typelits-presburger@ augments GHC type-system with Presburger
@@ -22,7 +22,7 @@ maintainer: konn.jinro _at_ gmail.com
 copyright: 2015 (c) Hiromi ISHII
 license: BSD3
 github: konn/ghc-typelits-presburger
-tested-with: GHC==8.6.5 GHC==8.8.4 GHC==8.10.7 GHC==9.0.2 GHC==9.2.7 GHC==9.4.4 GHC==9.6.1
+tested-with: GHC==9.0.2 GHC==9.2.7 GHC==9.4.4 GHC==9.6.3 GHC==9.8.1
 ghc-options:
   - -Wall
   - -Wno-dodgy-imports
@@ -46,7 +46,7 @@ library:
     - reflection
     - syb
     - transformers
-    - ghc < 9.7
+    - ghc < 9.9
 
 executables:
   simple-arith-core:

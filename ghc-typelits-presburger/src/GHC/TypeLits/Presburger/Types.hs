@@ -18,6 +18,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# OPTIONS_GHC -Wno-partial-type-signatures #-}
+
 -- | Since 0.3.0.0
 module GHC.TypeLits.Presburger.Types
   ( pluginWith,
@@ -106,9 +107,7 @@ pluginWith :: TcPluginM Translation -> Plugin
 pluginWith trans =
   defaultPlugin
     { tcPlugin = Just . presburgerPlugin trans . procOpts
-#if MIN_VERSION_ghc(8,6,0)
     , pluginRecompile = purePlugin
-#endif
     }
   where
     procOpts opts
@@ -733,15 +732,7 @@ lastN n = drop <$> subtract n . length <*> id
 
 simpleExp :: Given Translation => Type -> Type
 simpleExp (AppTy t1 t2) = AppTy (simpleExp t1) (simpleExp t2)
-#if MIN_VERSION_ghc(9,0,0)
 simpleExp (FunTy f m t1 t2) = FunTy f m (simpleExp t1) (simpleExp t2)
-#else
-#if MIN_VERSION_ghc(8,10,1)
-simpleExp (FunTy f t1 t2) = FunTy f (simpleExp t1) (simpleExp t2)
-#else
-simpleExp (FunTy t1 t2) = FunTy (simpleExp t1) (simpleExp t2)
-#endif
-#endif 
 simpleExp (ForAllTy t1 t2) = ForAllTy t1 (simpleExp t2)
 simpleExp (TyConApp tc (lastTwo -> ts)) =
   fromMaybe (TyConApp tc (map simpleExp ts)) $
@@ -767,11 +758,13 @@ type ParseEnv = M.Map TypeEq TyVar
 
 type Machine = MaybeT (StateT ParseEnv TcPluginM)
 
+
 runMachine :: Machine a -> TcPluginM (Maybe a)
 runMachine act = do
   (ma, dic) <- runStateT (runMaybeT act) M.empty
-  forM_ (M.toList dic) $ \(TypeEq ty, var) ->
-    newWanted undefined $ mkPrimEqPredRole Nominal (mkTyVarTy var) ty
+  forM_ (M.toList dic) $ \(TypeEq ty, var) -> do
+    loc <- unsafeTcPluginTcM $ getCtLocM (Shouldn'tHappenOrigin "runMachine dummy wanted") Nothing
+    newWanted loc $ mkPrimEqPredRole Nominal (mkTyVarTy var) ty
   return ma
 
 toVar :: Type -> Machine TyVar
