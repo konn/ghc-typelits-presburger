@@ -20,7 +20,6 @@ import GHC.Builtin.Names (gHC_INTERNAL_TYPENATS, gHC_INTERNAL_TYPEERROR)
 import GHC.Builtin.Names (mkGhcInternalModule)
 #else
 import GHC.Builtin.Names (gHC_TYPENATS, gHC_TYPEERROR)
-import GHC.Builtin.Names (dATA_TYPE_EQUALITY)
 #endif
 import GHC.Tc.Types.Constraint as GHC.TypeLits.Presburger.Compat (CtLoc (..), initialSubGoalDepth)
 import GHC.Tc.Types.Origin as GHC.TypeLits.Presburger.Compat (CtOrigin (..))
