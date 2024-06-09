@@ -184,14 +184,12 @@ import GHC.Utils.Outputable as GHC.TypeLits.Presburger.Compat (showSDocUnsafe)
 type TcPluginSolveResult = TcPluginResult
 #endif
 
-#if MIN_VERSION_ghc(9,4,1)
 #if MIN_VERSION_ghc(9,10,1)
 dATA_TYPE_EQUALITY :: Module
 dATA_TYPE_EQUALITY = mkGhcInternalModule "GHC.Internal.Data.Type.Equality"
 #else
 dATA_TYPE_EQUALITY :: Module
 dATA_TYPE_EQUALITY = mkBaseModule "Data.Type.Equality"
-#endif
 #endif
 
 #if MIN_VERSION_ghc(9,10,1)
