@@ -523,7 +523,10 @@ getKey = Unique.getKey
 getVoidTyCon :: TcPluginM TyCon
 getVoidTyCon = tcLookupTyCon =<< lookupOrig aMod (mkTcOcc "Void")
   where 
-    aMod
-      | ghcVer >= GHC910 = mkGhcInternalModule "GHC.Internal.Base"
-      | ghcVer >= GHC906 = mkBaseModule "GHC.Base"
-      | otherwise = mkBaseModule "Data.Void"
+#if MIN_VERSION_ghc(9,10,1)
+    aMod = mkGhcInternalModule "GHC.Internal.Base"
+#elif MIN_VERSION_ghc(9,6,1)
+    aMod = mkBaseModule "GHC.Base"
+#else
+    aMod = mkBaseModule "Data.Void"
+#endif
