@@ -24,6 +24,7 @@ test_recursiveContradiction =
               [ "Could not deduce: (n GHC.TypeNats.+ 1) ~ n"
               , "Could not deduce ((n GHC.TypeNats.+ 1) ~ n)"
               , "Could not deduce ‘(n GHC.TypeNats.+ 1) ~ n’"
+              , "[GHC-25897]"
               ]
               -> pure ()
           _ -> assertFailure $ "TypeError with mismatch expected, but got: " <> show eith
@@ -35,6 +36,7 @@ test_recursiveContradiction =
               [ "Could not deduce: (n GHC.TypeNats.+ 1) ~ n"
               , "Could not deduce ((n GHC.TypeNats.+ 1) ~ n)"
               , "Could not deduce ‘(n GHC.TypeNats.+ 1) ~ n’"
+              , "[GHC-25897]"
               ] -> pure ()
           _ -> assertFailure $ "TypeError with mismatch expected, but got: " <> show eith
     ]
