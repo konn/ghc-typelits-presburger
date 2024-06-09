@@ -392,14 +392,10 @@ defaultTranslation = do
         pure ([], [])
 
   eqTyCon_ <- getEqTyCon
-  eqBoolTyCon <- tcLookupTyCon =<< lookupOrig dATA_TYPE_EQUALITY (mkTcOcc "==")
+  eqBoolTyCon <- getEqBoolTyCon
   eqWitCon_ <- getEqWitnessTyCon
   assertTy <- lookupAssertTyCon
-  vmd <- 
-    if ghcVer >= GHC906
-    then lookupModule (mkModuleName "GHC.Base") (fsLit "base")
-    else lookupModule (mkModuleName "Data.Void") (fsLit "base")
-  voidTyCon <- tcLookupTyCon =<< lookupOrig vmd (mkTcOcc "Void")
+  voidTyCon <- getVoidTyCon
   nLeq <- tcLookupTyCon =<< lookupTyNatPredLeq
   tyLeqB <- lookupTyNatBoolLeq
   mTyLtP <- lookupTyNatPredLt
