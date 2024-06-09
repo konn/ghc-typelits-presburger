@@ -20,7 +20,10 @@ import GHC.Types.Unique as GHC.TypeLits.Presburger.Compat (Unique, getUnique)
 import GHC.Builtin.Names (gHC_INTERNAL_TYPENATS, gHC_INTERNAL_TYPEERROR)
 import GHC.Builtin.Names (mkGhcInternalModule)
 #else
+import GHC.Builtin.Names (gHC_TYPENATS)
+#if MIN_VERSION_ghc(9,4,1)
 import GHC.Builtin.Names (gHC_TYPENATS, gHC_TYPEERROR)
+#endif
 #endif
 import GHC.Tc.Types.Constraint as GHC.TypeLits.Presburger.Compat (CtLoc (..), initialSubGoalDepth)
 import GHC.Tc.Types.Origin as GHC.TypeLits.Presburger.Compat (CtOrigin (..))
@@ -196,6 +199,9 @@ gHC_TYPEERROR = gHC_INTERNAL_TYPEERROR
 
 gHC_TYPENATS :: Module
 gHC_TYPENATS =  gHC_INTERNAL_TYPENATS
+#elif !MIN_VERSION_ghc(9,4,1)
+gHC_TYPEERROR :: Module
+gHC_TYPEERROR = mkBaseModule "GHC.TypeLits"
 #endif
 
 
