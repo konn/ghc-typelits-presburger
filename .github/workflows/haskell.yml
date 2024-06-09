@@ -33,9 +33,6 @@ jobs:
       fail-fast: false
       matrix:
         include: ${{fromJSON(needs.enumerate.outputs.configs)}}
-        exclude: 
-        - ghc: 9.0.2
-          os: macOS
     runs-on: ${{matrix.os}}-latest
     name: Haskell GHC ${{ matrix.ghc }} Build (${{matrix.os}})
     env:
