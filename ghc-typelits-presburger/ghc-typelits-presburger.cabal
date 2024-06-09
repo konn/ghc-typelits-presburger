@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.35.2.
+-- This file has been generated from package.yaml by hpack version 0.36.0.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 979226dcc13643574c669d5607b3d16d2cb873154282a49ef47bfd9c8b52c073
+-- hash: d6be5901fd140e576739f3ad7b4d3c54eac77a725e315e9415c66d88da284b62
 
 name:          ghc-typelits-presburger
 version:       0.7.3.0
@@ -59,7 +59,7 @@ library
   build-depends:
       base >=4.7 && <5
     , containers
-    , ghc <9.9
+    , ghc <9.11
     , ghc-tcplugins-extra >=0.2 && <0.5
     , mtl
     , pretty

@@ -13,7 +13,15 @@ import Data.Coerce (coerce)
 import Data.Function (on)
 import Data.Functor ((<&>))
 import Data.Generics.Twins
-import GHC.Builtin.Names as GHC.TypeLits.Presburger.Compat (gHC_TYPENATS)
+import qualified GHC.Types.Unique as Unique (getKey, Unique)
+import GHC.Types.Unique as GHC.TypeLits.Presburger.Compat (Unique, getUnique)
+#if MIN_VERSION_ghc(9,10,1)
+import GHC.Builtin.Names (gHC_INTERNAL_TYPENATS, gHC_INTERNAL_TYPEERROR)
+import GHC.Builtin.Names (mkGhcInternalModule)
+#else
+import GHC.Builtin.Names (gHC_TYPENATS, gHC_TYPEERROR)
+import GHC.Builtin.Names (dATA_TYPE_EQUALITY)
+#endif
 import GHC.Tc.Types.Constraint as GHC.TypeLits.Presburger.Compat (CtLoc (..), initialSubGoalDepth)
 import GHC.Tc.Types.Origin as GHC.TypeLits.Presburger.Compat (CtOrigin (..))
 import GHC.TcPluginM.Extra as GHC.TypeLits.Presburger.Compat (
@@ -33,10 +41,9 @@ import GHC.Core.DataCon as GHC.TypeLits.Presburger.Compat (dataConWrapId)
 import GHC.Tc.Types as GHC.TypeLits.Presburger.Compat (TcPlugin (..), TcPluginResult (..))
 #endif
 #if MIN_VERSION_ghc(9,4,1)
-import GHC.Builtin.Names as GHC.TypeLits.Presburger.Compat (mkBaseModule, gHC_TYPEERROR)
+import GHC.Builtin.Names as GHC.TypeLits.Presburger.Compat (mkBaseModule)
 import GHC.Core.Reduction (reductionReducedType)
 #else
-import GHC.Builtin.Names as GHC.TypeLits.Presburger.Compat (dATA_TYPE_EQUALITY)
 import qualified GHC.Builtin.Names as Old
 #endif
 import GHC.Builtin.Types as GHC.TypeLits.Presburger.Compat (
@@ -163,7 +170,6 @@ import GHC.Tc.Utils.TcType (TcTyVar, TcType)
 import GHC.Tc.Utils.TcType as GHC.TypeLits.Presburger.Compat (tcTyFamInsts)
 import qualified GHC.TcPluginM.Extra as Extra
 import GHC.Types.Name.Occurrence as GHC.TypeLits.Presburger.Compat (emptyOccSet, mkInstTyTcOcc)
-import GHC.Types.Unique as GHC.TypeLits.Presburger.Compat (getKey, getUnique)
 import GHC.Unit.Module as GHC.TypeLits.Presburger.Compat (ModuleName, mkModuleName)
 import GHC.Unit.State (UnitState (preloadUnits), initUnits)
 import GHC.Unit.State as GHC.TypeLits.Presburger.Compat (lookupPackageName)
@@ -175,9 +181,23 @@ type TcPluginSolveResult = TcPluginResult
 #endif
 
 #if MIN_VERSION_ghc(9,4,1)
+#if MIN_VERSION_ghc(9,10,1)
+dATA_TYPE_EQUALITY :: Module
+dATA_TYPE_EQUALITY = mkGhcInternalModule "GHC.Internal.Data.Type.Equality"
+#else
 dATA_TYPE_EQUALITY :: Module
 dATA_TYPE_EQUALITY = mkBaseModule "Data.Type.Equality"
 #endif
+#endif
+
+#if MIN_VERSION_ghc(9,10,1)
+gHC_TYPEERROR :: Module
+gHC_TYPEERROR = gHC_INTERNAL_TYPEERROR
+
+gHC_TYPENATS :: Module
+gHC_TYPENATS =  gHC_INTERNAL_TYPENATS
+#endif
+
 
 type PredTree = Pred
 
@@ -242,8 +262,11 @@ getEqTyCon =
 
 getEqWitnessTyCon :: TcPluginM TyCon
 getEqWitnessTyCon = do
-  md <- lookupModule (mkModuleName "Data.Type.Equality") (fsLit "base")
-  tcLookupTyCon =<< lookupOrig md (mkTcOcc ":~:")
+  tcLookupTyCon =<< lookupOrig dATA_TYPE_EQUALITY (mkTcOcc ":~:")
+
+getEqBoolTyCon :: TcPluginM TyCon
+getEqBoolTyCon = do
+  tcLookupTyCon =<< lookupOrig dATA_TYPE_EQUALITY (mkTcOcc "==")
 
 decompFunTy :: Type -> [Type]
 decompFunTy (FunTy _ _ t1 t2) = t1 : decompFunTy t2
@@ -368,11 +391,16 @@ mtypeNatLeqTyCon = Nothing
 mtypeNatLeqTyCon = Just typeNatLeqTyCon
 #endif
 
+dATA_TYPE_ORD :: Module
+#if MIN_VERSION_ghc(9,10,0)
+dATA_TYPE_ORD = mkGhcInternalModule "GHC.Internal.Data.Type.Ord"
+#else
+dATA_TYPE_ORD = mkBaseModule "Data.Type.Ord"
+#endif
+
 lookupTyNatPredLeq :: TcPluginM Name
 #if MIN_VERSION_ghc(9,2,0)
-lookupTyNatPredLeq = do
-  tyOrd <- lookupModule (mkModuleName "Data.Type.Ord") "base"
-  lookupOrig tyOrd (mkTcOcc "<=")
+lookupTyNatPredLeq = lookupOrig dATA_TYPE_ORD (mkTcOcc "<=")
 #else
 lookupTyNatPredLeq = 
   lookupOrig gHC_TYPENATS (mkTcOcc "<=")
@@ -380,9 +408,7 @@ lookupTyNatPredLeq =
 
 lookupTyNatBoolLeq :: TcPluginM TyCon
 #if MIN_VERSION_ghc(9,2,0)
-lookupTyNatBoolLeq = do
-  tyOrd <- lookupModule (mkModuleName "Data.Type.Ord") "base"
-  tcLookupTyCon =<< lookupOrig tyOrd (mkTcOcc "<=?")
+lookupTyNatBoolLeq = tcLookupTyCon =<< lookupOrig dATA_TYPE_ORD (mkTcOcc "<=?")
 #else
 lookupTyNatBoolLeq = 
   pure typeNatLeqTyCon
@@ -402,8 +428,7 @@ lookupTyNatPredLt :: TcPluginM (Maybe TyCon)
 -- hence we MUST NOT desugar it with <= 9.2.1
 #if MIN_VERSION_ghc(9,2,2)
 lookupTyNatPredLt = Just <$> do
-  tyOrd <- lookupModule (mkModuleName "Data.Type.Ord") "base"
-  tcLookupTyCon =<< lookupOrig tyOrd (mkTcOcc "<")
+  tcLookupTyCon =<< lookupOrig dATA_TYPE_ORD (mkTcOcc "<")
 #else
 lookupTyNatPredLt = pure Nothing
 #endif
@@ -411,8 +436,7 @@ lookupTyNatPredLt = pure Nothing
 lookupTyNatBoolLt :: TcPluginM (Maybe TyCon)
 #if MIN_VERSION_ghc(9,2,0)
 lookupTyNatBoolLt = Just <$> do
-  tyOrd <- lookupModule (mkModuleName "Data.Type.Ord") "base"
-  tcLookupTyCon =<< lookupOrig tyOrd (mkTcOcc "<?")
+  tcLookupTyCon =<< lookupOrig dATA_TYPE_ORD (mkTcOcc "<?")
 #else
 lookupTyNatBoolLt = pure Nothing
 #endif
@@ -420,8 +444,7 @@ lookupTyNatBoolLt = pure Nothing
 lookupTyNatPredGt :: TcPluginM (Maybe TyCon)
 #if MIN_VERSION_ghc(9,2,0)
 lookupTyNatPredGt = Just <$> do
-  tyOrd <- lookupModule (mkModuleName "Data.Type.Ord") "base"
-  tcLookupTyCon =<< lookupOrig tyOrd (mkTcOcc ">")
+  tcLookupTyCon =<< lookupOrig dATA_TYPE_ORD (mkTcOcc ">")
 #else
 lookupTyNatPredGt = pure Nothing
 #endif
@@ -429,8 +452,7 @@ lookupTyNatPredGt = pure Nothing
 lookupTyNatBoolGt :: TcPluginM (Maybe TyCon)
 #if MIN_VERSION_ghc(9,2,0)
 lookupTyNatBoolGt = Just <$> do
-  tyOrd <- lookupModule (mkModuleName "Data.Type.Ord") "base"
-  tcLookupTyCon =<< lookupOrig tyOrd (mkTcOcc ">?")
+  tcLookupTyCon =<< lookupOrig dATA_TYPE_ORD (mkTcOcc ">?")
 #else
 lookupTyNatBoolGt = pure Nothing
 #endif
@@ -438,8 +460,7 @@ lookupTyNatBoolGt = pure Nothing
 lookupTyNatPredGeq :: TcPluginM (Maybe TyCon)
 #if MIN_VERSION_ghc(9,2,0)
 lookupTyNatPredGeq = Just <$> do
-  tyOrd <- lookupModule (mkModuleName "Data.Type.Ord") "base"
-  tcLookupTyCon =<< lookupOrig tyOrd (mkTcOcc ">=")
+  tcLookupTyCon =<< lookupOrig dATA_TYPE_ORD (mkTcOcc ">=")
 #else
 lookupTyNatPredGeq = pure Nothing
 #endif
@@ -447,8 +468,7 @@ lookupTyNatPredGeq = pure Nothing
 lookupTyNatBoolGeq :: TcPluginM (Maybe TyCon)
 #if MIN_VERSION_ghc(9,2,0)
 lookupTyNatBoolGeq = Just <$> do
-  tyOrd <- lookupModule (mkModuleName "Data.Type.Ord") "base"
-  tcLookupTyCon =<< lookupOrig tyOrd (mkTcOcc ">=?")
+  tcLookupTyCon =<< lookupOrig dATA_TYPE_ORD (mkTcOcc ">=?")
 #else
 lookupTyNatBoolGeq = pure Nothing
 #endif
@@ -456,8 +476,7 @@ lookupTyNatBoolGeq = pure Nothing
 mOrdCondTyCon :: TcPluginM (Maybe TyCon)
 #if MIN_VERSION_ghc(9,2,0)
 mOrdCondTyCon = Just <$> do
-  tyOrd <- lookupModule (mkModuleName "Data.Type.Ord") "base"
-  tcLookupTyCon =<< lookupOrig tyOrd (mkTcOcc "OrdCond")
+  tcLookupTyCon =<< lookupOrig dATA_TYPE_ORD (mkTcOcc "OrdCond")
 #else
 mOrdCondTyCon = pure Nothing
 #endif
@@ -465,14 +484,16 @@ mOrdCondTyCon = pure Nothing
 lookupTyGenericCompare :: TcPluginM (Maybe TyCon)
 #if MIN_VERSION_ghc(9,2,0)
 lookupTyGenericCompare = Just <$> do
-  tyOrd <- lookupModule (mkModuleName "Data.Type.Ord") "base"
-  tcLookupTyCon =<< lookupOrig tyOrd (mkTcOcc "Compare")
+  tcLookupTyCon =<< lookupOrig dATA_TYPE_ORD (mkTcOcc "Compare")
 #else
 lookupTyGenericCompare = pure Nothing
 #endif
 
 lookupBool47 :: String -> TcPluginM (Maybe TyCon)
-#if MIN_VERSION_base(4,17,0)
+#if MIN_VERSION_ghc(9,10,0)
+lookupBool47 nam = Just <$> do
+  tcLookupTyCon =<< lookupOrig (mkGhcInternalModule "GHC.Internal.Data.Type.Bool") (mkTcOcc nam)
+#elif MIN_VERSION_base(4,17,0)
 lookupBool47 nam = Just <$> do
   tcLookupTyCon =<< lookupOrig (mkBaseModule "Data.Type.Bool") (mkTcOcc nam)
 #else
@@ -491,3 +512,18 @@ matchFam' con args = fmap reductionReducedType <$> matchFam con args
 #else
 matchFam' con args = fmap snd <$> matchFam con args 
 #endif
+
+getKey :: Unique.Unique -> Int
+#if MIN_VERSION_ghc(9,10,1)
+getKey = fromIntegral . Unique.getKey
+#else
+getKey = Unique.getKey
+#endif
+
+getVoidTyCon :: TcPluginM TyCon
+#if MIN_VERSION_ghc(9,10,1)
+getVoidTyCon = tcLookupTyCon =<< lookupOrig (mkGhcInternalModule "GHC.Internal.Base") (mkTcOcc "Void")
+#else
+getVoidTyCon = tcLookupTyCon =<< lookupOrig (mkBaseModule "Data.Void") (mkTcOcc "Void")
+#endif
+
