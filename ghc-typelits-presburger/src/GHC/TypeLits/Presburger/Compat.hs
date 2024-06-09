@@ -74,6 +74,7 @@ import GHC.Unit.Types (Module, UnitId, toUnitId)
 import GHC.Unit.Types as GHC.TypeLits.Presburger.Compat (mkModule)
 #if MIN_VERSION_ghc(9,2,0)
 import GHC.Driver.Env.Types as GHC.TypeLits.Presburger.Compat (HscEnv (hsc_dflags))
+import GHC.Builtin.Names (mkBaseModule)
 #else
 import GHC.Driver.Types as GHC.TypeLits.Presburger.Compat (HscEnv (hsc_dflags))
 import GHC.Driver.Session (unitState, unitDatabases)
