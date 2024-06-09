@@ -9,6 +9,7 @@
 
 module GHC.TypeLits.Presburger.Compat (module GHC.TypeLits.Presburger.Compat) where
 
+import GHC.TypeLits.Presburger.Flags
 import Data.Coerce (coerce)
 import Data.Function (on)
 import Data.Functor ((<&>))
@@ -520,9 +521,9 @@ getKey = Unique.getKey
 #endif
 
 getVoidTyCon :: TcPluginM TyCon
-#if MIN_VERSION_ghc(9,10,1)
-getVoidTyCon = tcLookupTyCon =<< lookupOrig (mkGhcInternalModule "GHC.Internal.Base") (mkTcOcc "Void")
-#else
-getVoidTyCon = tcLookupTyCon =<< lookupOrig (mkBaseModule "Data.Void") (mkTcOcc "Void")
-#endif
-
+getVoidTyCon = tcLookupTyCon =<< lookupOrig aMod (mkTcOcc "Void")
+  where 
+    aMod
+      | ghcVer >= GHC910 = mkGhcInternalModule "GHC.Internal.Base"
+      | ghcVer >= GHC906 = mkBaseModule "GHC.Base"
+      | otherwise = mkBaseModule "Data.Void"
