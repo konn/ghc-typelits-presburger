@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.4.0
+
+* Supports GHC 9.10
+* Drops GHC <9.2
+
 ## 0.7.3.0
 
 * Supports GHC 9.8
