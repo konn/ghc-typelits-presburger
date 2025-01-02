@@ -9,13 +9,13 @@
 
 module GHC.TypeLits.Presburger.Compat (module GHC.TypeLits.Presburger.Compat) where
 
-import GHC.TypeLits.Presburger.Flags
 import Data.Coerce (coerce)
 import Data.Function (on)
 import Data.Functor ((<&>))
 import Data.Generics.Twins
-import qualified GHC.Types.Unique as Unique (getKey, Unique)
+import GHC.TypeLits.Presburger.Flags
 import GHC.Types.Unique as GHC.TypeLits.Presburger.Compat (Unique, getUnique)
+import qualified GHC.Types.Unique as Unique (Unique, getKey)
 #if MIN_VERSION_ghc(9,10,1)
 import GHC.Builtin.Names (gHC_INTERNAL_TYPENATS, gHC_INTERNAL_TYPEERROR)
 import GHC.Builtin.Names (mkGhcInternalModule)
@@ -202,7 +202,6 @@ gHC_TYPENATS =  gHC_INTERNAL_TYPENATS
 gHC_TYPEERROR :: Module
 gHC_TYPEERROR = mkBaseModule "GHC.TypeLits"
 #endif
-
 
 type PredTree = Pred
 
@@ -519,15 +518,11 @@ matchFam' con args = fmap snd <$> matchFam con args
 #endif
 
 getKey :: Unique.Unique -> Int
-#if MIN_VERSION_ghc(9,10,1)
 getKey = fromIntegral . Unique.getKey
-#else
-getKey = Unique.getKey
-#endif
 
 getVoidTyCon :: TcPluginM TyCon
 getVoidTyCon = tcLookupTyCon =<< lookupOrig aMod (mkTcOcc "Void")
-  where 
+  where
 #if MIN_VERSION_ghc(9,10,1)
     aMod = mkGhcInternalModule "GHC.Internal.Base"
 #elif MIN_VERSION_ghc(9,6,1)
