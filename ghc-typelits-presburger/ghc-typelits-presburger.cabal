@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: e9bca23d6165b44ac06ae406e39f6bfc83a2e7d999ae0c959a5354ac1c16aa53
+-- hash: 92c8c0d483e6b54307bf6e00c00e1b7d135520581ee85a8c2c72e0a1c6d54877
 
 name:          ghc-typelits-presburger
 version:       0.7.4.0
@@ -30,7 +30,7 @@ copyright:     2015 (c) Hiromi ISHII
 license:       BSD3
 license-file:  LICENSE
 tested-with:
-    GHC==9.2.8 GHC==9.4.8 GHC==9.6.5 GHC==9.8.2 GHC==9.10.1
+    GHC==9.2.8 GHC==9.4.8 GHC==9.6.5 GHC==9.8.4 GHC==9.10.1
 extra-source-files:
     Changelog.md
 build-type:    Simple
