@@ -4,10 +4,10 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 92c8c0d483e6b54307bf6e00c00e1b7d135520581ee85a8c2c72e0a1c6d54877
+-- hash: f62c6305d38380eb4cc8063c8e4c4b0056c9bcb01d01075789915680436a7263
 
 name:          ghc-typelits-presburger
-version:       0.7.4.0
+version:       0.7.4.1
 synopsis:      Presburger Arithmetic Solver for GHC Type-level natural numbers.
 description:   @ghc-typelits-presburger@ augments GHC type-system with Presburger
                Arithmetic Solver for Type-level natural numbers.
