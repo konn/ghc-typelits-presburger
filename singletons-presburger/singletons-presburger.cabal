@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.36.0.
+-- This file has been generated from package.yaml by hpack version 0.38.1.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: c2618960104a6d987ad16931f5a4c21ab88c0998fba8ae4d0f3d4b8b3e37b824
+-- hash: 0efcc8ad858c6ac40a5a17f8cbc84e9d2e915cf4c438144ce8ac7f47c634f624
 
 name:           singletons-presburger
 version:        0.7.4.0
@@ -25,7 +25,7 @@ copyright:      2015 (c) Hiromi ISHII
 license:        BSD3
 license-file:   LICENSE
 tested-with:
-    GHC==9.2.8 GHC==9.4.8 GHC==9.6.5 GHC==9.8.4 GHC==9.10.1
+    GHC==9.6.7 GHC==9.8.4 GHC==9.10.2 GHC==9.12.2
 extra-source-files:
     Changelog.md
 build-type:     Simple
