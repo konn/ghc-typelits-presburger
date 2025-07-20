@@ -1,34 +1,31 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE NoStarIsType #-}
-{-# LANGUAGE NoStarIsType #-}
-{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE NoStarIsType #-}
 {-# OPTIONS_GHC -dcore-lint #-}
-{-# OPTIONS_GHC -fplugin GHC.TypeLits.Presburger #-}
 {-# OPTIONS_GHC -ddump-tc-trace -ddump-to-file #-}
-
+{-# OPTIONS_GHC -fplugin GHC.TypeLits.Presburger #-}
 
 module Main where
 
-import Unsafe.Coerce
 import Data.Proxy
-import Numeric.Natural
 import Data.Type.Equality
-import GHC.TypeLits hiding (SNat)
 import Data.Void
+import GHC.TypeLits hiding (SNat)
+import Numeric.Natural
 import Proof.Propositional (Empty (..), IsTrue (Witness), withEmpty)
+import Unsafe.Coerce
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 902
 import qualified Data.Type.Ord as DTO
 #endif
@@ -42,7 +39,7 @@ main = putStrLn "finished"
 type n <=! m = IsTrue (n <=? m)
 
 infix 4 <=!
-{- 
+
 type family Length (as :: [k]) where
   Length '[] = 0
   Length (x ': xs) = 1 + Length xs
@@ -69,13 +66,13 @@ plusLeq _ _ = Refl
 minusLeq :: (n <= m) => proxy (n :: Nat) -> proxy m -> IsTrue ((m - n) + n <=? m)
 minusLeq _ _ = Witness
 
-absurdTrueFalse :: ( 'True :~: 'False) -> a
+absurdTrueFalse :: ('True :~: 'False) -> a
 absurdTrueFalse = \case {}
 
 hoge :: proxy n -> IsTrue (n + 1 <=? n) -> a
 hoge _ Witness = absurdTrueFalse Refl
 
-bar :: (2 * (n + 1)) ~ (2 * n + 2) => proxy n -> ()
+bar :: ((2 * (n + 1)) ~ (2 * n + 2)) => proxy n -> ()
 bar _ = ()
 
 barResult :: ()
@@ -87,12 +84,12 @@ trans _ _ Witness = Witness
 eqv :: proxy n -> proxy m -> (n <=? m) :~: ((n + 1) <=? (m + 1))
 eqv _ _ = Refl
 
-predSuccBool :: forall proxy n. (n <=? 0) ~ 'False => proxy n -> IsTrue (n + 1 <=? 2 * n)
+predSuccBool :: forall proxy n. ((n <=? 0) ~ 'False) => proxy n -> IsTrue (n + 1 <=? 2 * n)
 predSuccBool _ = Witness
- -}
-predSuccProp :: forall proxy n. Empty (n <=! 0) => proxy n -> IsTrue (n + 1 <=? 2 * n)
+
+predSuccProp :: forall proxy n. (Empty (n <=! 0)) => proxy n -> IsTrue (n + 1 <=? 2 * n)
 predSuccProp _ = Witness
-{- 
+
 succLEqLTSucc :: pxy m -> CmpNat 0 (m + 1) :~: 'LT
 succLEqLTSucc _ = Refl
 
@@ -192,10 +189,10 @@ viewNat (SNat n) =
     then unsafeCoerce IsZero
     else unsafeCoerce (SNat (n - 1))
 
-pattern Zero :: forall n. () => n ~ 0 => SNat n
+pattern Zero :: forall n. () => (n ~ 0) => SNat n
 pattern Zero <- (viewNat -> IsZero)
 
-pattern Succ :: forall n. () => forall n1. n ~ Succ n1 => SNat n1 -> SNat n
+pattern Succ :: forall n. () => forall n1. (n ~ Succ n1) => SNat n1 -> SNat n
 pattern Succ n <- (viewNat -> IsSucc n)
 
 {-# COMPLETE Zero, Succ #-}
@@ -207,4 +204,3 @@ boolToPropLeq :: (n <= m) => SNat n -> SNat m -> Leq n m
 boolToPropLeq Zero m = ZeroLeq m
 boolToPropLeq (Succ n) (Succ m) = SuccLeqSucc $ boolToPropLeq n m
 boolToPropLeq (Succ n) Zero = absurd $ succLeqZeroAbsurd n Witness
- -}
