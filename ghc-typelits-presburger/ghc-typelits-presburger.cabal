@@ -7,7 +7,7 @@ cabal-version: 1.12
 -- hash: 441cb2e02a8ed9f2018ebefb9d034e9875d10b74eae62329422b7ab42debec8d
 
 name:          ghc-typelits-presburger
-version:       0.7.4.1
+version:       0.7.4.2
 synopsis:      Presburger Arithmetic Solver for GHC Type-level natural numbers.
 description:   @ghc-typelits-presburger@ augments GHC type-system with Presburger
                Arithmetic Solver for Type-level natural numbers.

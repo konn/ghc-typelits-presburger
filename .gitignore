@@ -72,3 +72,6 @@ Temporary Items
 
 *.dump*
 
+# Claude Code related files
+.claude/
+
