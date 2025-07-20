@@ -5,7 +5,9 @@
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE RequiredTypeArguments #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneKindSignatures #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -104,7 +106,7 @@ minComm _ _ = Refl
 maxComm :: Proxy (m :: Nat) -> Proxy n -> Max n m :~: Max m n
 maxComm _ _ = Refl
 
-{- singletonsOnly
+singletonsOnly
   [d|
     flipOrdering :: Ordering -> Ordering
     flipOrdering EQ = EQ
@@ -120,7 +122,6 @@ flipCompare ::
   FlipOrdering (Compare n m) :~: Compare m n
 flipCompare n m =
   $(sCases ''Ordering [|sCompare n m|] [|Refl|])
- -}
 
 ltCompare ::
   forall n m.

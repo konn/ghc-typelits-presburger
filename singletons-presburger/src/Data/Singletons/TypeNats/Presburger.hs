@@ -154,8 +154,19 @@ getCaseNameForSingletonBinOpSingleton35 con = do
   tcPluginTrace "matching... for " (ppr con)
   matched <- fmap splitTyConApp <$> matchFam' con vars
   tcPluginTrace "matched. " (ppr matched)
-  Just (appTy0, [_, _, _]) <- fmap splitTyConApp <$> matchFam' con vars
-  return [DirectTFHelper appTy0]
+  Just (appTy0, [n, l, r]) <- fmap splitTyConApp <$> matchFam' con vars
+  applied <- matchFam' appTy0 [n, l, r]
+  tcPluginTrace "Double matched. " (ppr $ splitTyConApp_maybe =<< applied)
+  rest <-
+    fromMaybe [] <$> runMaybeT do
+      (app, args@[_bool, _nat, _body, _comps]) <- hoistMaybe $ splitTyConApp_maybe =<< applied
+      lift $ tcPluginTrace "app, args" (ppr (app, args))
+      agains <- MaybeT (matchFam' app args)
+      lift $ tcPluginTrace "Final match" (ppr agains)
+      (caseName, [_N, _0, _02, _]) <-
+        hoistMaybe $ splitTyConApp_maybe agains
+      pure [CaseFun caseName]
+  return $ DirectTFHelper appTy0 : rest
 
 getCaseNameForSingletonBinOpOldSingleton :: TyCon -> TcPluginM [ComparisonMethod]
 getCaseNameForSingletonBinOpOldSingleton con = do
