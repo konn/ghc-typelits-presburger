@@ -3,16 +3,14 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE RequiredTypeArguments #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE StandaloneKindSignatures #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE NoStarIsType #-}
-{-# OPTIONS_GHC -dcore-lint #-}
+{-# OPTIONS_GHC -dcore-lint -ddump-tc-trace -ddump-to-file #-}
 {-# OPTIONS_GHC -fplugin Data.Singletons.TypeNats.Presburger #-}
 
 module Main where
@@ -25,7 +23,7 @@ import GHC.TypeLits.Singletons
 import Prelude.Singletons
 import Proof.Propositional (Empty (..), IsTrue (Witness), withEmpty)
 
-type n <=! m = IsTrue (n <=? m)
+{- type n <=! m = IsTrue (n <=? m)
 
 infix 4 <=!
 
@@ -35,10 +33,12 @@ natLen ::
   proxy ys ->
   (Length ys - Length xs) + Length xs :~: Length ys
 natLen _ _ = Refl
+ -}
 
 natLeqZero' :: ((n <= 0) ~ 'True) => proxy n -> n :~: 0
 natLeqZero' _ = Refl
 
+{-
 leqSucc :: proxy n -> proxy m -> IsTrue ((n + 1) <= m) -> CmpNat n m :~: 'LT
 leqSucc _ _ Witness = Refl
 
@@ -106,7 +106,7 @@ minComm _ _ = Refl
 maxComm :: Proxy (m :: Nat) -> Proxy n -> Max n m :~: Max m n
 maxComm _ _ = Refl
 
-singletonsOnly
+{- singletonsOnly
   [d|
     flipOrdering :: Ordering -> Ordering
     flipOrdering EQ = EQ
@@ -122,6 +122,7 @@ flipCompare ::
   FlipOrdering (Compare n m) :~: Compare m n
 flipCompare n m =
   $(sCases ''Ordering [|sCompare n m|] [|Refl|])
+ -}
 
 ltCompare ::
   forall n m.
@@ -130,6 +131,7 @@ ltCompare ::
   Sing m ->
   Compare m n :~: GT
 ltCompare _ _ = Refl
+ -}
 
 main :: IO ()
 main = putStrLn "finished"
