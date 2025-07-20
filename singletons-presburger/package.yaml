@@ -25,8 +25,7 @@ ghc-options:
 dependencies:
 - singletons-base >= 3.0
 - singletons
-cpp-options:
-- -DSINGLETONS_BASE
+
       
 library:
   source-dirs:

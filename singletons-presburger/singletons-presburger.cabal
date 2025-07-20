@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 0efcc8ad858c6ac40a5a17f8cbc84e9d2e915cf4c438144ce8ac7f47c634f624
+-- hash: c01df7a46d2f8f7a664af3d1feb36873a209bc074cf15990ceee84727fb82acc
 
 name:           singletons-presburger
 version:        0.7.4.0
@@ -47,7 +47,6 @@ library
   hs-source-dirs:
       src
   ghc-options: -Wall -Wno-dodgy-imports
-  cpp-options: -DSINGLETONS_BASE
   build-depends:
       base >=4.7 && <5
     , ghc
@@ -65,7 +64,6 @@ executable simple-arith
   hs-source-dirs:
       examples
   ghc-options: -Wall -Wno-dodgy-imports -Wno-unused-imports
-  cpp-options: -DSINGLETONS_BASE
   build-depends:
       base
     , equational-reasoning

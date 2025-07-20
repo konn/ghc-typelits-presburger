@@ -190,12 +190,6 @@ import GHC.Utils.Outputable as GHC.TypeLits.Presburger.Compat (showSDocUnsafe)
 type TcPluginSolveResult = TcPluginResult
 #endif
 
-#if MIN_VERSION_ghc(9,12,1)
--- GHC 9.12.1+ compatibility
-mkBaseModule :: String -> Module
-mkBaseModule modName = mkGhcInternalModule (fsLit ("GHC.Internal." <> modName))
-#endif
-
 -- mkUnivCo API compatibility
 #if MIN_VERSION_ghc(9,12,1)
 mkUnivCo' :: UnivCoProvenance -> Role -> Type -> Type -> Coercion  
