@@ -17,7 +17,7 @@ jobs:
     outputs:
       configs: ${{ steps.enumerate.outputs.configs }}
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Enumerate Configs
       id: enumerate
       run: |
@@ -39,7 +39,7 @@ jobs:
       CABAL: cabal --project-file=${{matrix.plan}}
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: haskell-actions/setup@v2
       with:
         ghc-version: ${{ matrix.ghc }}
@@ -47,7 +47,7 @@ jobs:
         enable-stack: false
 
     - name: Cache ~/.cabal/store
-      uses: actions/cache/restore@v3
+      uses: actions/cache/restore@v4
       env:
         cache-name: cache-cabal-store
       with:
@@ -57,7 +57,7 @@ jobs:
           build-${{ runner.os }}-${{env.cache-name}}-${{matrix.ghc}}-
 
     - name: Cache dist-newstyle
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       env:
         cache-name: cache-dist-newstyle
       with:
@@ -81,7 +81,7 @@ jobs:
         ${CABAL} v2-build all --only-dependencies
     # Save ~/.cabal/store cache
     - name: Save Cache ~/.cabal/store
-      uses: actions/cache/save@v3
+      uses: actions/cache/save@v4
       env:
         cache-name: cache-cabal-store
       with:
@@ -93,7 +93,7 @@ jobs:
     - name: Collect binaries
       run: ./ci-scripts/collect-artifacts.sh artifacts
     - name: Upload Artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: binaries-${{matrix.ghc}}-${{matrix.os}}
         path: artifacts.tar.zst
@@ -113,8 +113,8 @@ jobs:
     name: Haskell GHC ${{ matrix.ghc }} Test (${{matrix.os}})
 
     steps:
-    - uses: actions/checkout@v3
-    - uses: actions/download-artifact@v3
+    - uses: actions/checkout@v4
+    - uses: actions/download-artifact@v4
       id: download
       with:
         name: binaries-${{matrix.ghc}}-${{matrix.os}}
