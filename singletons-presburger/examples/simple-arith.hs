@@ -23,7 +23,7 @@ import GHC.TypeLits.Singletons
 import Prelude.Singletons
 import Proof.Propositional (Empty (..), IsTrue (Witness), withEmpty)
 
-{- type n <=! m = IsTrue (n <=? m)
+type n <=! m = IsTrue (n <=? m)
 
 infix 4 <=!
 
@@ -33,12 +33,10 @@ natLen ::
   proxy ys ->
   (Length ys - Length xs) + Length xs :~: Length ys
 natLen _ _ = Refl
- -}
 
 natLeqZero' :: ((n <= 0) ~ 'True) => proxy n -> n :~: 0
 natLeqZero' _ = Refl
 
-{-
 leqSucc :: proxy n -> proxy m -> IsTrue ((n + 1) <= m) -> CmpNat n m :~: 'LT
 leqSucc _ _ Witness = Refl
 
@@ -131,7 +129,6 @@ ltCompare ::
   Sing m ->
   Compare m n :~: GT
 ltCompare _ _ = Refl
- -}
 
 main :: IO ()
 main = putStrLn "finished"

@@ -38,6 +38,7 @@ library:
     - mtl
     - reflection
     - ghc
+    - transformers
 executables:
   simple-arith:
     main: simple-arith.hs

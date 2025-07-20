@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: cb0b5ac47e58ea10983c6bec5780b5858129e297db91a2a9b92227a58f462ab4
+-- hash: b65d2d082bb42d23f74bc473c2594aeafc555f4ba1be0d449dc069cc1cd324e0
 
 name:           singletons-presburger
 version:        0.7.4.1
@@ -55,6 +55,7 @@ library
     , reflection
     , singletons
     , singletons-base >=3.0
+    , transformers
   default-language: Haskell2010
 
 executable simple-arith
