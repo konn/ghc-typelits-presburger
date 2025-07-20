@@ -1,3 +1,5 @@
+{- HLINT ignore "Use camelCase" -}
+{- HLINT ignore "Move filter" -}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -25,7 +27,7 @@ import GHC.Builtin.Names (gHC_TYPENATS)
 import GHC.Builtin.Names (gHC_TYPENATS, gHC_TYPEERROR)
 #endif
 #endif
-import GHC.Tc.Types.Constraint as GHC.TypeLits.Presburger.Compat (CtLoc (..), initialSubGoalDepth)
+import GHC.Tc.Types.Constraint as GHC.TypeLits.Presburger.Compat
 import GHC.Tc.Types.Origin as GHC.TypeLits.Presburger.Compat (CtOrigin (..))
 import GHC.TcPluginM.Extra as GHC.TypeLits.Presburger.Compat (
   evByFiat,
@@ -37,13 +39,17 @@ import GHC.TcPluginM.Extra as GHC.TypeLits.Presburger.Compat (
 import GHC.Tc.Types as GHC.TypeLits.Presburger.Compat (TcPlugin (..), TcPluginSolveResult (..))
 import GHC.Builtin.Types as GHC.TypeLits.Presburger.Compat (cTupleTyCon, cTupleDataCon)
 import GHC.Tc.Types.Evidence as GHC.TypeLits.Presburger.Compat (evCast)
-import GHC.Plugins as GHC.TypeLits.Presburger.Compat (mkUnivCo)
+import GHC.Plugins as GHC.TypeLits.Presburger.Compat (mkUnivCo, Role(..))
+import GHC.Core.TyCo.Rep as GHC.TypeLits.Presburger.Compat (Coercion)
 import GHC.Core.TyCo.Rep as GHC.TypeLits.Presburger.Compat (UnivCoProvenance(..))
 import GHC.Core.DataCon as GHC.TypeLits.Presburger.Compat (dataConWrapId)
 #else
 import GHC.Tc.Types as GHC.TypeLits.Presburger.Compat (TcPlugin (..), TcPluginResult (..))
 #endif
-#if MIN_VERSION_ghc(9,4,1)
+#if MIN_VERSION_ghc(9,12,1)
+-- mkBaseModule is not available in GHC 9.12.1+
+import GHC.Core.Reduction (reductionReducedType)
+#elif MIN_VERSION_ghc(9,4,1)
 import GHC.Builtin.Names as GHC.TypeLits.Presburger.Compat (mkBaseModule)
 import GHC.Core.Reduction (reductionReducedType)
 #else
@@ -74,7 +80,9 @@ import GHC.Unit.Types (Module, UnitId, toUnitId)
 import GHC.Unit.Types as GHC.TypeLits.Presburger.Compat (mkModule)
 #if MIN_VERSION_ghc(9,2,0)
 import GHC.Driver.Env.Types as GHC.TypeLits.Presburger.Compat (HscEnv (hsc_dflags))
+#if !MIN_VERSION_ghc(9,12,1)
 import GHC.Builtin.Names (mkBaseModule)
+#endif
 #else
 import GHC.Driver.Types as GHC.TypeLits.Presburger.Compat (HscEnv (hsc_dflags))
 import GHC.Driver.Session (unitState, unitDatabases)
@@ -182,6 +190,15 @@ import GHC.Utils.Outputable as GHC.TypeLits.Presburger.Compat (showSDocUnsafe)
 
 #if !MIN_VERSION_ghc(9,4,1)
 type TcPluginSolveResult = TcPluginResult
+#endif
+
+-- mkUnivCo API compatibility
+#if MIN_VERSION_ghc(9,12,1)
+mkUnivCo' :: UnivCoProvenance -> Role -> Type -> Type -> Coercion  
+mkUnivCo' prov role ty1 ty2 = mkUnivCo prov [] role ty1 ty2
+#else
+mkUnivCo' :: UnivCoProvenance -> Role -> Type -> Type -> Coercion  
+mkUnivCo' = mkUnivCo
 #endif
 
 #if MIN_VERSION_ghc(9,10,1)

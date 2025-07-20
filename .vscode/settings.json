@@ -11,14 +11,9 @@
   "emeraldwalk.runonsave": {
     "commands": [
       {
-        "cmd": "hpack ghc-typelits-presburger",
+        "cmd": "find . -not -path 'dist-newstyle/**/*' \\( -name '*.cabal' -or -name 'cabal\\.project*' -or -name '*.config' \\) -exec cabal-gild --io {} \\;",
         "isAsync": true,
-        "match": "(\\.hs|package.yaml)$"
-      },
-      {
-        "cmd": "hpack singletons-presburger",
-        "isAsync": true,
-        "match": "(\\.hs|package.yaml)$"
+        "match": "(\\.cabal|\\.l?hs)$"
       }
     ]
   }

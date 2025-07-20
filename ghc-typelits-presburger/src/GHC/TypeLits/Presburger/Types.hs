@@ -362,7 +362,7 @@ extractProof (IrredPred prd)
   | Just (con, lastN 2 -> [_, _]) <- splitTyConApp_maybe prd
   , con `elem` assertTy given = 
     Just $ GHC.Var (dataConWrapId $ cTupleDataCon 0) `evCast`
-      mkUnivCo
+      mkUnivCo'
       (PluginProv $ "ghc-typelits-presburger: extractProof")
       Representational
       (mkTyConTy (cTupleTyCon 0))
