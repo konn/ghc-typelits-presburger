@@ -1,3 +1,5 @@
+{- HLINT ignore "Use camelCase" -}
+{- HLINT ignore "Move filter" -}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
