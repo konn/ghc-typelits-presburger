@@ -760,7 +760,7 @@ runMachine act = do
   (ma, dic) <- runStateT (runMaybeT act) M.empty
   forM_ (M.toList dic) $ \(TypeEq ty, var) -> do
     loc <- unsafeTcPluginTcM $ getCtLocM (Shouldn'tHappenOrigin "runMachine dummy wanted") Nothing
-    newWanted loc $ mkPrimEqPredRole Nominal (mkTyVarTy var) ty
+    newWanted loc $ mkNomEqPred (mkTyVarTy var) ty
   return ma
 
 toVar :: Type -> Machine TyVar

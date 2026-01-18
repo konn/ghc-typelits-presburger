@@ -18,6 +18,12 @@ import Data.Generics.Twins
 import GHC.TypeLits.Presburger.Flags
 import GHC.Types.Unique as GHC.TypeLits.Presburger.Compat (Unique, getUnique)
 import qualified GHC.Types.Unique as Unique (Unique, getKey)
+#if MIN_VERSION_ghc(9,14,1)
+import GHC.Core.Predicate as GHC.TypeLits.Presburger.Compat (mkNomEqPred)
+#else
+import GHC.Core.Predicate (mkPrimEqPredRole)
+#endif
+
 #if MIN_VERSION_ghc(9,10,1)
 import GHC.Builtin.Names (gHC_INTERNAL_TYPENATS, gHC_INTERNAL_TYPEERROR)
 import GHC.Builtin.Names (mkGhcInternalModule)
@@ -66,7 +72,7 @@ import qualified GHC.Builtin.Types as TysWiredIn
 import GHC.Builtin.Types.Literals as GHC.TypeLits.Presburger.Compat
 import GHC.Core.Class as GHC.TypeLits.Presburger.Compat (className, classTyCon)
 import GHC.Core.FamInstEnv as GHC.TypeLits.Presburger.Compat
-import GHC.Core.Predicate as GHC.TypeLits.Presburger.Compat (EqRel (..), Pred (..), isEqPred, mkPrimEqPredRole)
+import GHC.Core.Predicate as GHC.TypeLits.Presburger.Compat (EqRel (..), Pred (..), isEqPred)
 import qualified GHC.Core.Predicate as Old (classifyPredType)
 import GHC.Core.TyCo.Rep as GHC.TypeLits.Presburger.Compat (TyLit (NumTyLit), Type (..))
 import GHC.Core.TyCon as GHC.TypeLits.Presburger.Compat
@@ -546,4 +552,10 @@ getVoidTyCon = tcLookupTyCon =<< lookupOrig aMod (mkTcOcc "Void")
     aMod = mkBaseModule "GHC.Base"
 #else
     aMod = mkBaseModule "Data.Void"
+#endif
+
+
+#if !MIN_VERSION_ghc(9,14,1)
+mkNomEqPred :: Type -> Type -> Type  
+mkNomEqPred = mkPrimEqPredRole Nominal
 #endif
