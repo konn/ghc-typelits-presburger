@@ -1,6 +1,6 @@
 cabal-version: 3.4
 name: ghc-typelits-presburger
-version: 0.7.4.2
+version: 0.7.4.3
 synopsis: Presburger Arithmetic Solver for GHC Type-level natural numbers.
 description:
   @ghc-typelits-presburger@ augments GHC type-system with Presburger
@@ -30,6 +30,7 @@ tested-with:
   ghc ==9.8.4
   ghc ==9.10.2
   ghc ==9.12.2
+  ghc ==9.14.1
 
 extra-source-files:
   Changelog.md
@@ -74,8 +75,8 @@ library
   build-depends:
     base >=4.7 && <5,
     containers,
-    ghc <9.13,
-    ghc-tcplugins-extra >=0.2 && <0.6,
+    ghc <9.15,
+    ghc-tcplugins-extra >=0.2 && <0.7,
     mtl,
     pretty,
     reflection,
