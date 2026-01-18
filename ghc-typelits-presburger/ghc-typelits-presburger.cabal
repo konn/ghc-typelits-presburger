@@ -30,6 +30,7 @@ tested-with:
   ghc ==9.8.4
   ghc ==9.10.2
   ghc ==9.12.2
+  ghc ==9.14.1
 
 extra-source-files:
   Changelog.md
