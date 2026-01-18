@@ -2,13 +2,13 @@ name: Haskell CI
 
 on:
   push:
-    branches: 
-    - master
-    - release
+    branches:
+      - master
+      - release
   pull_request:
     branches:
-    - master
-    - release
+      - master
+      - release
 
 jobs:
   enumerate:
@@ -17,14 +17,14 @@ jobs:
     outputs:
       configs: ${{ steps.enumerate.outputs.configs }}
     steps:
-    - uses: actions/checkout@v4
-    - name: Enumerate Configs
-      id: enumerate
-      run: |
-        set -euxo pipefail
-        find ci-configs -type f -name 'ghc-*.config' \
-          | sort -h | jq -ncR '[inputs | {ghc:  match("ghc-(.+)\\.config$", .) | .captures[0].string | select(.), plan: .}] | map([.os="ubuntu", .os="macOS"]) | flatten' | tee configs.json
-        echo "configs=$(cat configs.json)" >> "${GITHUB_OUTPUT}"
+      - uses: actions/checkout@v4
+      - name: Enumerate Configs
+        id: enumerate
+        run: |
+          set -euxo pipefail
+          find ci-configs -type f -name 'ghc-*.config' \
+            | sort -h | jq -ncR '[inputs | {ghc:  match("ghc-(.+)\\.config$", .) | .captures[0].string | select(.), plan: .}] | map([.os="ubuntu", .os="macOS"]) | flatten' | tee configs.json
+          echo "configs=$(cat configs.json)" >> "${GITHUB_OUTPUT}"
 
   build:
     needs: [enumerate]
@@ -39,70 +39,70 @@ jobs:
       CABAL: cabal --project-file=${{matrix.plan}}
 
     steps:
-    - uses: actions/checkout@v4
-    - uses: haskell-actions/setup@v2
-      with:
-        ghc-version: ${{ matrix.ghc }}
-        cabal-version: 3.10.2.0
-        enable-stack: false
+      - uses: actions/checkout@v4
+      - uses: haskell-actions/setup@v2
+        with:
+          ghc-version: ${{ matrix.ghc }}
+          cabal-version: 3.16.1.0
+          enable-stack: false
 
-    - name: Cache ~/.cabal/store
-      uses: actions/cache/restore@v4
-      env:
-        cache-name: cache-cabal-store
-      with:
-        path: ~/.cabal/store
-        key: build-${{ runner.os }}-${{env.cache-name}}-${{matrix.ghc}}-${{ hashFiles('**/*.cabal', '${{matrix.plan}}') }}
-        restore-keys: |
-          build-${{ runner.os }}-${{env.cache-name}}-${{matrix.ghc}}-
+      - name: Cache ~/.cabal/store
+        uses: actions/cache/restore@v4
+        env:
+          cache-name: cache-cabal-store
+        with:
+          path: ~/.cabal/store
+          key: build-${{ runner.os }}-${{env.cache-name}}-${{matrix.ghc}}-${{ hashFiles('**/*.cabal', '${{matrix.plan}}') }}
+          restore-keys: |
+            build-${{ runner.os }}-${{env.cache-name}}-${{matrix.ghc}}-
 
-    - name: Cache dist-newstyle
-      uses: actions/cache@v4
-      env:
-        cache-name: cache-dist-newstyle
-      with:
-        path: dist-newstyle
-        key: build-${{ runner.os }}-${{ env.cache-name }}-${{matrix.ghc}}-${{ hashFiles('**/*.cabal', '${{matrix.plan}}') }}-${{ hashFiles('**/*.hs') }}
-        restore-keys: |
-          build-${{ runner.os }}-${{ env.cache-name }}-${{matrix.ghc}}-${{ hashFiles('**/*.cabal', '${{matrix.plan}}') }}-
-          build-${{ runner.os }}-${{ env.cache-name }}-${{matrix.ghc}}-
+      - name: Cache dist-newstyle
+        uses: actions/cache@v4
+        env:
+          cache-name: cache-dist-newstyle
+        with:
+          path: dist-newstyle
+          key: build-${{ runner.os }}-${{ env.cache-name }}-${{matrix.ghc}}-${{ hashFiles('**/*.cabal', '${{matrix.plan}}') }}-${{ hashFiles('**/*.hs') }}
+          restore-keys: |
+            build-${{ runner.os }}-${{ env.cache-name }}-${{matrix.ghc}}-${{ hashFiles('**/*.cabal', '${{matrix.plan}}') }}-
+            build-${{ runner.os }}-${{ env.cache-name }}-${{matrix.ghc}}-
 
-    - name: Configure and Update
-      run: >-
-        ${CABAL} v2-configure
-        --enable-tests --enable-benchmarks
-        --constraint "singletons-presburger +examples"
-        --constraint "ghc-typelits-presburger +examples"
-        --allow-newer='ghc-typelits-presburger,singletons-presbruger'
+      - name: Configure and Update
+        run: >-
+          ${CABAL} v2-configure
+          --enable-tests --enable-benchmarks
+          --constraint "singletons-presburger +examples"
+          --constraint "ghc-typelits-presburger +examples"
+          --allow-newer='ghc-typelits-presburger,singletons-presbruger'
 
-        ${CABAL} v2-update
-    - name: Build Dependencies
-      run: |
-        ${CABAL} v2-build all --only-dependencies
-    # Save ~/.cabal/store cache
-    - name: Save Cache ~/.cabal/store
-      uses: actions/cache/save@v4
-      env:
-        cache-name: cache-cabal-store
-      with:
-        path: ~/.cabal/store
-        key: build-${{ runner.os }}-${{env.cache-name}}-${{matrix.ghc}}-${{ hashFiles('**/*.cabal', '${{matrix.plan}}') }}
-    - name: Build
-      run: |
-        ${CABAL} v2-build all
-    - name: Collect binaries
-      run: ./ci-scripts/collect-artifacts.sh artifacts
-    - name: Upload Artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: binaries-${{matrix.ghc}}-${{matrix.os}}
-        path: artifacts.tar.zst
-        retention-days: 3
+          ${CABAL} v2-update
+      - name: Build Dependencies
+        run: |
+          ${CABAL} v2-build all --only-dependencies
+      # Save ~/.cabal/store cache
+      - name: Save Cache ~/.cabal/store
+        uses: actions/cache/save@v4
+        env:
+          cache-name: cache-cabal-store
+        with:
+          path: ~/.cabal/store
+          key: build-${{ runner.os }}-${{env.cache-name}}-${{matrix.ghc}}-${{ hashFiles('**/*.cabal', '${{matrix.plan}}') }}
+      - name: Build
+        run: |
+          ${CABAL} v2-build all
+      - name: Collect binaries
+        run: ./ci-scripts/collect-artifacts.sh artifacts
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaries-${{matrix.ghc}}-${{matrix.os}}
+          path: artifacts.tar.zst
+          retention-days: 3
 
   test:
     needs:
-    - enumerate
-    - build
+      - enumerate
+      - build
     continue-on-error: false
     strategy:
       fail-fast: false
@@ -113,24 +113,24 @@ jobs:
     name: Haskell GHC ${{ matrix.ghc }} Test (${{matrix.os}})
 
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/download-artifact@v4
-      id: download
-      with:
-        name: binaries-${{matrix.ghc}}-${{matrix.os}}
-    - name: Extract and Run All Tests
-      run: |
-        set -euxo pipefail
-        DL_PATH=${{steps.download.outputs.download-path}}
-        unzstd "${DL_PATH}/artifacts.tar.zst"
-        tar xvf "${DL_PATH}/artifacts.tar"
-        set +x
-        find artifacts/tests -type f | while read -r TEST; do
-          echo "Executing: ${TEST}"
-          "${TEST}"
-        done
-        
-        find artifacts/exes -type f | while read -r TEST; do
-          echo "Executing: ${TEST}"
-          "${TEST}"
-        done
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        id: download
+        with:
+          name: binaries-${{matrix.ghc}}-${{matrix.os}}
+      - name: Extract and Run All Tests
+        run: |
+          set -euxo pipefail
+          DL_PATH=${{steps.download.outputs.download-path}}
+          unzstd "${DL_PATH}/artifacts.tar.zst"
+          tar xvf "${DL_PATH}/artifacts.tar"
+          set +x
+          find artifacts/tests -type f | while read -r TEST; do
+            echo "Executing: ${TEST}"
+            "${TEST}"
+          done
+
+          find artifacts/exes -type f | while read -r TEST; do
+            echo "Executing: ${TEST}"
+            "${TEST}"
+          done
